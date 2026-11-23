@@ -21,7 +21,7 @@ interface FinancialViewProps {
   onDeleteTransaction: (id: string) => void;
 }
 
-export const EXPENSE_CATEGORIES = [
+const EXPENSE_CATEGORIES = [
   'Fornecedor de Autopeças',
   'Ferramental e Equipamentos',
   'Aluguel e IPTU do Pátio/Oficina',
@@ -37,7 +37,7 @@ export const EXPENSE_CATEGORIES = [
   'Outra (digitar personalizada)...',
 ];
 
-export const REVENUE_CATEGORIES = [
+const REVENUE_CATEGORIES = [
   'Cliente Final',
   'Cliente Fiel',
   'Motorista de Aplicativo (Uber / 99 / Táxi)',
