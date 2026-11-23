@@ -261,7 +261,7 @@ export const PreventiveMaintenanceService = {
 
     if (alerts.length === 1 && firstRecord) {
       // Padrão Consultivo para Serviço Único
-      return `Olá *${clientFirstName}*, tudo bem? Aqui é da *Oficina Mestre*!
+      return `Olá *${clientFirstName}*, tudo bem? Aqui é o *Rico da Oficina Rico*!
 
 Passando para checar como está o seu *${vehicle.brand} ${vehicle.model}* após aquela *${firstRecord.serviceName.toLowerCase()}* que fizemos há ${timeText}.
 
@@ -290,7 +290,7 @@ _(Caso prefira não receber lembretes preventivos de segurança, basta nos respo
       })
       .join('\n');
 
-    return `Olá *${clientFirstName}*, tudo bem? Aqui é da *Oficina Mestre*!
+    return `Olá *${clientFirstName}*, tudo bem? Aqui é o *Rico da Oficina Rico*!
 
 Passando para checar como está a sua *${vehicle.brand} ${vehicle.model}* após as últimas manutenções.
 

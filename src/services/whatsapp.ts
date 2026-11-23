@@ -21,9 +21,9 @@ export const WhatsAppService = {
       ? order.services.map((s) => `  • ${s.description} (R$ ${s.price.toFixed(2)})`).join('\n')
       : '  (Nenhum serviço adicional)';
 
-    const message = `🔧 *ORÇAMENTO TÉCNICO - OFICINA MESTRE*
+    const message = `🔧 *ORÇAMENTO TÉCNICO - OFICINA RICO*
 -----------------------------------
-Olá *${clientFirstName}*, tudo bem? Aqui é da *Oficina Mestre*!
+Olá *${clientFirstName}*, tudo bem? Aqui é o *Rico da Oficina Rico*!
 
 Concluímos a avaliação técnica do seu *${vehicle.brand} ${vehicle.model}* (Placa: *${vehicle.plate}*). Segue o demonstrativo transparente dos itens necessários:
 
@@ -44,7 +44,7 @@ ${order.discount > 0 ? `💰 *Desconto Aplicado:* - R$ ${order.discount.toFixed(
 Podemos dar início aos serviços e à separação das peças?
 👉 Responda com *"AUTORIZADO"* ou nos mande uma mensagem se tiver qualquer dúvida!
 
-📲 *Dica:* Salve nosso WhatsApp comercial na sua agenda para acompanhar o andamento da sua O.S. e a garantia dos serviços.`;
+📲 *Dica:* Salve o WhatsApp da Oficina Rico (Rico) na sua agenda para acompanhar o andamento da sua O.S. e a garantia dos serviços.`;
 
     return message;
   },
@@ -54,7 +54,7 @@ Podemos dar início aos serviços e à separação das peças?
     const clientFirstName = client.name.split(' ')[0];
     const message = `🚗💨 *SEU VEÍCULO ESTÁ PRONTO!* 🏁
 -----------------------------------
-Olá *${clientFirstName}*, tudo bem? Aqui é da *Oficina Mestre*!
+Olá *${clientFirstName}*, tudo bem? Aqui é o *Rico da Oficina Rico*!
 
 Passando para avisar que o serviço no seu *${vehicle.brand} ${vehicle.model}* (Placa: *${vehicle.plate}*) foi finalizado com sucesso e o veículo foi liberado nos testes finais de segurança.
 
@@ -64,7 +64,7 @@ Passando para avisar que o serviço no seu *${vehicle.brand} ${vehicle.model}* (
 Nosso pátio já está liberado para você retirar o veículo quando desejar!
 
 📲 *Importante para sua Garantia:*
-Por favor, *salve o nosso WhatsApp comercial na sua agenda* para acompanhar a garantia legal de 90 dias e receber o histórico das próximas preventivas do seu carro.
+Por favor, *salve o WhatsApp da Oficina Rico (Rico)* na sua agenda para acompanhar a garantia legal de 90 dias e receber o histórico das próximas preventivas do seu carro.
 
 Qualquer dúvida ou se precisar de um horário especial de retirada, estamos à disposição por aqui! 🤝`;
 

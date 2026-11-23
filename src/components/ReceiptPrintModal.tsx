@@ -58,13 +58,13 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
           <div className="border-b-2 border-slate-900 pb-4 mb-4 flex items-center justify-between">
             <div>
               <h1 className="text-xl font-black tracking-tight text-slate-950 uppercase">
-                OFICINA MECÂNICA MESTRE
+                OFICINA RICO
               </h1>
               <p className="text-[11px] text-slate-600">
                 Manutenção Preventiva, Freios, Suspensão, Injeção Eletrônica & Motores
               </p>
               <p className="text-[10px] text-slate-500">
-                CNPJ: 12.345.678/0001-90 • Tel/WhatsApp: (11) 98244-0071 • São Paulo - SP
+                CNPJ: 12.345.678/0001-90 • Tel/WhatsApp: (11) 98244-0071 • Mecânico Responsável: Rico • São Paulo - SP
               </p>
             </div>
             <div className="text-right border-l-2 border-slate-200 pl-4">
@@ -94,7 +94,7 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
                 Placa: {vehicle?.plate || '-'} | KM: {order.checklist.mileage.toLocaleString('pt-BR')} km
               </div>
               <div className="text-[11px] text-slate-700">
-                Mecânico Resp.: {mechanic?.name || 'Oficina'}
+                Mecânico Resp.: {mechanic?.name || 'Rico'}
               </div>
             </div>
           </div>
@@ -186,7 +186,7 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
                   Acompanhamento da Garantia de 90 Dias & Histórico do Veículo:
                 </strong>
                 <p className="text-[10px] text-slate-700 mt-0.5 leading-relaxed">
-                  Prezado(a) <strong>{client?.name || 'Cliente'}</strong>, salve nosso WhatsApp comercial <strong>(11) 98244-0071</strong> na sua agenda para acompanhar a garantia de 90 dias, receber laudos e o histórico preventivo do seu <strong>{vehicle?.brand} {vehicle?.model}</strong>.
+                  Prezado(a) <strong>{client?.name || 'Cliente'}</strong>, salve o WhatsApp comercial da <strong>Oficina Rico</strong> (Rico: <strong>(11) 98244-0071</strong>) na sua agenda para acompanhar a garantia de 90 dias, receber laudos e o histórico preventivo do seu <strong>{vehicle?.brand} {vehicle?.model}</strong>.
                 </p>
               </div>
             </div>
@@ -202,8 +202,8 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
                 <span className="text-[9px] text-slate-500">Autorização e recebimento do veículo</span>
               </div>
               <div className="border-t border-slate-400 pt-1 text-center">
-                <span className="block font-bold text-slate-800">Oficina Mecânica Mestre</span>
-                <span className="text-[9px] text-slate-500">Responsável Técnico</span>
+                <span className="block font-bold text-slate-800">Oficina Rico</span>
+                <span className="text-[9px] text-slate-500">Rico - Responsável Técnico</span>
               </div>
             </div>
           </div>

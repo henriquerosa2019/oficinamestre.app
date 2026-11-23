@@ -22,7 +22,7 @@ const STORAGE_KEYS = {
 
 // Seed Data Realista para Oficinas Mecânicas Brasileiras
 const INITIAL_MECHANICS: Mechanic[] = [
-  { id: 'mec-1', name: 'Carlos "Alemão"', phone: '(11) 98765-4321', commissionRate: 20, active: true },
+  { id: 'mec-1', name: 'Rico (Responsável Técnico)', phone: '(11) 98244-0071', commissionRate: 20, active: true },
   { id: 'mec-2', name: 'Marcos Silva', phone: '(11) 97654-3210', commissionRate: 15, active: true },
 ];
 
@@ -536,7 +536,13 @@ export const StorageService = {
 
   // Mechanics
   getMechanics(): Mechanic[] {
-    return getFromStorage<Mechanic[]>(STORAGE_KEYS.MECHANICS, INITIAL_MECHANICS);
+    const list = getFromStorage<Mechanic[]>(STORAGE_KEYS.MECHANICS, INITIAL_MECHANICS);
+    const hasRico = list.some((m) => m.name.toLowerCase().includes('rico'));
+    if (!hasRico && list.length > 0) {
+      list[0].name = 'Rico (Responsável Técnico)';
+      setToStorage(STORAGE_KEYS.MECHANICS, list);
+    }
+    return list;
   },
   saveMechanic(mechanic: Mechanic): void {
     const mechanics = this.getMechanics();
