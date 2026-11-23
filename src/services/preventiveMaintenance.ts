@@ -1,6 +1,7 @@
 import {
   MaintenanceRecord,
   MaintenanceAlert,
+  GroupedVehicleAlert,
   PreventiveServiceType,
   VehicleUsageProfile,
   Vehicle,
@@ -123,7 +124,23 @@ export const PreventiveMaintenanceService = {
     };
   },
 
-  // Analisa todos os registros e calcula os alertas (vencido, 1 dia antes, 7 dias antes)
+  // Helper de prioridade de urgência para ordenação
+  getStatusPriority(status: MaintenanceAlert['status']): number {
+    switch (status) {
+      case 'urgente_1dia':
+        return 1; // Prioridade Máxima: fechar a agenda de amanhã/hoje
+      case 'alerta_7dias':
+        return 2; // Vence em até 7 dias: planejar a semana
+      case 'vencido':
+        return 3; // Vencidos: recuperar clientes em atraso
+      case 'em_dia':
+        return 4; // Em dia: futuro
+      default:
+        return 5;
+    }
+  },
+
+  // Analisa todos os registros e calcula os alertas ordenados por urgência
   calculateAlerts(
     records: MaintenanceRecord[],
     vehicles: Vehicle[],
@@ -166,60 +183,137 @@ export const PreventiveMaintenanceService = {
       });
     });
 
-    // Ordena: primeiro os que vencem em 1 dia, depois em 7 dias, depois vencidos, depois os demais
-    return alerts.sort((a, b) => a.daysRemaining - b.daysRemaining);
+    // Ordenação estrita por prioridade de ação: 1º Urgente (Hoje/Amanhã), 2º 7 Dias, 3º Vencidos, 4º Em dia
+    return alerts.sort((a, b) => {
+      const pA = this.getStatusPriority(a.status);
+      const pB = this.getStatusPriority(b.status);
+      if (pA !== pB) return pA - pB;
+      return a.daysRemaining - b.daysRemaining;
+    });
   },
 
-  // Gera a mensagem personalizada de aviso preventivo no WhatsApp
-  generateWhatsAppReminder(alert: MaintenanceAlert): string {
-    const { record, vehicle, client, daysRemaining, status } = alert;
+  // Agrupa os alertas por veículo para evitar múltiplos contatos desnecessários
+  groupAlertsByVehicle(alerts: MaintenanceAlert[]): GroupedVehicleAlert[] {
+    const groupsMap = new Map<string, GroupedVehicleAlert>();
+
+    alerts.forEach((alert) => {
+      const vId = alert.vehicle.id;
+      if (!groupsMap.has(vId)) {
+        groupsMap.set(vId, {
+          vehicle: alert.vehicle,
+          client: alert.client,
+          alerts: [],
+          records: [],
+          worstStatus: alert.status,
+          minDaysRemaining: alert.daysRemaining,
+          isContacted: alert.record.contactStatus === 'avisado' || alert.record.contactStatus === 'agendado',
+          contactedAt: alert.record.contactedAt,
+        });
+      }
+
+      const grp = groupsMap.get(vId)!;
+      grp.alerts.push(alert);
+      grp.records.push(alert.record);
+
+      // Pior status = maior prioridade
+      if (this.getStatusPriority(alert.status) < this.getStatusPriority(grp.worstStatus)) {
+        grp.worstStatus = alert.status;
+      }
+      if (alert.daysRemaining < grp.minDaysRemaining) {
+        grp.minDaysRemaining = alert.daysRemaining;
+      }
+
+      if (alert.record.contactStatus === 'avisado' || alert.record.contactStatus === 'agendado') {
+        grp.isContacted = true;
+        if (alert.record.contactedAt && (!grp.contactedAt || alert.record.contactedAt > grp.contactedAt)) {
+          grp.contactedAt = alert.record.contactedAt;
+        }
+      }
+    });
+
+    const groupedList = Array.from(groupsMap.values());
+
+    // Ordena pela maior prioridade de urgência do veículo
+    return groupedList.sort((a, b) => {
+      const pA = this.getStatusPriority(a.worstStatus);
+      const pB = this.getStatusPriority(b.worstStatus);
+      if (pA !== pB) return pA - pB;
+      return a.minDaysRemaining - b.minDaysRemaining;
+    });
+  },
+
+  // Gera mensagem consolidada de WhatsApp (individual ou combo com múltiplos serviços)
+  generateGroupedWhatsAppReminder(grouped: GroupedVehicleAlert): string {
+    const { vehicle, client, alerts, worstStatus, minDaysRemaining } = grouped;
     const clientFirstName = client.name.split(' ')[0];
 
-    const isApp = record.usageProfile === 'app_severo';
+    const isApp = vehicle.usageProfile === 'app_severo';
     const profileText = isApp
-      ? '🚕 *Perfil:* Motorista de Aplicativo / Uso Intenso'
+      ? '🚕 *Perfil:* Motorista de Aplicativo / Uso Severo'
       : '🚗 *Perfil:* Uso Padrão';
 
     let urgencyHeadline = '';
-    if (status === 'urgente_1dia') {
-      urgencyHeadline = daysRemaining === 0 ? '⚠️ *ATENÇÃO: SUA REVISÃO VENCE HOJE!*' : '⚠️ *ATENÇÃO: SUA REVISÃO VENCE AMANHÃ!*';
-    } else if (status === 'alerta_7dias') {
-      urgencyHeadline = `🔔 *LEMBRETE PREVENTIVO: VENCE EM ${daysRemaining} DIAS!*`;
-    } else if (status === 'vencido') {
-      urgencyHeadline = `🚨 *AVISO: REVISÃO VENCIDA HÁ ${Math.abs(daysRemaining)} DIAS!*`;
+    if (worstStatus === 'urgente_1dia') {
+      urgencyHeadline = minDaysRemaining === 0 ? '⚠️ *ATENÇÃO: SUA REVISÃO VENCE HOJE!*' : '⚠️ *ATENÇÃO: SUA REVISÃO VENCE AMANHÃ!*';
+    } else if (worstStatus === 'alerta_7dias') {
+      urgencyHeadline = `🔔 *LEMBRETE PREVENTIVO: VENCE EM ${minDaysRemaining} DIAS!*`;
+    } else if (worstStatus === 'vencido') {
+      urgencyHeadline = `🚨 *AVISO: REVISÃO PREVENTIVA PENDENTE!*`;
     } else {
-      urgencyHeadline = `📅 *PREVISÃO DA PRÓXIMA REVISÃO PREVENTIVA*`;
+      urgencyHeadline = `📅 *PREVISÃO DE REVISÕES PREVENTIVAS*`;
     }
 
-    const serviceNameCapitalized = record.serviceName.toUpperCase();
+    const itemsList = alerts
+      .map((a: MaintenanceAlert) => {
+        const days = a.daysRemaining;
+        const statusText =
+          days < 0
+            ? `_(Vencido há ${Math.abs(days)} dias)_`
+            : days === 0
+            ? `_(Vence Hoje!)_`
+            : days === 1
+            ? `_(Vence Amanhã!)_`
+            : `_(Em ${days} dias)_`;
+        return `• *${a.record.serviceName.toUpperCase()}* ${statusText}`;
+      })
+      .join('\n');
 
-    const text = `${urgencyHeadline}
+    return `${urgencyHeadline}
 -----------------------------------
 Olá *${clientFirstName}*, tudo bem? Aqui é da *Oficina Mestre*!
 
-Cuidamos do histórico do seu carro para você não ter surpresas na rua:
+Cuidamos do histórico da sua *${vehicle.brand} ${vehicle.model}* para você não ter imprevistos na rua:
 
 🚘 *Veículo:* ${vehicle.brand} ${vehicle.model}
 🏷️ *Placa:* ${vehicle.plate}
 ${profileText}
 
-🔧 *Serviço Realizado Anteriormente:*
-• ${serviceNameCapitalized}
-• Realizado em: ${new Date(record.completedDate).toLocaleDateString('pt-BR')} com ${record.mileageAtService.toLocaleString('pt-BR')} km
-
-🎯 *Próxima Troca Prevista:*
-• Data estimada: *${new Date(record.estimatedReturnDate).toLocaleDateString('pt-BR')}*
-• KM estimado: *~${record.estimatedReturnMileage.toLocaleString('pt-BR')} km*
+🔧 *Serviço(s) no momento ideal de realização:*
+${itemsList}
 
 ${
-  isApp
+  alerts.length > 1
+    ? `💡 *PACOTE COMBO:* Fazendo a revisão desses ${alerts.length} itens na mesma visita, você economiza tempo e garante condições especiais no pacote completo!`
+    : isApp
     ? `💡 _Como você roda bastante com aplicativo, antecipar a troca protege seu motor e evita paradas não planejadas no meio das corridas!_`
     : `💡 _Revisões em dia garantem economia de combustível, segurança da sua família e valorização na revenda._`
 }
 
 Deseja que reservemos o melhor horário para você esta semana?
 👉 Responda com *"SIM, QUERO AGENDAR"* ou nos envie o dia de sua preferência! 🚀`;
+  },
 
-    return text;
+  // Mantido para compatibilidade retroativa
+  generateWhatsAppReminder(alert: MaintenanceAlert): string {
+    return this.generateGroupedWhatsAppReminder({
+      vehicle: alert.vehicle,
+      client: alert.client,
+      alerts: [alert],
+      records: [alert.record],
+      worstStatus: alert.status,
+      minDaysRemaining: alert.daysRemaining,
+      isContacted: alert.record.contactStatus === 'avisado' || alert.record.contactStatus === 'agendado',
+      contactedAt: alert.record.contactedAt,
+    });
   },
 };

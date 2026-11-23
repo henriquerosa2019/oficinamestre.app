@@ -650,6 +650,24 @@ export const StorageService = {
     const records = this.getMaintenanceRecords().filter((r) => r.id !== id);
     setToStorage(STORAGE_KEYS.MAINTENANCE, records);
   },
+  updateMaintenanceContactStatus(
+    recordIds: string[],
+    contactStatus: 'pendente' | 'avisado' | 'agendado'
+  ): void {
+    const records = this.getMaintenanceRecords();
+    const now = new Date().toISOString();
+    const updated = records.map((r) => {
+      if (recordIds.includes(r.id)) {
+        return {
+          ...r,
+          contactStatus,
+          contactedAt: contactStatus === 'pendente' ? undefined : now,
+        };
+      }
+      return r;
+    });
+    setToStorage(STORAGE_KEYS.MAINTENANCE, updated);
+  },
 
   // Backup Completo
   exportAllData(): string {

@@ -66,12 +66,12 @@ export const App: React.FC = () => {
     (o) => o.status !== 'finalizado' && o.status !== 'cancelado'
   ).length;
 
-  // Contagem de alertas pendentes de manutenção preventiva (1 dia e 7 dias)
+  // Contagem de alertas pendentes de ação preventiva (urgente 1 dia, 7 dias e vencidos)
   const pendingAlertsCount = PreventiveMaintenanceService.calculateAlerts(
     maintenanceRecords,
     vehicles,
     clients
-  ).filter((a) => a.status === 'urgente_1dia' || a.status === 'alerta_7dias').length;
+  ).filter((a) => a.status === 'urgente_1dia' || a.status === 'alerta_7dias' || a.status === 'vencido').length;
 
   // Ações de Ordem de Serviço
   const handleOpenNewOrder = () => {
@@ -236,6 +236,82 @@ export const App: React.FC = () => {
     setMaintenanceRecords(StorageService.getMaintenanceRecords());
   };
 
+  const handleUpdateContactStatus = (
+    recordIds: string[],
+    contactStatus: 'pendente' | 'avisado' | 'agendado'
+  ) => {
+    StorageService.updateMaintenanceContactStatus(recordIds, contactStatus);
+    setMaintenanceRecords(StorageService.getMaintenanceRecords());
+  };
+
+  const handleOpenNewOrderFromAlert = (
+    vehicle: Vehicle,
+    client: Client,
+    serviceNames: string[]
+  ) => {
+    const draftServices = serviceNames.map((svcName) => {
+      const matched = services.find((s) => s.name.toLowerCase().includes(svcName.toLowerCase()));
+      const price = matched?.standardPrice || 160;
+      return {
+        id: 'os-svc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5),
+        serviceId: matched?.id,
+        description: svcName,
+        mechanicId: mechanics[0]?.id || '',
+        price,
+        commissionRate: 15,
+        commissionValue: price * 0.15,
+      };
+    });
+
+    const servicesTotal = draftServices.reduce((acc, s) => acc + s.price, 0);
+    const mechanicsCommissionTotal = draftServices.reduce((acc, s) => acc + s.commissionValue, 0);
+    const netTotal = servicesTotal;
+    const netProfit = netTotal - mechanicsCommissionTotal;
+    const profitMarginPercent = netTotal > 0 ? (netProfit / netTotal) * 100 : 0;
+
+    const draftOrder: ServiceOrder = {
+      id: '',
+      orderNumber: `OS-${Math.floor(1000 + Math.random() * 9000)}`,
+      clientId: client.id,
+      vehicleId: vehicle.id,
+      mechanicId: mechanics[0]?.id || '',
+      status: 'orcamento',
+      complaintDescription: `Revisão Preventiva Recomendada: ${serviceNames.join(' + ')}`,
+      technicalDiagnostic: `Cliente retornou para realização de manutenção preventiva periódica (${serviceNames.join(', ')}).`,
+      checklist: {
+        mileage: vehicle.mileage || 50000,
+        fuelLevel: 50,
+        hasSpareWheel: true,
+        hasJack: true,
+        hasLugWrench: true,
+        hasTriangle: true,
+        hasManual: true,
+        hasKeyChain: true,
+        lightsWorking: true,
+        hornWorking: true,
+        wipersWorking: true,
+        damagePoints: [],
+      },
+      parts: [],
+      services: draftServices,
+      partsTotal: 0,
+      servicesTotal,
+      grossTotal: servicesTotal,
+      discount: 0,
+      netTotal,
+      partsCostTotal: 0,
+      mechanicsCommissionTotal,
+      netProfit,
+      profitMarginPercent,
+      isPaid: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setEditingOrder(draftOrder);
+    setIsOrderModalOpen(true);
+  };
+
   // Backup & Reset
   const handleResetData = () => {
     if (window.confirm('Deseja recarregar os dados de demonstração da oficina?')) {
@@ -332,6 +408,8 @@ export const App: React.FC = () => {
             clients={clients}
             onSaveRecord={handleSaveMaintenanceRecord}
             onDeleteRecord={handleDeleteMaintenanceRecord}
+            onUpdateContactStatus={handleUpdateContactStatus}
+            onOpenNewOrderFromAlert={handleOpenNewOrderFromAlert}
           />
         )}
       </main>

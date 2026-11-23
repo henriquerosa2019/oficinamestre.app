@@ -62,6 +62,8 @@ export interface MaintenanceRecord {
 
   reminderSent7Days?: boolean;
   reminderSent1Day?: boolean;
+  contactStatus?: 'pendente' | 'avisado' | 'agendado';
+  contactedAt?: string;
   notes?: string;
 }
 
@@ -71,6 +73,17 @@ export interface MaintenanceAlert {
   client: Client;
   daysRemaining: number; // Negativo se já venceu, 0 a 1 se vence amanhã, 2 a 7 se vence na semana
   status: 'vencido' | 'urgente_1dia' | 'alerta_7dias' | 'em_dia';
+}
+
+export interface GroupedVehicleAlert {
+  vehicle: Vehicle;
+  client: Client;
+  alerts: MaintenanceAlert[];
+  records: MaintenanceRecord[];
+  worstStatus: 'urgente_1dia' | 'alerta_7dias' | 'vencido' | 'em_dia';
+  minDaysRemaining: number;
+  isContacted: boolean;
+  contactedAt?: string;
 }
 
 

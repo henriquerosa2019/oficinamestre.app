@@ -57,31 +57,31 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Navegação Desktop */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1 overflow-x-auto">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                 activeTab === 'dashboard'
-                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
               }`}
             >
-              <LayoutDashboard className="w-4 h-4" />
+              <LayoutDashboard className="w-3.5 h-3.5" />
               Painel
             </button>
 
             <button
               onClick={() => setActiveTab('orders')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                 activeTab === 'orders'
-                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
               }`}
             >
-              <KanbanSquare className="w-4 h-4" />
-              Ordens de Serviço
+              <KanbanSquare className="w-3.5 h-3.5" />
+              O.S.
               {carsInShopCount > 0 && (
-                <span className="bg-amber-500 text-slate-950 text-xs font-black px-1.5 py-0.2 rounded-full">
+                <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">
                   {carsInShopCount}
                 </span>
               )}
@@ -89,55 +89,55 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               onClick={() => setActiveTab('parts')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                 activeTab === 'parts'
-                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
               }`}
             >
-              <Package className="w-4 h-4" />
-              Peças & Estoque (XML)
+              <Package className="w-3.5 h-3.5" />
+              Estoque
             </button>
 
             <button
               onClick={() => setActiveTab('clients')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                 activeTab === 'clients'
-                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
               }`}
             >
-              <Users className="w-4 h-4" />
-              Clientes & Veículos
-            </button>
-
-            <button
-              onClick={() => setActiveTab('financial')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === 'financial'
-                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <DollarSign className="w-4 h-4" />
-              Financeiro
+              <Users className="w-3.5 h-3.5" />
+              Clientes
             </button>
 
             <button
               onClick={() => setActiveTab('maintenance')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all relative ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all relative ${
                 activeTab === 'maintenance'
-                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
               }`}
             >
-              <BellRing className="w-4 h-4 text-amber-400" />
-              Retorno & Preventiva
+              <BellRing className="w-3.5 h-3.5 text-amber-400" />
+              Preventiva
               {pendingAlertsCount > 0 && (
                 <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
                   {pendingAlertsCount}
                 </span>
               )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('financial')}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                activeTab === 'financial'
+                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+              Financeiro
             </button>
           </nav>
 
@@ -242,7 +242,7 @@ export const Header: React.FC<HeaderProps> = ({
           }`}
         >
           <BellRing className="w-4 h-4 mb-0.5" />
-          Retorno
+          Preventiva
           {pendingAlertsCount > 0 && (
             <span className="absolute top-0 right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
           )}
