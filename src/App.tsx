@@ -239,8 +239,8 @@ export const App: React.FC = () => {
     setTransactions(StorageService.getTransactions());
   };
 
-  const handlePayPurchaseInstallment = (purchaseId: string, installmentNumber: number) => {
-    StorageService.payPurchaseInstallment(purchaseId, installmentNumber);
+  const handlePayPurchaseInstallment = (purchaseId: string, installmentNumber: number, customPaidDate?: string) => {
+    StorageService.payPurchaseInstallment(purchaseId, installmentNumber, customPaidDate);
     setPurchases(StorageService.getPurchases());
     setTransactions(StorageService.getTransactions());
   };
@@ -475,9 +475,11 @@ export const App: React.FC = () => {
             parts={parts}
             clients={clients}
             vehicles={vehicles}
+            purchases={purchases}
             onOpenOrder={handleOpenExistingOrder}
             onNavigateTab={setActiveTab}
             onNewOrder={handleOpenNewOrder}
+            onPayPurchaseInstallment={handlePayPurchaseInstallment}
           />
         )}
 

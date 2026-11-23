@@ -1,6 +1,7 @@
 import React from 'react';
 import { ServiceOrder, Client, Vehicle, Mechanic } from '../types';
 import { Printer, X, Wrench, CheckCircle } from 'lucide-react';
+import { getOrderWarranty } from '../utils/warranty';
 
 interface ReceiptPrintModalProps {
   order: ServiceOrder | null;
@@ -24,6 +25,7 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
   const client = clients.find((c) => c.id === order.clientId);
   const vehicle = vehicles.find((v) => v.id === order.vehicleId);
   const mechanic = mechanics.find((m) => m.id === order.mechanicId);
+  const warranty = getOrderWarranty(order);
 
   const handlePrint = () => {
     window.print();
@@ -71,7 +73,10 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
               <span className="text-xs uppercase text-slate-500 block font-semibold">Ordem de Serviço</span>
               <span className="text-xl font-mono font-black text-slate-950">{order.orderNumber}</span>
               <span className="text-[10px] text-slate-500 block mt-0.5">
-                Data: {new Date(order.createdAt).toLocaleDateString('pt-BR')}
+                Data: {warranty.formattedServiceDate}
+              </span>
+              <span className="text-[11px] text-slate-950 block mt-0.5 font-black tracking-tight">
+                Venc. Garantia: <strong>{warranty.formattedExpiryDate}</strong>
               </span>
             </div>
           </div>
@@ -183,16 +188,16 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
               <span className="text-base leading-none">📲</span>
               <div>
                 <strong className="block text-[11px] text-slate-900 font-bold uppercase">
-                  Acompanhamento da Garantia de 90 Dias & Histórico do Veículo:
+                  Acompanhamento da Garantia de {warranty.warrantyDays} Dias (Até {warranty.formattedExpiryDate}) & Histórico do Veículo:
                 </strong>
                 <p className="text-[10px] text-slate-700 mt-0.5 leading-relaxed">
-                  Prezado(a) <strong>{client?.name || 'Cliente'}</strong>, salve o WhatsApp comercial da <strong>Oficina Rico</strong> (Rico: <strong>(11) 98244-0071</strong>) na sua agenda para acompanhar a garantia de 90 dias, receber laudos e o histórico preventivo do seu <strong>{vehicle?.brand} {vehicle?.model}</strong>.
+                  Prezado(a) <strong>{client?.name || 'Cliente'}</strong>, salve o WhatsApp comercial da <strong>Oficina Rico</strong> (Rico: <strong>(11) 98244-0071</strong>) na sua agenda para acompanhar a garantia de 90 dias (válida até <strong>{warranty.formattedExpiryDate}</strong>), receber laudos e o histórico preventivo do seu <strong>{vehicle?.brand} {vehicle?.model}</strong>.
                 </p>
               </div>
             </div>
 
             <p className="leading-tight text-slate-600">
-              Garantia legal de 90 (noventa) dias para serviços e peças novas aplicadas, conforme art. 26 do Código de
+              Garantia legal de {warranty.warrantyDays} (noventa) dias para serviços e peças novas aplicadas (vencimento em <strong>{warranty.formattedExpiryDate}</strong>), conforme art. 26 do Código de
               Defesa do Consumidor. A garantia não cobre mau uso, sobrecarga, acidentes ou intervenção de terceiros.
             </p>
 

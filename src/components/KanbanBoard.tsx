@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { WhatsAppService } from '../services/whatsapp';
 import { QuickOrderCheckoutModal } from './QuickOrderCheckoutModal';
+import { getOrderWarranty } from '../utils/warranty';
 
 interface KanbanBoardProps {
   orders: ServiceOrder[];
@@ -324,11 +325,22 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
                           {/* Mecânico Atribuído */}
                           {mechanic && (
-                            <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-2">
+                            <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-1.5">
                               <Wrench className="w-3 h-3 text-amber-500/70 shrink-0" />
                               <span>Mecânico: <strong className="text-slate-300">{mechanic.name}</strong></span>
                             </div>
                           )}
+
+                          {/* Data do Serviço & Vencimento da Garantia */}
+                          {(() => {
+                            const warranty = getOrderWarranty(order);
+                            return (
+                              <div className="text-[10px] text-slate-400 mb-2 py-1 px-2 bg-slate-950/60 rounded border border-slate-800/80 flex items-center justify-between">
+                                <span>Data: <span className="text-slate-300 font-medium">{warranty.formattedServiceDate}</span></span>
+                                <span>Venc. Garantia: <strong className="text-amber-400 font-bold">{warranty.formattedExpiryDate}</strong></span>
+                              </div>
+                            );
+                          })()}
 
                           {/* Valores: Total e Lucro Real */}
                           <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between">
@@ -476,16 +488,29 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           matchInfo.matches && searchTerm.trim() ? 'bg-amber-500/5' : ''
                         }`}
                       >
-                        <td className="py-3 px-4 font-mono font-bold">
-                          <span
-                            className={
-                              matchInfo.matchOS && searchTerm.trim()
-                                ? 'bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded font-black shadow-sm'
-                                : 'text-amber-400'
-                            }
-                          >
-                            {order.orderNumber}
-                          </span>
+                        <td className="py-3 px-4 font-mono">
+                          {(() => {
+                            const warranty = getOrderWarranty(order);
+                            return (
+                              <>
+                                <span
+                                  className={
+                                    matchInfo.matchOS && searchTerm.trim()
+                                      ? 'bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded font-black shadow-sm text-xs'
+                                      : 'text-amber-400 font-bold text-xs'
+                                  }
+                                >
+                                  {order.orderNumber}
+                                </span>
+                                <div className="text-[10px] text-slate-400 mt-0.5">
+                                  Data: <span className="text-slate-300">{warranty.formattedServiceDate}</span>
+                                </div>
+                                <div className="text-[10px] text-slate-200 mt-0.5 font-bold">
+                                  Venc. Garantia: <strong className="text-amber-400 font-bold">{warranty.formattedExpiryDate}</strong>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </td>
                         <td className="py-3 px-4">
                           <div className={`font-bold ${matchInfo.matchPlate && searchTerm.trim() ? 'text-amber-300' : 'text-white'}`}>

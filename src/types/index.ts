@@ -200,6 +200,11 @@ export interface ServiceOrder {
   isPaid: boolean;
   paidAt?: string;
 
+  // Datas e Garantia
+  serviceDate?: string; // Data da realização do serviço (YYYY-MM-DD ou ISO)
+  warrantyDays?: number; // Prazo de garantia em dias (padrão: 90 dias - Art. 26 CDC)
+  warrantyExpiresAt?: string; // Data exata em que vence a garantia (YYYY-MM-DD ou ISO)
+
   createdAt: string;
   updatedAt: string;
   estimatedDelivery?: string;

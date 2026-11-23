@@ -10,8 +10,11 @@ import {
   Wrench,
   Car,
   User,
+  Calendar,
+  ShieldCheck,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { getOrderWarranty } from '../utils/warranty';
 
 interface QuickOrderCheckoutModalProps {
   order: ServiceOrder | null;
@@ -105,6 +108,33 @@ export const QuickOrderCheckoutModal: React.FC<QuickOrderCheckoutModalProps> = (
                 </span>
               </div>
             )}
+
+            {/* Data do Serviço & Vencimento da Garantia */}
+            {(() => {
+              const warranty = getOrderWarranty(order);
+              return (
+                <div className="border-t border-slate-800/80 pt-2 grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-slate-400 flex items-center gap-1 text-[11px]">
+                      <Calendar className="w-3 h-3 text-slate-400" />
+                      Data do Serviço:
+                    </span>
+                    <span className="font-medium text-slate-200 text-xs mt-0.5 block font-mono">
+                      {warranty.formattedServiceDate}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 flex items-center gap-1 text-[11px]">
+                      <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                      Venc. Garantia:
+                    </span>
+                    <span className="font-bold text-amber-400 text-xs mt-0.5 block font-mono">
+                      {warranty.formattedExpiryDate} <span className="text-[10px] text-slate-500 font-sans">({warranty.warrantyDays}d)</span>
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Destaque do Valor Total */}

@@ -29,10 +29,12 @@ import {
   AlertCircle,
   Copy,
   Check,
+  Calendar,
 } from 'lucide-react';
 import { CarDamageCanvas } from './CarDamageCanvas';
 import { WhatsAppService } from '../services/whatsapp';
 import { QuickOrderCheckoutModal } from './QuickOrderCheckoutModal';
+import { getOrderWarranty, toIsoDate } from '../utils/warranty';
 import confetti from 'canvas-confetti';
 
 interface OrderModalProps {
@@ -95,6 +97,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(order?.paymentMethod || 'pix');
   const [copiedMsg, setCopiedMsg] = useState(false);
 
+  // Datas e Garantia
+  const [serviceDate, setServiceDate] = useState<string>(
+    order?.serviceDate || (order?.createdAt ? toIsoDate(order.createdAt) : toIsoDate(new Date()))
+  );
+  const [warrantyDays, setWarrantyDays] = useState<number>(order?.warrantyDays ?? 90);
+
   // Seletores para adicionar peça/serviço
   const [selectedPartId, setSelectedPartId] = useState('');
   const [partQty, setPartQty] = useState(1);
@@ -119,6 +127,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const mechanicsCommissionTotal = services.reduce((acc, s) => acc + s.commissionValue, 0);
   const netProfit = netTotal - partsCostTotal - mechanicsCommissionTotal;
   const profitMarginPercent = netTotal > 0 ? (netProfit / netTotal) * 100 : 0;
+
+  // Informações de Garantia Calculadas
+  const warrantyInfo = getOrderWarranty({
+    serviceDate,
+    warrantyDays,
+    createdAt: order?.createdAt || new Date().toISOString(),
+    finishedAt: status === 'finalizado' ? order?.finishedAt || new Date().toISOString() : undefined,
+  });
 
   // Handlers para adicionar/remover Peças
   const handleAddPart = () => {
@@ -213,6 +229,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       paymentMethod,
       isPaid,
       paidAt: isPaid ? order?.paidAt || new Date().toISOString() : undefined,
+      serviceDate,
+      warrantyDays,
+      warrantyExpiresAt: warrantyInfo.expiryDateStr,
       createdAt: order?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       finishedAt: status === 'finalizado' ? new Date().toISOString() : undefined,
@@ -257,6 +276,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Bloco de Data do Serviço e Vencimento da Garantia */}
+            <div className="hidden sm:flex flex-col text-right px-3 py-1 bg-slate-900 border border-slate-800 rounded-lg">
+              <span className="text-[10px] text-slate-400">
+                Data do Serviço: <span className="text-slate-200">{warrantyInfo.formattedServiceDate}</span>
+              </span>
+              <span className="text-xs text-white">
+                Venc. Garantia: <strong className="text-amber-400 font-bold">{warrantyInfo.formattedExpiryDate}</strong>
+              </span>
+            </div>
+
             {/* Status Selector */}
             <select
               value={status}
@@ -283,8 +312,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
         {/* Corpo do Modal com Rolagem */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-200">
-          {/* Seção 1: Cliente e Veículo */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+          {/* Seção 1: Cliente, Veículo, Mecânico e Data/Garantia */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
             <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase mb-1 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-amber-400" />
@@ -337,6 +366,24 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase mb-1 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                Data do Serviço
+              </label>
+              <input
+                type="date"
+                value={serviceDate}
+                onChange={(e) => setServiceDate(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500 font-mono font-medium"
+              />
+              <div className="mt-1.5 text-xs text-slate-300">
+                <span className="text-[11px] text-slate-400">Venc. Garantia: </span>
+                <strong className="text-amber-400 font-bold">{warrantyInfo.formattedExpiryDate}</strong>
+                <span className="text-[10px] text-slate-500 ml-1">({warrantyDays}d)</span>
+              </div>
             </div>
           </div>
 

@@ -20,9 +20,15 @@ import {
   Check,
   CheckCircle,
   Clock,
+  Filter,
 } from 'lucide-react';
 import { XMLParserService } from '../services/xmlParser';
 import { ExcelParserService, ParsedExcelRow } from '../services/excelParser';
+import {
+  getPurchaseDueAnalysis,
+  filterPurchasesByDue,
+  InvoiceDueFilter,
+} from '../utils/invoiceAlerts';
 
 interface PartsInventoryViewProps {
   parts: Part[];
@@ -32,7 +38,11 @@ interface PartsInventoryViewProps {
   onDeletePart: (id: string) => void;
   onSavePurchase?: (purchase: SupplierPurchase) => void;
   onDeletePurchase?: (id: string) => void;
-  onPayPurchaseInstallment?: (purchaseId: string, installmentNumber: number) => void;
+  onPayPurchaseInstallment?: (
+    purchaseId: string,
+    installmentNumber: number,
+    customPaidDate?: string
+  ) => void;
 }
 
 export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
@@ -48,6 +58,8 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'parts' | 'purchases'>('parts');
   const [selectedPurchase, setSelectedPurchase] = useState<SupplierPurchase | null>(null);
   const [isPurchaseDetailsOpen, setIsPurchaseDetailsOpen] = useState(false);
+  const [dueFilter, setDueFilter] = useState<InvoiceDueFilter>('todas');
+  const [installmentCustomDates, setInstallmentCustomDates] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
 
@@ -508,6 +520,39 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
               </button>
             </div>
 
+            {/* Barra de Filtros de Vencimento de Notas Fiscais */}
+            <div className="px-4 py-2.5 bg-slate-950/80 border-b border-slate-800 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-400 flex items-center gap-1 mr-1">
+                <Filter className="w-3.5 h-3.5 text-amber-400" />
+                Vencimento:
+              </span>
+              {[
+                { id: 'todas', label: 'Todas as Notas' },
+                { id: 'vencidas', label: '🚨 Vencidas', highlight: 'text-red-400 font-bold' },
+                { id: 'vence_hoje', label: '⚠️ Vence Hoje', highlight: 'text-amber-400 font-black animate-pulse' },
+                { id: 'em_1dia', label: 'A Vencer em 1 dia', highlight: 'text-orange-400 font-bold' },
+                { id: 'em_2dias', label: 'Em 2 dias' },
+                { id: 'em_3dias', label: 'Em 3 dias' },
+                { id: 'em_4dias', label: 'Em 4 dias' },
+                { id: 'em_5dias', label: 'Em 5 dias' },
+                { id: 'em_semana', label: 'Em 1 semana (7 dias)' },
+                { id: 'quitadas', label: '✓ Quitadas' },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setDueFilter(f.id as InvoiceDueFilter)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    dueFilter === f.id
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  } ${f.highlight || ''}`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-300">
                 <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
@@ -523,23 +568,34 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {purchases.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="text-center py-10 text-slate-500">
-                        Nenhuma compra registrada. Importe uma NF-e XML no botão acima.
-                      </td>
-                    </tr>
-                  ) : (
-                    purchases.map((purchase) => {
-                      const nextPending = purchase.installments.find((i) => i.status === 'pendente');
-                      const percentPaid = purchase.totalValue > 0 ? (purchase.paidAmount / purchase.totalValue) * 100 : 0;
-                      const isComplete = purchase.status === 'pago';
+                  {(() => {
+                    const filteredList = filterPurchasesByDue(purchases, dueFilter);
+
+                    if (filteredList.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={8} className="text-center py-10 text-slate-500">
+                            Nenhuma nota fiscal encontrada para o filtro "{dueFilter}".
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return filteredList.map(({ purchase, analysis }) => {
+                      const nextPending = analysis.nextPendingInstallment;
+                      const percentPaid =
+                        purchase.totalValue > 0
+                          ? (purchase.paidAmount / purchase.totalValue) * 100
+                          : 0;
+                      const isComplete = analysis.urgency === 'quitado';
 
                       return (
                         <tr key={purchase.id} className="hover:bg-slate-800/60 transition-colors">
                           <td className="py-3 px-4">
                             <span className="font-bold text-white block">{purchase.supplierName}</span>
-                            <span className="text-[10px] text-slate-500 font-mono">{purchase.supplierCnpj || 'CNPJ não inf.'}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {purchase.supplierCnpj || 'CNPJ não inf.'}
+                            </span>
                           </td>
                           <td className="py-3 px-4 font-mono font-bold text-amber-400">
                             NF-e {purchase.nfeNumber}
@@ -575,16 +631,21 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                           </td>
                           <td className="py-3 px-4 text-center font-mono text-[11px] text-slate-300">
                             <div>1ª: {new Date(purchase.firstDueDate).toLocaleDateString('pt-BR')}</div>
-                            <div className="text-slate-500 text-[10px]">Última: {new Date(purchase.lastDueDate).toLocaleDateString('pt-BR')}</div>
+                            <div className="text-slate-500 text-[10px]">
+                              Última: {new Date(purchase.lastDueDate).toLocaleDateString('pt-BR')}
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-center">
                             {nextPending ? (
-                              <div className="font-mono text-[11px]">
-                                <span className="text-amber-400 font-bold block">
-                                  {new Date(nextPending.dueDate).toLocaleDateString('pt-BR')}
+                              <div className="flex flex-col items-center gap-1 font-mono text-[11px]">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] ${analysis.badgeClass}`}>
+                                  {analysis.badgeLabel}
+                                </span>
+                                <span className="text-amber-300 font-bold">
+                                  {analysis.dueDateFormatted}
                                 </span>
                                 <span className="text-[10px] text-slate-400">
-                                  Parc. {nextPending.installmentNumber}: R$ {nextPending.amount.toFixed(2)}
+                                  Parc. {nextPending.installmentNumber}/{purchase.totalInstallmentsCount}: R$ {nextPending.amount.toFixed(2)}
                                 </span>
                               </div>
                             ) : (
@@ -596,9 +657,11 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                               {nextPending && onPayPurchaseInstallment && (
                                 <button
                                   type="button"
-                                  onClick={() => onPayPurchaseInstallment(purchase.id, nextPending.installmentNumber)}
+                                  onClick={() =>
+                                    onPayPurchaseInstallment(purchase.id, nextPending.installmentNumber)
+                                  }
                                   className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-2 py-1 rounded-lg text-[10px] shadow-sm transition-all active:scale-95"
-                                  title={`Pagar parcela ${nextPending.installmentNumber}/${purchase.totalInstallmentsCount}`}
+                                  title={`Pagar parcela ${nextPending.installmentNumber}/${purchase.totalInstallmentsCount} (salva data atual do sistema)`}
                                 >
                                   <Check className="w-3 h-3 stroke-[3]" />
                                   Pagar Parc. {nextPending.installmentNumber}
@@ -611,7 +674,7 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                                   setIsPurchaseDetailsOpen(true);
                                 }}
                                 className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
-                                title="Ver Detalhes e Parcelas"
+                                title="Ver Detalhes, Peças e Informar Data de Pagamento"
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
@@ -629,8 +692,8 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                           </td>
                         </tr>
                       );
-                    })
-                  )}
+                    });
+                  })()}
                 </tbody>
               </table>
             </div>
@@ -1216,46 +1279,78 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-mono font-bold text-white text-sm">
                             R$ {inst.amount.toFixed(2)}
                           </span>
 
                           {!isPaid && onPayPurchaseInstallment && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onPayPurchaseInstallment(
-                                  selectedPurchase.id,
-                                  inst.installmentNumber
-                                );
-                                // Atualiza objeto selecionado localmente
-                                const updatedInst = selectedPurchase.installments.map((i) =>
-                                  i.id === inst.id
-                                    ? { ...i, status: 'pago' as const, paidAt: new Date().toISOString() }
-                                    : i
-                                );
-                                const paidCnt = updatedInst.filter((i) => i.status === 'pago').length;
-                                const paidAmt = updatedInst
-                                  .filter((i) => i.status === 'pago')
-                                  .reduce((acc, i) => acc + i.amount, 0);
-                                setSelectedPurchase({
-                                  ...selectedPurchase,
-                                  installments: updatedInst,
-                                  paidInstallmentsCount: paidCnt,
-                                  paidAmount: paidAmt,
-                                  remainingAmount: Math.max(0, selectedPurchase.totalValue - paidAmt),
-                                  status:
-                                    paidCnt === selectedPurchase.totalInstallmentsCount
-                                      ? 'pago'
-                                      : 'parcial',
-                                });
-                              }}
-                              className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-2.5 py-1 rounded-lg text-[11px] shadow-sm transition-all active:scale-95"
-                            >
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                              Pagar Parcela
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <div
+                                className="flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1"
+                                title="Data em que o pagamento foi realizado"
+                              >
+                                <Calendar className="w-3 h-3 text-amber-400" />
+                                <input
+                                  type="date"
+                                  value={
+                                    installmentCustomDates[inst.id] ||
+                                    new Date().toISOString().split('T')[0]
+                                  }
+                                  onChange={(e) =>
+                                    setInstallmentCustomDates({
+                                      ...installmentCustomDates,
+                                      [inst.id]: e.target.value,
+                                    })
+                                  }
+                                  className="bg-transparent text-xs text-white focus:outline-none font-mono"
+                                />
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const chosenDate =
+                                    installmentCustomDates[inst.id] ||
+                                    new Date().toISOString().split('T')[0];
+                                  onPayPurchaseInstallment(
+                                    selectedPurchase.id,
+                                    inst.installmentNumber,
+                                    chosenDate
+                                  );
+                                  // Atualiza objeto selecionado localmente
+                                  const updatedInst = selectedPurchase.installments.map((i) =>
+                                    i.id === inst.id
+                                      ? {
+                                          ...i,
+                                          status: 'pago' as const,
+                                          paidAt: `${chosenDate}T12:00:00.000Z`,
+                                        }
+                                      : i
+                                  );
+                                  const paidCnt = updatedInst.filter((i) => i.status === 'pago').length;
+                                  const paidAmt = updatedInst
+                                    .filter((i) => i.status === 'pago')
+                                    .reduce((acc, i) => acc + i.amount, 0);
+                                  setSelectedPurchase({
+                                    ...selectedPurchase,
+                                    installments: updatedInst,
+                                    paidInstallmentsCount: paidCnt,
+                                    paidAmount: paidAmt,
+                                    remainingAmount: Math.max(0, selectedPurchase.totalValue - paidAmt),
+                                    status:
+                                      paidCnt === selectedPurchase.totalInstallmentsCount
+                                        ? 'pago'
+                                        : 'parcial',
+                                  });
+                                }}
+                                className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-2.5 py-1.5 rounded-lg text-xs shadow-sm transition-all active:scale-95"
+                                title="Confirmar pagamento da parcela com a data informada"
+                              >
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                Pagar Parcela
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>

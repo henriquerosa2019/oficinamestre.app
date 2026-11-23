@@ -13,6 +13,7 @@ import {
   Edit,
 } from 'lucide-react';
 import { WhatsAppService } from '../services/whatsapp';
+import { getOrderWarranty } from '../utils/warranty';
 
 interface ClientsViewProps {
   clients: Client[];
@@ -294,15 +295,23 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         className="bg-slate-950 p-3 rounded-xl border border-slate-800 hover:border-slate-700 cursor-pointer flex items-center justify-between text-xs transition-colors"
                       >
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-amber-400">{ord.orderNumber}</span>
-                            <span className="capitalize text-slate-400 text-[11px] bg-slate-800 px-1.5 py-0.5 rounded">
-                              {ord.status.replace('_', ' ')}
-                            </span>
-                            <span className="text-slate-500 text-[11px]">
-                              {new Date(ord.createdAt).toLocaleDateString('pt-BR')}
-                            </span>
-                          </div>
+                          {(() => {
+                            const warranty = getOrderWarranty(ord);
+                            return (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-mono font-bold text-amber-400">{ord.orderNumber}</span>
+                                <span className="capitalize text-slate-400 text-[11px] bg-slate-800 px-1.5 py-0.5 rounded">
+                                  {ord.status.replace('_', ' ')}
+                                </span>
+                                <span className="text-slate-400 text-[11px]">
+                                  Data: {warranty.formattedServiceDate}
+                                </span>
+                                <span className="text-slate-300 text-[11px]">
+                                  • Venc. Garantia: <strong className="text-amber-400 font-bold">{warranty.formattedExpiryDate}</strong>
+                                </span>
+                              </div>
+                            );
+                          })()}
                           <p className="text-slate-300 mt-1 line-clamp-1">
                             {ord.technicalDiagnostic || ord.complaintDescription}
                           </p>

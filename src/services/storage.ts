@@ -775,7 +775,7 @@ export const StorageService = {
     const purchases = this.getPurchases().filter((p) => p.id !== id);
     setToStorage(STORAGE_KEYS.PURCHASES, purchases);
   },
-  payPurchaseInstallment(purchaseId: string, installmentNumber: number): void {
+  payPurchaseInstallment(purchaseId: string, installmentNumber: number, customPaidDate?: string): void {
     const purchases = this.getPurchases();
     const purchase = purchases.find((p) => p.id === purchaseId);
     if (!purchase) return;
@@ -783,8 +783,22 @@ export const StorageService = {
     const inst = purchase.installments.find((i) => i.installmentNumber === installmentNumber);
     if (!inst) return;
 
+    // Se customPaidDate foi fornecido, usa ele; senão salva a data do sistema atual
+    let finalPaidIso = new Date().toISOString();
+    let finalDateOnly = new Date().toISOString().split('T')[0];
+
+    if (customPaidDate) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(customPaidDate)) {
+        finalPaidIso = `${customPaidDate}T12:00:00.000Z`;
+        finalDateOnly = customPaidDate;
+      } else {
+        finalPaidIso = customPaidDate;
+        finalDateOnly = customPaidDate.split('T')[0];
+      }
+    }
+
     inst.status = 'pago';
-    inst.paidAt = new Date().toISOString();
+    inst.paidAt = finalPaidIso;
 
     const paidCount = purchase.installments.filter((i) => i.status === 'pago').length;
     const paidAmount = purchase.installments
@@ -803,7 +817,7 @@ export const StorageService = {
 
     this.savePurchase(purchase);
 
-    // Marca também a transação financeira vinculada como paga
+    // Marca também a transação financeira vinculada como paga com a data de pagamento
     const transactions = this.getTransactions();
     const matchingTx = transactions.find(
       (t) =>
@@ -812,7 +826,7 @@ export const StorageService = {
     );
     if (matchingTx) {
       matchingTx.status = 'pago';
-      matchingTx.paymentDate = new Date().toISOString().split('T')[0];
+      matchingTx.paymentDate = finalDateOnly;
       setToStorage(STORAGE_KEYS.TRANSACTIONS, transactions);
     }
   },

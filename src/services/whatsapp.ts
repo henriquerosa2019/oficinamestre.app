@@ -1,4 +1,5 @@
 import { ServiceOrder, Client, Vehicle } from '../types';
+import { getOrderWarranty } from '../utils/warranty';
 
 export const WhatsAppService = {
   // Formata o telefone apenas com dígitos (ex: 5511987654321)
@@ -52,6 +53,8 @@ Podemos dar início aos serviços e à separação das peças?
   // Gera a mensagem quando o carro está pronto para retirada (com lembrete de salvar contato para garantia de 90 dias)
   generateCarReadyMessage(order: ServiceOrder, client: Client, vehicle: Vehicle): string {
     const clientFirstName = client.name.split(' ')[0];
+    const warranty = getOrderWarranty(order);
+
     const message = `🚗💨 *SEU VEÍCULO ESTÁ PRONTO!* 🏁
 -----------------------------------
 Olá *${clientFirstName}*, tudo bem? Aqui é o *Rico da Oficina Rico*!
@@ -64,7 +67,7 @@ Passando para avisar que o serviço no seu *${vehicle.brand} ${vehicle.model}* (
 Nosso pátio já está liberado para você retirar o veículo quando desejar!
 
 📲 *Importante para sua Garantia:*
-Por favor, *salve o WhatsApp da Oficina Rico (Rico)* na sua agenda para acompanhar a garantia legal de 90 dias e receber o histórico das próximas preventivas do seu carro.
+Por favor, *salve o WhatsApp da Oficina Rico (Rico)* na sua agenda para acompanhar a garantia legal de ${warranty.warrantyDays} dias (*válida até ${warranty.formattedExpiryDate}*) e receber o histórico das próximas preventivas do seu carro.
 
 Qualquer dúvida ou se precisar de um horário especial de retirada, estamos à disposição por aqui! 🤝`;
 

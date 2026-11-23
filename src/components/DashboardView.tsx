@@ -5,6 +5,7 @@ import {
   Client,
   Vehicle,
   OrderStatus,
+  SupplierPurchase,
 } from '../types';
 import {
   DollarSign,
@@ -20,15 +21,18 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { WhatsAppService } from '../services/whatsapp';
+import { getPurchaseDueAnalysis } from '../utils/invoiceAlerts';
 
 interface DashboardViewProps {
   orders: ServiceOrder[];
   parts: Part[];
   clients: Client[];
   vehicles: Vehicle[];
+  purchases?: SupplierPurchase[];
   onOpenOrder: (order: ServiceOrder) => void;
   onNavigateTab: (tab: 'orders' | 'parts' | 'clients' | 'financial') => void;
   onNewOrder: () => void;
+  onPayPurchaseInstallment?: (purchaseId: string, installmentNumber: number, customPaidDate?: string) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -36,10 +40,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   parts,
   clients,
   vehicles,
+  purchases = [],
   onOpenOrder,
   onNavigateTab,
   onNewOrder,
+  onPayPurchaseInstallment,
 }) => {
+  // Análise de Vencimento de Notas de Fornecedores (NF-e)
+  const urgentInvoices = (purchases || [])
+    .map((p) => ({ purchase: p, analysis: getPurchaseDueAnalysis(p) }))
+    .filter(
+      (item) =>
+        item.analysis.isOverdue ||
+        item.analysis.isToday ||
+        item.analysis.isTomorrow ||
+        (item.analysis.diffDays !== null && item.analysis.diffDays <= 1)
+    )
+    .sort((a, b) => (a.analysis.diffDays ?? 999) - (b.analysis.diffDays ?? 999));
+
+  const overdueCount = urgentInvoices.filter((i) => i.analysis.isOverdue).length;
+  const todayCount = urgentInvoices.filter((i) => i.analysis.isToday).length;
   // Cálculos Gerenciais
   const totalFaturamento = orders
     .filter((o) => o.status === 'finalizado' || o.isPaid)
@@ -165,6 +185,130 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Alertas de Vencimento de Notas Fiscais (NF-e de Fornecedores) */}
+      {urgentInvoices.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2 mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center font-bold">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-white flex flex-wrap items-center gap-2">
+                  <span>Vencimento de Notas Fiscais (NF-e Fornecedores)</span>
+                  {todayCount > 0 && (
+                    <span className="animate-pulse bg-amber-500/30 text-amber-300 border-2 border-amber-400 px-2 py-0.5 rounded-full text-[10px] font-black shadow-sm">
+                      ⚠️ {todayCount} VENCE{todayCount > 1 ? 'M' : ''} HOJE
+                    </span>
+                  )}
+                  {overdueCount > 0 && (
+                    <span className="bg-red-500/25 text-red-400 border border-red-500/60 px-2 py-0.5 rounded-full text-[10px] font-black">
+                      🚨 {overdueCount} VENCIDA{overdueCount > 1 ? 'S' : ''}
+                    </span>
+                  )}
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Notas com parcelas pendentes de autopeças necessitando de quitação
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onNavigateTab('parts')}
+              className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 transition-colors shrink-0"
+            >
+              Ver todas as compras no Estoque
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {urgentInvoices.map(({ purchase, analysis }) => {
+              const next = analysis.nextPendingInstallment;
+              if (!next) return null;
+
+              const isVenceHoje = analysis.isToday;
+              const isVencida = analysis.isOverdue;
+
+              return (
+                <div
+                  key={purchase.id}
+                  className={`p-3.5 rounded-xl border flex flex-col justify-between transition-all ${
+                    isVenceHoje
+                      ? 'bg-amber-500/10 border-2 border-amber-400 shadow-lg shadow-amber-500/10'
+                      : isVencida
+                      ? 'bg-red-950/20 border-red-500/60'
+                      : 'bg-orange-950/20 border-orange-500/40'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                      <span className="font-mono text-xs font-black text-amber-400">
+                        NF-e {purchase.nfeNumber}
+                      </span>
+                      {isVenceHoje ? (
+                        <span className="animate-pulse bg-amber-500/30 text-amber-300 border-2 border-amber-400 px-2 py-0.5 rounded-full text-[10px] font-black tracking-tight">
+                          ⚠️ VENCE HOJE
+                        </span>
+                      ) : isVencida ? (
+                        <span className="bg-red-500/30 text-red-400 border border-red-500/60 px-2 py-0.5 rounded-full text-[10px] font-black">
+                          🚨 VENCIDO HÁ {analysis.daysOverdue} DIA{analysis.daysOverdue > 1 ? 'S' : ''}
+                        </span>
+                      ) : (
+                        <span className="bg-orange-500/25 text-orange-400 border border-orange-500/50 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                          ⏰ VENCE EM 1 DIA
+                        </span>
+                      )}
+                    </div>
+
+                    <h4 className="text-xs font-bold text-white truncate">
+                      {purchase.supplierName}
+                    </h4>
+
+                    <div className="mt-2 flex items-center justify-between text-xs font-mono">
+                      <span className="text-slate-400 text-[11px]">
+                        Parc. {next.installmentNumber}/{purchase.totalInstallmentsCount}:
+                      </span>
+                      <span className="font-black text-white text-sm">
+                        R$ {next.amount.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                      Vencimento: {analysis.dueDateFormatted}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onNavigateTab('parts')}
+                      className="text-[11px] text-slate-400 hover:text-white transition-colors"
+                    >
+                      Ver detalhes
+                    </button>
+
+                    {onPayPurchaseInstallment && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onPayPurchaseInstallment(purchase.id, next.installmentNumber)
+                        }
+                        className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-2.5 py-1 rounded-lg text-xs shadow-sm transition-all active:scale-95"
+                        title="Pagar parcela agora (salva data atual do sistema)"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                        Pagar R$ {next.amount.toFixed(2)}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Grid Principal: Pátio em Tempo Real & Alertas de Estoque */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
