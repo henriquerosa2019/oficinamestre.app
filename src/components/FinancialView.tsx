@@ -21,6 +21,34 @@ interface FinancialViewProps {
   onDeleteTransaction: (id: string) => void;
 }
 
+export const EXPENSE_CATEGORIES = [
+  'Fornecedor de Autopeças',
+  'Ferramental e Equipamentos',
+  'Aluguel e IPTU do Pátio/Oficina',
+  'Energia Elétrica, Água e Gás',
+  'Internet, Telefone e Software',
+  'Folha de Pagamento / Pró-labore',
+  'Comissão de Mecânicos',
+  'Impostos e Tributos (DAS / Simples)',
+  'Descarte Ecológico (Óleo e Baterias)',
+  'Marketing e Divulgação',
+  'Manutenção Predial e Limpeza',
+  'Outras Despesas Operacionais',
+  'Outra (digitar personalizada)...',
+];
+
+export const REVENUE_CATEGORIES = [
+  'Cliente Final',
+  'Cliente Fiel',
+  'Motorista de Aplicativo (Uber / 99 / Táxi)',
+  'Frotista / Empresa Conveniada',
+  'Venda de Peças no Balcão',
+  'Serviço de Guincho / Socorro',
+  'Serviços Terceirizados (Retífica/Funilaria)',
+  'Outras Receitas',
+  'Outra (digitar personalizada)...',
+];
+
 export const FinancialView: React.FC<FinancialViewProps> = ({
   transactions,
   mechanics,
@@ -33,11 +61,34 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
   // Form nova despesa/receita
   const [type, setType] = useState<'receita' | 'despesa'>('despesa');
-  const [category, setCategory] = useState('Fornecedor de Autopeças');
+  const [category, setCategory] = useState<string>('Fornecedor de Autopeças');
+  const [customCategory, setCustomCategory] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState<number>(0);
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [status, setStatus] = useState<'pendente' | 'pago'>('pendente');
+
+  const handleTypeChange = (newType: 'receita' | 'despesa') => {
+    setType(newType);
+    if (newType === 'despesa') {
+      setCategory('Fornecedor de Autopeças');
+    } else {
+      setCategory('Cliente Final');
+    }
+    setCustomCategory('');
+  };
+
+  const handleOpenModal = () => {
+    const initialType = filterType === 'receita' ? 'receita' : 'despesa';
+    setType(initialType);
+    setCategory(initialType === 'despesa' ? 'Fornecedor de Autopeças' : 'Cliente Final');
+    setCustomCategory('');
+    setDescription('');
+    setAmount(0);
+    setDueDate(new Date().toISOString().split('T')[0]);
+    setStatus('pendente');
+    setIsModalOpen(true);
+  };
 
   // Cálculos Gerais
   const totalReceitas = transactions
@@ -78,11 +129,17 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const finalCategory =
+      category === 'Outra (digitar personalizada)...'
+        ? customCategory.trim() || (type === 'despesa' ? 'Despesa Diversa' : 'Receita Diversa')
+        : category;
+
     const newTx: FinancialTransaction = {
       id: 'trx-' + Date.now(),
       type,
-      category,
-      description,
+      category: finalCategory,
+      description: description.trim(),
       amount: Number(amount),
       dueDate,
       status,
@@ -95,6 +152,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
     // Reset
     setDescription('');
+    setCustomCategory('');
     setAmount(0);
   };
 
@@ -219,8 +277,8 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
               </select>
 
               <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded-lg text-xs transition-colors"
+                onClick={handleOpenModal}
+                className="flex items-center gap-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition-colors shadow-sm"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Lançar Conta
@@ -243,11 +301,29 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-800">
                 {filteredTransactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-800/50">
+                  <tr key={tx.id} className="hover:bg-slate-800/50 transition-colors">
                     <td className="py-2.5 px-3">
                       <span className="font-bold text-white block">{tx.description}</span>
                     </td>
-                    <td className="py-2.5 px-3 text-slate-400 text-[11px]">{tx.category}</td>
+                    <td className="py-2.5 px-3">
+                      {tx.category === 'Cliente Fiel' ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                          ★ Cliente Fiel
+                        </span>
+                      ) : tx.category === 'Cliente Final' ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                          Cliente Final
+                        </span>
+                      ) : tx.category === 'Fornecedor de Autopeças' ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                          Fornecedor de Autopeças
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700/80">
+                          {tx.category}
+                        </span>
+                      )}
+                    </td>
                     <td className="py-2.5 px-3 text-slate-300 font-mono text-[11px]">
                       {new Date(tx.dueDate).toLocaleDateString('pt-BR')}
                     </td>
@@ -309,24 +385,52 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                     <label className="block text-slate-400 mb-1">Tipo de Movimento</label>
                     <select
                       value={type}
-                      onChange={(e) => setType(e.target.value as any)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                      onChange={(e) => handleTypeChange(e.target.value as any)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500"
                     >
                       <option value="despesa">Despesa (A Pagar)</option>
                       <option value="receita">Receita (A Receber)</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-slate-400 mb-1">Categoria</label>
-                    <input
-                      type="text"
+                    <label className="block text-slate-400 mb-1">
+                      Categoria {type === 'despesa' ? '(Despesa)' : '(Receita)'}
+                    </label>
+                    <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      placeholder="Ex: Fornecedor, Aluguel, Luz"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
-                    />
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500"
+                    >
+                      {type === 'despesa' ? (
+                        EXPENSE_CATEGORIES.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))
+                      ) : (
+                        REVENUE_CATEGORIES.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))
+                      )}
+                    </select>
                   </div>
                 </div>
+
+                {category === 'Outra (digitar personalizada)...' && (
+                  <div>
+                    <label className="block text-amber-400 mb-1 font-medium">Nome da Categoria Personalizada</label>
+                    <input
+                      required
+                      type="text"
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      placeholder="Ex: Consultoria Contábil, Parceria Guincho..."
+                      className="w-full bg-slate-800 border border-amber-500/60 rounded-lg p-2 text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-slate-400 mb-1">Descrição do Lançamento</label>
@@ -335,8 +439,12 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                     type="text"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Ex: Boleto Distribuidora Pellegrino"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                    placeholder={
+                      type === 'despesa'
+                        ? 'Ex: Boleto Distribuidora Pellegrino, Conta de Luz, Ferramental...'
+                        : 'Ex: Pagamento O.S. #1002 - Revisão Completa, Balcão...'
+                    }
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
 

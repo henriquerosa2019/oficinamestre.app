@@ -54,7 +54,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onPrintReceipt,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchScope, setSearchScope] = useState<'all' | 'client' | 'plate' | 'os'>('all');
   const [mechanicFilter, setMechanicFilter] = useState('');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
 
@@ -103,11 +102,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       order.id.toLowerCase().includes(termNorm)
     );
 
-    let matches = false;
-    if (searchScope === 'client') matches = matchClient;
-    else if (searchScope === 'plate') matches = matchPlate;
-    else if (searchScope === 'os') matches = matchOS;
-    else matches = matchClient || matchPlate || matchOS;
+    const matches = matchClient || matchPlate || matchOS;
 
     return { matches, matchClient, matchPlate, matchOS };
   };
@@ -118,19 +113,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     if (!matchesMechanic) return false;
     return getMatchStatus(order).matches;
   });
-
-  const getSearchPlaceholder = () => {
-    switch (searchScope) {
-      case 'client':
-        return 'Buscar por Nome ou WhatsApp do Cliente...';
-      case 'plate':
-        return 'Buscar por Placa (ex: BRA-2E19) ou Modelo do Veículo...';
-      case 'os':
-        return 'Buscar por Número da O.S. (ex: 1001 ou #1001)...';
-      default:
-        return 'Localizar por Cliente, Placa (ex: BRA2E19), Veículo ou Nº O.S...';
-    }
-  };
 
   const getNextStatus = (current: OrderStatus): OrderStatus | null => {
     switch (current) {
@@ -153,16 +135,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Barra de Filtros e Busca Rápida */}
-      <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-xl space-y-3">
+      {/* Barra de Busca Rápida Unificada */}
+      <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-xl">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          {/* Campo de Busca Principal com Limpeza Rápida */}
+          {/* Campo de Busca Principal Unificado */}
           <div className="flex flex-1 items-center gap-2">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder={getSearchPlaceholder()}
+                placeholder="Localizar por Nome do Cliente, Placa, Nº O.S. ou Veículo..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-9 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
@@ -196,6 +178,12 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
           {/* Controles de Visão e Nova OS */}
           <div className="flex items-center gap-2 justify-between lg:justify-end">
+            {isFiltered && (
+              <span className="text-xs text-amber-400 font-medium mr-1 hidden sm:inline">
+                {filteredOrders.length} de {orders.length} O.S.
+              </span>
+            )}
+
             {/* Alternar modo de visão */}
             <div className="flex items-center bg-slate-800 p-0.5 rounded-lg border border-slate-700">
               <button
@@ -223,87 +211,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <Plus className="w-3.5 h-3.5 stroke-[3]" />
               Nova OS
             </button>
-          </div>
-        </div>
-
-        {/* Pílulas de Escopo da Busca (Todos / Cliente / Placa / OS) e Contador */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 text-xs">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">Filtrar por:</span>
-            
-            <button
-              type="button"
-              onClick={() => setSearchScope('all')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                searchScope === 'all'
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold'
-                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60'
-              }`}
-            >
-              <Search className="w-3 h-3" />
-              Todos
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSearchScope('client')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                searchScope === 'client'
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold'
-                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60'
-              }`}
-            >
-              <User className="w-3 h-3 text-amber-400/80" />
-              Nome do Cliente
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSearchScope('plate')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                searchScope === 'plate'
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold'
-                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60'
-              }`}
-            >
-              <Car className="w-3 h-3 text-blue-400" />
-              Placa / Veículo
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSearchScope('os')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                searchScope === 'os'
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold'
-                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60'
-              }`}
-            >
-              <Hash className="w-3 h-3 text-emerald-400" />
-              Nº O.S.
-            </button>
-          </div>
-
-          {/* Feedback de Resultados e Limpeza Geral */}
-          <div className="flex items-center gap-2 text-xs">
-            {isFiltered && (
-              <span className="text-slate-400 font-medium">
-                Mostrando <strong className="text-amber-400">{filteredOrders.length}</strong> de {orders.length} O.S.
-              </span>
-            )}
-            {isFiltered && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchTerm('');
-                  setMechanicFilter('');
-                  setSearchScope('all');
-                }}
-                className="text-[11px] text-amber-400 hover:text-amber-300 underline font-medium"
-              >
-                Limpar filtros
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -522,7 +429,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             onClick={() => {
                               setSearchTerm('');
                               setMechanicFilter('');
-                              setSearchScope('all');
                             }}
                             className="mt-2 text-xs bg-slate-800 hover:bg-slate-700 text-amber-400 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
                           >
