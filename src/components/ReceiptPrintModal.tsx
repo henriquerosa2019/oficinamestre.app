@@ -178,10 +178,22 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
           </div>
 
           {/* Termo de Garantia e Assinaturas */}
-          <div className="border-t border-slate-200 pt-3 text-[10px] text-slate-500 space-y-6">
-            <p className="leading-tight">
-              Garantia legal de 90 (noventa) dias para serviços e peças novas aplicadas, conforme Código de
-              Defesa do Consumidor. A garantia não cobre mau uso, sobrecarga ou intervenção de terceiros.
+          <div className="border-t border-slate-200 pt-3 text-[10px] text-slate-500 space-y-4">
+            <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-lg text-slate-800 flex items-start gap-2.5">
+              <span className="text-base leading-none">📲</span>
+              <div>
+                <strong className="block text-[11px] text-slate-900 font-bold uppercase">
+                  Acompanhamento da Garantia de 90 Dias & Histórico do Veículo:
+                </strong>
+                <p className="text-[10px] text-slate-700 mt-0.5 leading-relaxed">
+                  Prezado(a) <strong>{client?.name || 'Cliente'}</strong>, salve nosso WhatsApp comercial <strong>(11) 98244-0071</strong> na sua agenda para acompanhar a garantia de 90 dias, receber laudos e o histórico preventivo do seu <strong>{vehicle?.brand} {vehicle?.model}</strong>.
+                </p>
+              </div>
+            </div>
+
+            <p className="leading-tight text-slate-600">
+              Garantia legal de 90 (noventa) dias para serviços e peças novas aplicadas, conforme art. 26 do Código de
+              Defesa do Consumidor. A garantia não cobre mau uso, sobrecarga, acidentes ou intervenção de terceiros.
             </p>
 
             <div className="grid grid-cols-2 gap-8 pt-4">

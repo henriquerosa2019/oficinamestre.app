@@ -27,6 +27,8 @@ import {
   Gauge,
   ShieldCheck,
   AlertCircle,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { CarDamageCanvas } from './CarDamageCanvas';
 import { WhatsAppService } from '../services/whatsapp';
@@ -87,6 +89,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   // Pagamento
   const [isPaid, setIsPaid] = useState<boolean>(order?.isPaid || false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(order?.paymentMethod || 'pix');
+  const [copiedMsg, setCopiedMsg] = useState(false);
 
   // Seletores para adicionar peça/serviço
   const [selectedPartId, setSelectedPartId] = useState('');
@@ -672,30 +675,56 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               {/* Botões rápidos: WhatsApp e Impressão */}
               <div className="flex items-center gap-2">
                 {currentClient?.phone && currentVehicle && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (status === 'pronto') {
-                        const msg = WhatsAppService.generateCarReadyMessage(
-                          { ...order!, orderNumber, parts, services, partsTotal, servicesTotal, grossTotal, discount, netTotal, netProfit, isPaid, technicalDiagnostic, complaintDescription },
-                          currentClient,
-                          currentVehicle
-                        );
-                        WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
-                      } else {
-                        const msg = WhatsAppService.generateBudgetMessage(
-                          { ...order!, orderNumber, parts, services, partsTotal, servicesTotal, grossTotal, discount, netTotal, netProfit, isPaid, technicalDiagnostic, complaintDescription },
-                          currentClient,
-                          currentVehicle
-                        );
-                        WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow transition-colors"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    Enviar Orçamento no WhatsApp
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {/* Botão Copiar Texto */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const orderData = { ...order!, orderNumber, parts, services, partsTotal, servicesTotal, grossTotal, discount, netTotal, netProfit, isPaid, technicalDiagnostic, complaintDescription };
+                        const msg = status === 'pronto'
+                          ? WhatsAppService.generateCarReadyMessage(orderData, currentClient, currentVehicle)
+                          : WhatsAppService.generateBudgetMessage(orderData, currentClient, currentVehicle);
+                        const success = await WhatsAppService.copyToClipboard(msg);
+                        if (success) {
+                          setCopiedMsg(true);
+                          setTimeout(() => setCopiedMsg(false), 2000);
+                        }
+                      }}
+                      className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs border border-slate-700 transition-colors flex items-center gap-1"
+                      title="Copiar texto da mensagem para a área de transferência"
+                    >
+                      {copiedMsg ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
+                          <span className="text-[11px] text-emerald-400 font-bold">Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 text-slate-400" />
+                          <span className="text-[11px] text-slate-300 hidden sm:inline">Copiar</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Botão Abrir WhatsApp */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const orderData = { ...order!, orderNumber, parts, services, partsTotal, servicesTotal, grossTotal, discount, netTotal, netProfit, isPaid, technicalDiagnostic, complaintDescription };
+                        if (status === 'pronto') {
+                          const msg = WhatsAppService.generateCarReadyMessage(orderData, currentClient, currentVehicle);
+                          WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
+                        } else {
+                          const msg = WhatsAppService.generateBudgetMessage(orderData, currentClient, currentVehicle);
+                          WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow transition-colors"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      {status === 'pronto' ? 'Avisar Carro Pronto no WhatsApp' : 'Enviar Orçamento no WhatsApp'}
+                    </button>
+                  </div>
                 )}
 
                 {isEditing && (

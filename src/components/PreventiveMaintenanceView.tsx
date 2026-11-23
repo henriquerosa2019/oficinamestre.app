@@ -28,6 +28,7 @@ import {
   RotateCcw,
   Zap,
   Layers,
+  Copy,
 } from 'lucide-react';
 
 // Ícone oficial vetorial do WhatsApp com cores oficiais
@@ -59,6 +60,7 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
   const [profileFilter, setProfileFilter] = useState<'todos' | VehicleUsageProfile>('todos');
   const [statusFilter, setStatusFilter] = useState<'todos' | MaintenanceAlert['status']>('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [copiedVehicleId, setCopiedVehicleId] = useState<string | null>(null);
 
   // Form de novo registro preventivo manual
   const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles[0]?.id || '');
@@ -94,6 +96,18 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
     // Automaticamente marca os registros do veículo como "avisado"
     const recordIds = group.records.map((r) => r.id);
     onUpdateContactStatus(recordIds, 'avisado');
+  };
+
+  // Copia o texto do lembrete preventivo para colar no WhatsApp Web ou editar
+  const handleCopyMessage = async (group: GroupedVehicleAlert) => {
+    const message = PreventiveMaintenanceService.generateGroupedWhatsAppReminder(group);
+    const success = await WhatsAppService.copyToClipboard(message);
+    if (success) {
+      setCopiedVehicleId(group.vehicle.id);
+      setTimeout(() => {
+        setCopiedVehicleId(null);
+      }, 2500);
+    }
   };
 
   // Alterna status de contato do veículo
@@ -511,6 +525,30 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
                     >
                       <Zap className="w-3.5 h-3.5 stroke-[2.5]" />
                       <span>⚡ Abrir O.S.</span>
+                    </button>
+
+                    {/* Botão Copiar Mensagem para a Área de Transferência */}
+                    <button
+                      type="button"
+                      onClick={() => handleCopyMessage(group)}
+                      className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                        copiedVehicleId === group.vehicle.id
+                          ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-sm shadow-emerald-950/50'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700'
+                      }`}
+                      title="Copiar texto da mensagem para a memória (para colar no WhatsApp Web ou editar antes de enviar)"
+                    >
+                      {copiedVehicleId === group.vehicle.id ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
+                          <span className="text-[11px] font-bold text-emerald-400">Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="text-[11px] text-slate-300 hidden sm:inline">Copiar</span>
+                        </>
+                      )}
                     </button>
 
                     {/* Botão WhatsApp com Ícone Oficial SVG e Mensagem Consolidada */}

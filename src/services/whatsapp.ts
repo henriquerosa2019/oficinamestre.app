@@ -10,59 +10,63 @@ export const WhatsAppService = {
     return cleaned;
   },
 
-  // Gera o texto formatado para envio do Orçamento ao Cliente
+  // Gera o texto formatado para envio do Orçamento ao Cliente (Tom consultivo e transparente)
   generateBudgetMessage(order: ServiceOrder, client: Client, vehicle: Vehicle): string {
+    const clientFirstName = client.name.split(' ')[0];
     const partsList = order.parts.length
       ? order.parts.map((p) => `  • ${p.quantity}x ${p.description} (R$ ${p.total.toFixed(2)})`).join('\n')
-      : '  (Nenhuma peça requerida)';
+      : '  (Nenhuma peça necessária)';
 
     const servicesList = order.services.length
       ? order.services.map((s) => `  • ${s.description} (R$ ${s.price.toFixed(2)})`).join('\n')
       : '  (Nenhum serviço adicional)';
 
-    const message = `🔧 *ORÇAMENTO OFICINA MECÂNICA* 🔧
+    const message = `🔧 *ORÇAMENTO TÉCNICO - OFICINA MESTRE*
 -----------------------------------
-Olá *${client.name.split(' ')[0]}*! Segue o orçamento para o seu veículo:
+Olá *${clientFirstName}*, tudo bem? Aqui é da *Oficina Mestre*!
 
-🚗 *Veículo:* ${vehicle.brand} ${vehicle.model} (${vehicle.year})
-🏷️ *Placa:* ${vehicle.plate} | *KM:* ${vehicle.mileage.toLocaleString('pt-BR')} km
-📋 *Nº da OS:* ${order.orderNumber}
+Concluímos a avaliação técnica do seu *${vehicle.brand} ${vehicle.model}* (Placa: *${vehicle.plate}*). Segue o demonstrativo transparente dos itens necessários:
 
-🔍 *Sintoma / Diagnóstico:*
-${order.technicalDiagnostic || order.complaintDescription}
+📋 *Ordem de Serviço:* #${order.orderNumber}
+🔍 *Diagnóstico / Avaliação:*
+${order.technicalDiagnostic || order.complaintDescription || 'Revisão técnica de rotina.'}
 
-📦 *Peças Necessárias:*
+📦 *Peças Recomendadas:*
 ${partsList}
 *Total Peças:* R$ ${order.partsTotal.toFixed(2)}
 
-🛠️ *Mão de Obra (Serviços):*
+🛠️ *Mão de Obra Especializada:*
 ${servicesList}
 *Total Serviços:* R$ ${order.servicesTotal.toFixed(2)}
 
-${order.discount > 0 ? `💰 *Desconto Concedido:* - R$ ${order.discount.toFixed(2)}\n` : ''}
-⭐ *VALOR TOTAL FINAL:* *R$ ${order.netTotal.toFixed(2)}*
+${order.discount > 0 ? `💰 *Desconto Aplicado:* - R$ ${order.discount.toFixed(2)}\n` : ''}⭐ *VALOR TOTAL FINAL:* *R$ ${order.netTotal.toFixed(2)}*
 -----------------------------------
-Para autorizar a realização dos serviços e o pedido das peças, por favor responda com:
-👉 *\"AUTORIZADO\"* ou nos chame para tirar dúvidas!
+Podemos dar início aos serviços e à separação das peças?
+👉 Responda com *"AUTORIZADO"* ou nos mande uma mensagem se tiver qualquer dúvida!
 
-Agradecemos a confiança! 🚀`;
+📲 *Dica:* Salve nosso WhatsApp comercial na sua agenda para acompanhar o andamento da sua O.S. e a garantia dos serviços.`;
 
     return message;
   },
 
-  // Gera o link para notificar que o carro está pronto para retirada
+  // Gera a mensagem quando o carro está pronto para retirada (com lembrete de salvar contato para garantia de 90 dias)
   generateCarReadyMessage(order: ServiceOrder, client: Client, vehicle: Vehicle): string {
-    const message = `🚗💨 *SEU CARRO ESTÁ PRONTO!* 🏁
+    const clientFirstName = client.name.split(' ')[0];
+    const message = `🚗💨 *SEU VEÍCULO ESTÁ PRONTO!* 🏁
 -----------------------------------
-Olá, *${client.name.split(' ')[0]}*!
+Olá *${clientFirstName}*, tudo bem? Aqui é da *Oficina Mestre*!
 
-O serviço no seu *${vehicle.brand} ${vehicle.model}* (Placa: *${vehicle.plate}*) foi concluído com sucesso e passou por todos os testes de qualidade.
+Passando para avisar que o serviço no seu *${vehicle.brand} ${vehicle.model}* (Placa: *${vehicle.plate}*) foi finalizado com sucesso e o veículo foi liberado nos testes finais de segurança.
 
-📋 *Ordem de Serviço:* ${order.orderNumber}
-💰 *Valor Total:* R$ ${order.netTotal.toFixed(2)} ${order.isPaid ? '*(PAGO)*' : '*(Pendente no balcão)*'}
+📋 *Ordem de Serviço:* #${order.orderNumber}
+💰 *Valor Total:* R$ ${order.netTotal.toFixed(2)} ${order.isPaid ? '*(PAGO)*' : '*(Pendente para acerto na retirada)*'}
 
-Nosso pátio está liberado para você retirar o veículo.
-Qualquer dúvida, estamos à disposição! 🤝`;
+Nosso pátio já está liberado para você retirar o veículo quando desejar!
+
+📲 *Importante para sua Garantia:*
+Por favor, *salve o nosso WhatsApp comercial na sua agenda* para acompanhar a garantia legal de 90 dias e receber o histórico das próximas preventivas do seu carro.
+
+Qualquer dúvida ou se precisar de um horário especial de retirada, estamos à disposição por aqui! 🤝`;
 
     return message;
   },
@@ -78,5 +82,16 @@ Qualquer dúvida, estamos à disposição! 🤝`;
   openWhatsAppChat(phone: string, text: string): void {
     const link = this.createWhatsAppLink(phone, text);
     window.open(link, '_blank', 'noopener,noreferrer');
+  },
+
+  // Copia texto para a área de transferência do sistema
+  async copyToClipboard(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.error('Falha ao copiar texto:', err);
+      return false;
+    }
   },
 };

@@ -242,27 +242,39 @@ export const PreventiveMaintenanceService = {
     });
   },
 
-  // Gera mensagem consolidada de WhatsApp (individual ou combo com múltiplos serviços)
+  // Gera mensagem consolidada de WhatsApp (formato consultivo, humanizado e anti-bloqueio)
   generateGroupedWhatsAppReminder(grouped: GroupedVehicleAlert): string {
     const { vehicle, client, alerts, worstStatus, minDaysRemaining } = grouped;
     const clientFirstName = client.name.split(' ')[0];
-
     const isApp = vehicle.usageProfile === 'app_severo';
-    const profileText = isApp
-      ? '🚕 *Perfil:* Motorista de Aplicativo / Uso Severo'
-      : '🚗 *Perfil:* Uso Padrão';
 
-    let urgencyHeadline = '';
-    if (worstStatus === 'urgente_1dia') {
-      urgencyHeadline = minDaysRemaining === 0 ? '⚠️ *ATENÇÃO: SUA REVISÃO VENCE HOJE!*' : '⚠️ *ATENÇÃO: SUA REVISÃO VENCE AMANHÃ!*';
-    } else if (worstStatus === 'alerta_7dias') {
-      urgencyHeadline = `🔔 *LEMBRETE PREVENTIVO: VENCE EM ${minDaysRemaining} DIAS!*`;
-    } else if (worstStatus === 'vencido') {
-      urgencyHeadline = `🚨 *AVISO: REVISÃO PREVENTIVA PENDENTE!*`;
-    } else {
-      urgencyHeadline = `📅 *PREVISÃO DE REVISÕES PREVENTIVAS*`;
+    // Cálculo do tempo decorrido desde o último serviço do primeiro alerta
+    const firstRecord = alerts[0]?.record;
+    let timeText = 'alguns meses';
+    if (firstRecord?.completedDate) {
+      const lastCompletedDate = new Date(firstRecord.completedDate);
+      const today = new Date();
+      const diffDays = Math.max(1, Math.round((today.getTime() - lastCompletedDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const diffMonths = Math.round(diffDays / 30.4);
+      timeText = diffMonths <= 1 ? 'cerca de 1 mês' : diffMonths < 12 ? `cerca de ${diffMonths} meses` : 'cerca de 1 ano';
     }
 
+    if (alerts.length === 1 && firstRecord) {
+      // Padrão Consultivo para Serviço Único
+      return `Olá *${clientFirstName}*, tudo bem? Aqui é da *Oficina Mestre*!
+
+Passando para checar como está o seu *${vehicle.brand} ${vehicle.model}* após aquela *${firstRecord.serviceName.toLowerCase()}* que fizemos há ${timeText}.
+
+Pela nossa previsão preventiva, já está chegando no período ideal de conferir novamente para garantir a sua segurança e não ter imprevistos na rua.
+${isApp ? '\n💡 _Como você roda com aplicativo, manter essa revisão em dia protege seu motor e evita paradas não planejadas nas corridas!_\n' : ''}
+Quer que reservemos um horário para você passar aqui esta semana?
+👉 Responda com *"SIM, QUERO AGENDAR"* ou nos envie o dia de sua preferência! 🚀
+
+-----------------------------------
+_(Caso prefira não receber lembretes preventivos de segurança, basta nos responder com 'Não avisar')_`;
+    }
+
+    // Padrão Consultivo para Múltiplos Serviços (Combo)
     const itemsList = alerts
       .map((a: MaintenanceAlert) => {
         const days = a.daysRemaining;
@@ -270,37 +282,28 @@ export const PreventiveMaintenanceService = {
           days < 0
             ? `_(Vencido há ${Math.abs(days)} dias)_`
             : days === 0
-            ? `_(Vence Hoje!)_`
+            ? `_(Vence Hoje)_`
             : days === 1
-            ? `_(Vence Amanhã!)_`
+            ? `_(Vence Amanhã)_`
             : `_(Em ${days} dias)_`;
-        return `• *${a.record.serviceName.toUpperCase()}* ${statusText}`;
+        return `• *${a.record.serviceName}* ${statusText}`;
       })
       .join('\n');
 
-    return `${urgencyHeadline}
------------------------------------
-Olá *${clientFirstName}*, tudo bem? Aqui é da *Oficina Mestre*!
+    return `Olá *${clientFirstName}*, tudo bem? Aqui é da *Oficina Mestre*!
 
-Cuidamos do histórico da sua *${vehicle.brand} ${vehicle.model}* para você não ter imprevistos na rua:
+Passando para checar como está a sua *${vehicle.brand} ${vehicle.model}* após as últimas manutenções.
 
-🚘 *Veículo:* ${vehicle.brand} ${vehicle.model}
-🏷️ *Placa:* ${vehicle.plate}
-${profileText}
-
-🔧 *Serviço(s) no momento ideal de realização:*
+Pela nossa previsão preventiva, identificamos que está chegando o momento ideal de conferir:
 ${itemsList}
 
-${
-  alerts.length > 1
-    ? `💡 *PACOTE COMBO:* Fazendo a revisão desses ${alerts.length} itens na mesma visita, você economiza tempo e garante condições especiais no pacote completo!`
-    : isApp
-    ? `💡 _Como você roda bastante com aplicativo, antecipar a troca protege seu motor e evita paradas não planejadas no meio das corridas!_`
-    : `💡 _Revisões em dia garantem economia de combustível, segurança da sua família e valorização na revenda._`
-}
+💡 *PACOTE COMBO:* Fazendo a revisão desses ${alerts.length} itens na mesma visita, você economiza tempo de pátio e garante condições especiais no pacote completo!
+${isApp ? '\n💡 _Como você roda com aplicativo, antecipar a troca evita imprevistos mecânicos e protege seu trabalho no dia a dia!_\n' : ''}
+Quer que reservemos um horário para você passar aqui esta semana?
+👉 Responda com *"SIM, QUERO AGENDAR"* ou nos envie o dia de sua preferência! 🚀
 
-Deseja que reservemos o melhor horário para você esta semana?
-👉 Responda com *"SIM, QUERO AGENDAR"* ou nos envie o dia de sua preferência! 🚀`;
+-----------------------------------
+_(Caso prefira não receber lembretes preventivos de segurança, basta nos responder com 'Não avisar')_`;
   },
 
   // Mantido para compatibilidade retroativa
