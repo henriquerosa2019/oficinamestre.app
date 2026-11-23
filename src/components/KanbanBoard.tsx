@@ -18,6 +18,8 @@ import {
   User,
   Wrench,
   CheckCircle,
+  X,
+  Hash,
 } from 'lucide-react';
 import { WhatsAppService } from '../services/whatsapp';
 
@@ -52,6 +54,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onPrintReceipt,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchScope, setSearchScope] = useState<'all' | 'client' | 'plate' | 'os'>('all');
   const [mechanicFilter, setMechanicFilter] = useState('');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
 
@@ -59,23 +62,75 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const getVehicle = (vehicleId: string) => vehicles.find((v) => v.id === vehicleId);
   const getMechanic = (mechanicId: string) => mechanics.find((m) => m.id === mechanicId);
 
-  // Filtragem
-  const filteredOrders = orders.filter((order) => {
+  // Normalização para busca sem acentos e caracteres especiais
+  const normalizeText = (text: string) =>
+    (text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+  const cleanAlphaNum = (text: string) =>
+    normalizeText(text).replace(/[^a-z0-9]/g, '');
+
+  // Verificação de correspondência e destaque
+  const getMatchStatus = (order: ServiceOrder) => {
     const vehicle = getVehicle(order.vehicleId);
     const client = getClient(order.clientId);
-    const searchLower = searchTerm.toLowerCase();
 
-    const matchesSearch =
-      !searchTerm ||
-      order.orderNumber.toLowerCase().includes(searchLower) ||
-      vehicle?.plate.toLowerCase().includes(searchLower) ||
-      vehicle?.model.toLowerCase().includes(searchLower) ||
-      client?.name.toLowerCase().includes(searchLower);
+    if (!searchTerm.trim()) {
+      return { matches: true, matchClient: false, matchPlate: false, matchOS: false };
+    }
 
+    const termNorm = normalizeText(searchTerm.trim());
+    const termClean = cleanAlphaNum(searchTerm.trim());
+
+    const matchClient = Boolean(
+      (client && normalizeText(client.name).includes(termNorm)) ||
+      (client && cleanAlphaNum(client.phone).includes(termClean))
+    );
+
+    const matchPlate = Boolean(
+      vehicle &&
+      (normalizeText(vehicle.plate).includes(termNorm) ||
+       cleanAlphaNum(vehicle.plate).includes(termClean) ||
+       normalizeText(vehicle.model).includes(termNorm) ||
+       normalizeText(vehicle.brand).includes(termNorm))
+    );
+
+    const matchOS = Boolean(
+      normalizeText(order.orderNumber).includes(termNorm) ||
+      cleanAlphaNum(order.orderNumber).includes(termClean) ||
+      order.id.toLowerCase().includes(termNorm)
+    );
+
+    let matches = false;
+    if (searchScope === 'client') matches = matchClient;
+    else if (searchScope === 'plate') matches = matchPlate;
+    else if (searchScope === 'os') matches = matchOS;
+    else matches = matchClient || matchPlate || matchOS;
+
+    return { matches, matchClient, matchPlate, matchOS };
+  };
+
+  // Filtragem
+  const filteredOrders = orders.filter((order) => {
     const matchesMechanic = !mechanicFilter || order.mechanicId === mechanicFilter;
-
-    return matchesSearch && matchesMechanic;
+    if (!matchesMechanic) return false;
+    return getMatchStatus(order).matches;
   });
+
+  const getSearchPlaceholder = () => {
+    switch (searchScope) {
+      case 'client':
+        return 'Buscar por Nome ou WhatsApp do Cliente...';
+      case 'plate':
+        return 'Buscar por Placa (ex: BRA-2E19) ou Modelo do Veículo...';
+      case 'os':
+        return 'Buscar por Número da O.S. (ex: 1001 ou #1001)...';
+      default:
+        return 'Localizar por Cliente, Placa (ex: BRA2E19), Veículo ou Nº O.S...';
+    }
+  };
 
   const getNextStatus = (current: OrderStatus): OrderStatus | null => {
     switch (current) {
@@ -94,64 +149,162 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }
   };
 
+  const isFiltered = Boolean(searchTerm.trim() || mechanicFilter);
+
   return (
     <div className="space-y-4">
-      {/* Barra de Filtros e Busca */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl">
-        <div className="flex flex-1 items-center gap-2">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Buscar por placa, cliente ou modelo..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs sm:text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-amber-500"
-            />
+      {/* Barra de Filtros e Busca Rápida */}
+      <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-xl space-y-3">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Campo de Busca Principal com Limpeza Rápida */}
+          <div className="flex flex-1 items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder={getSearchPlaceholder()}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-9 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white rounded-full hover:bg-slate-700 transition-colors"
+                  title="Limpar busca"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filtro por Mecânico */}
+            <select
+              value={mechanicFilter}
+              onChange={(e) => setMechanicFilter(e.target.value)}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500 shrink-0"
+            >
+              <option value="">Todos Mecânicos</option>
+              {mechanics.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <select
-            value={mechanicFilter}
-            onChange={(e) => setMechanicFilter(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
-          >
-            <option value="">Todos Mecânicos</option>
-            {mechanics.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+          {/* Controles de Visão e Nova OS */}
+          <div className="flex items-center gap-2 justify-between lg:justify-end">
+            {/* Alternar modo de visão */}
+            <div className="flex items-center bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`px-3 py-1.5 text-xs rounded font-medium transition-colors ${
+                  viewMode === 'kanban' ? 'bg-amber-500 text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Kanban Pátio
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1.5 text-xs rounded font-medium transition-colors ${
+                  viewMode === 'list' ? 'bg-amber-500 text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Lista
+              </button>
+            </div>
+
+            <button
+              onClick={onNewOrder}
+              className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 rounded-lg text-xs shadow-sm transition-all shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              Nova OS
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Alternar modo de visão */}
-          <div className="flex items-center bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+        {/* Pílulas de Escopo da Busca (Todos / Cliente / Placa / OS) e Contador */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 text-xs">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">Filtrar por:</span>
+            
             <button
-              onClick={() => setViewMode('kanban')}
-              className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
-                viewMode === 'kanban' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'
+              type="button"
+              onClick={() => setSearchScope('all')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                searchScope === 'all'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold'
+                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60'
               }`}
             >
-              Kanban Pátio
+              <Search className="w-3 h-3" />
+              Todos
             </button>
+
             <button
-              onClick={() => setViewMode('list')}
-              className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
-                viewMode === 'list' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'
+              type="button"
+              onClick={() => setSearchScope('client')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                searchScope === 'client'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold'
+                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60'
               }`}
             >
-              Lista
+              <User className="w-3 h-3 text-amber-400/80" />
+              Nome do Cliente
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSearchScope('plate')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                searchScope === 'plate'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold'
+                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60'
+              }`}
+            >
+              <Car className="w-3 h-3 text-blue-400" />
+              Placa / Veículo
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSearchScope('os')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                searchScope === 'os'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold'
+                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60'
+              }`}
+            >
+              <Hash className="w-3 h-3 text-emerald-400" />
+              Nº O.S.
             </button>
           </div>
 
-          <button
-            onClick={onNewOrder}
-            className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm transition-all"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            Nova OS
-          </button>
+          {/* Feedback de Resultados e Limpeza Geral */}
+          <div className="flex items-center gap-2 text-xs">
+            {isFiltered && (
+              <span className="text-slate-400 font-medium">
+                Mostrando <strong className="text-amber-400">{filteredOrders.length}</strong> de {orders.length} O.S.
+              </span>
+            )}
+            {isFiltered && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setMechanicFilter('');
+                  setSearchScope('all');
+                }}
+                className="text-[11px] text-amber-400 hover:text-amber-300 underline font-medium"
+              >
+                Limpar filtros
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -192,21 +345,44 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                       const client = getClient(order.clientId);
                       const mechanic = getMechanic(order.mechanicId);
                       const nextStatus = getNextStatus(order.status);
+                      const matchInfo = getMatchStatus(order);
 
                       return (
                         <div
                           key={order.id}
                           onClick={() => onOpenOrder(order)}
-                          className={`bg-slate-800/80 hover:bg-slate-800 border ${column.color} rounded-xl p-3 cursor-pointer shadow-sm transition-all hover:scale-[1.01] hover:shadow-md group`}
+                          className={`bg-slate-800/80 hover:bg-slate-800 border ${
+                            matchInfo.matches && searchTerm.trim() ? 'border-amber-500/80 ring-1 ring-amber-500/30' : column.color
+                          } rounded-xl p-3 cursor-pointer shadow-sm transition-all hover:scale-[1.01] hover:shadow-md group`}
                         >
                           {/* Topo do Card: Número OS & Placa */}
                           <div className="flex items-center justify-between gap-1 mb-2">
-                            <span className="text-xs font-black text-amber-400 font-mono">
+                            <span
+                              className={`text-xs font-mono font-black transition-all ${
+                                matchInfo.matchOS && searchTerm.trim()
+                                  ? 'bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded shadow-sm'
+                                  : 'text-amber-400'
+                              }`}
+                            >
                               {order.orderNumber}
                             </span>
                             {vehicle?.plate && (
-                              <div className="bg-slate-950 border border-slate-700 px-1.5 py-0.5 rounded text-[11px] font-mono font-bold text-white tracking-wider flex items-center gap-1">
-                                <span className="text-[8px] text-blue-400">BR</span>
+                              <div
+                                className={`px-1.5 py-0.5 rounded text-[11px] font-mono font-bold tracking-wider flex items-center gap-1 transition-all ${
+                                  matchInfo.matchPlate && searchTerm.trim()
+                                    ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 font-black shadow-md'
+                                    : 'bg-slate-950 border border-slate-700 text-white'
+                                }`}
+                              >
+                                <span
+                                  className={
+                                    matchInfo.matchPlate && searchTerm.trim()
+                                      ? 'text-slate-900 font-black text-[8px]'
+                                      : 'text-[8px] text-blue-400'
+                                  }
+                                >
+                                  BR
+                                </span>
                                 {vehicle.plate}
                               </div>
                             )}
@@ -217,8 +393,18 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             <h4 className="text-xs font-bold text-white truncate">
                               {vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Veículo não informado'}
                             </h4>
-                            <p className="text-[11px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
-                              <User className="w-3 h-3 text-slate-500 shrink-0" />
+                            <p
+                              className={`text-[11px] truncate flex items-center gap-1 mt-0.5 transition-all ${
+                                matchInfo.matchClient && searchTerm.trim()
+                                  ? 'text-amber-300 font-bold bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30'
+                                  : 'text-slate-400'
+                              }`}
+                            >
+                              <User
+                                className={`w-3 h-3 shrink-0 ${
+                                  matchInfo.matchClient && searchTerm.trim() ? 'text-amber-400' : 'text-slate-500'
+                                }`}
+                              />
                               {client?.name || 'Cliente'}
                             </p>
                           </div>
@@ -323,8 +509,27 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <tbody className="divide-y divide-slate-800">
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-slate-500">
-                      Nenhuma Ordem de Serviço encontrada para os filtros selecionados.
+                    <td colSpan={8} className="text-center py-12 text-slate-400">
+                      <div className="max-w-xs mx-auto space-y-2">
+                        <Search className="w-8 h-8 mx-auto text-slate-600" />
+                        <p className="font-semibold text-slate-300">Nenhuma Ordem de Serviço encontrada</p>
+                        <p className="text-[11px] text-slate-500">
+                          {searchTerm.trim() ? `Nenhum resultado para "${searchTerm}" no filtro selecionado.` : 'Nenhuma O.S. com os filtros ativos.'}
+                        </p>
+                        {isFiltered && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSearchTerm('');
+                              setMechanicFilter('');
+                              setSearchScope('all');
+                            }}
+                            className="mt-2 text-xs bg-slate-800 hover:bg-slate-700 text-amber-400 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+                          >
+                            Limpar filtros de busca
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -332,27 +537,52 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     const vehicle = getVehicle(order.vehicleId);
                     const client = getClient(order.clientId);
                     const mechanic = getMechanic(order.mechanicId);
+                    const matchInfo = getMatchStatus(order);
 
                     return (
                       <tr
                         key={order.id}
                         onClick={() => onOpenOrder(order)}
-                        className="hover:bg-slate-800/60 cursor-pointer transition-colors"
+                        className={`hover:bg-slate-800/60 cursor-pointer transition-colors ${
+                          matchInfo.matches && searchTerm.trim() ? 'bg-amber-500/5' : ''
+                        }`}
                       >
-                        <td className="py-3 px-4 font-mono font-bold text-amber-400">
-                          {order.orderNumber}
+                        <td className="py-3 px-4 font-mono font-bold">
+                          <span
+                            className={
+                              matchInfo.matchOS && searchTerm.trim()
+                                ? 'bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded font-black shadow-sm'
+                                : 'text-amber-400'
+                            }
+                          >
+                            {order.orderNumber}
+                          </span>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-bold text-white">
+                          <div className={`font-bold ${matchInfo.matchPlate && searchTerm.trim() ? 'text-amber-300' : 'text-white'}`}>
                             {vehicle?.brand} {vehicle?.model}
                           </div>
-                          <span className="font-mono text-[11px] text-slate-400">
+                          <span
+                            className={`font-mono text-[11px] px-1 py-0.5 rounded ${
+                              matchInfo.matchPlate && searchTerm.trim()
+                                ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
+                                : 'text-slate-400'
+                            }`}
+                          >
                             {vehicle?.plate}
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="text-slate-200">{client?.name}</div>
-                          <span className="text-[11px] text-slate-500">{client?.phone}</span>
+                          <div
+                            className={
+                              matchInfo.matchClient && searchTerm.trim()
+                                ? 'text-amber-300 font-bold bg-amber-500/20 px-1.5 py-0.5 rounded inline-block border border-amber-500/30'
+                                : 'text-slate-200'
+                            }
+                          >
+                            {client?.name}
+                          </div>
+                          <span className="text-[11px] text-slate-500 block">{client?.phone}</span>
                         </td>
                         <td className="py-3 px-4 text-slate-300">
                           {mechanic?.name || 'Não atribuído'}
