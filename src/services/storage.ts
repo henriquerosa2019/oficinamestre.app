@@ -7,6 +7,7 @@ import {
   ServiceOrder,
   FinancialTransaction,
   MaintenanceRecord,
+  SupplierPurchase,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -18,6 +19,7 @@ const STORAGE_KEYS = {
   ORDERS: 'og_orders_v1',
   TRANSACTIONS: 'og_transactions_v1',
   MAINTENANCE: 'og_maintenance_v1',
+  PURCHASES: 'og_purchases_v1',
 };
 
 // Seed Data Realista para Oficinas Mecânicas Brasileiras
@@ -110,6 +112,139 @@ const INITIAL_SERVICES: ServiceItem[] = [
   { id: 'srv-6', name: 'Revisão Preventiva Geral (Check 40 itens)', standardPrice: 250.0, category: 'Revisão' },
 ];
 
+const INITIAL_PURCHASES: SupplierPurchase[] = [
+  {
+    id: 'pur-1',
+    nfeNumber: '45892',
+    supplierName: 'Distribuidora Pellegrino',
+    supplierCnpj: '43.210.987/0001-55',
+    issueDate: '2026-11-10',
+    totalValue: 1450.0,
+    itemsCount: 2,
+    paidInstallmentsCount: 0,
+    totalInstallmentsCount: 2,
+    paidAmount: 0.0,
+    remainingAmount: 1450.0,
+    firstDueDate: '2026-11-25',
+    lastDueDate: '2026-12-25',
+    status: 'pendente',
+    partCodes: ['MOT-5W30-1L', 'WO-205'],
+    installments: [
+      {
+        id: 'inst-1-1',
+        installmentNumber: 1,
+        totalInstallments: 2,
+        amount: 725.0,
+        dueDate: '2026-11-25',
+        status: 'pendente',
+      },
+      {
+        id: 'inst-1-2',
+        installmentNumber: 2,
+        totalInstallments: 2,
+        amount: 725.0,
+        dueDate: '2026-12-25',
+        status: 'pendente',
+      },
+    ],
+    notes: 'Óleos sintéticos e filtros para estoque de revisão rápida.',
+    createdAt: '2026-11-10T10:00:00Z',
+  },
+  {
+    id: 'pur-2',
+    nfeNumber: '38104',
+    supplierName: 'DPaschoal Autopeças',
+    supplierCnpj: '60.444.333/0001-22',
+    issueDate: '2026-10-16',
+    totalValue: 689.0,
+    itemsCount: 2,
+    paidInstallmentsCount: 1,
+    totalInstallmentsCount: 3,
+    paidAmount: 229.67,
+    remainingAmount: 459.33,
+    firstDueDate: '2026-11-16',
+    lastDueDate: '2027-01-16',
+    status: 'parcial',
+    partCodes: ['N-1238', 'DOT4-500ML'],
+    installments: [
+      {
+        id: 'inst-2-1',
+        installmentNumber: 1,
+        totalInstallments: 3,
+        amount: 229.67,
+        dueDate: '2026-11-16',
+        status: 'pago',
+        paidAt: '2026-11-16T15:00:00Z',
+      },
+      {
+        id: 'inst-2-2',
+        installmentNumber: 2,
+        totalInstallments: 3,
+        amount: 229.67,
+        dueDate: '2026-12-16',
+        status: 'pendente',
+      },
+      {
+        id: 'inst-2-3',
+        installmentNumber: 3,
+        totalInstallments: 3,
+        amount: 229.66,
+        dueDate: '2027-01-16',
+        status: 'pendente',
+      },
+    ],
+    notes: 'Pastilhas cerâmicas e fluidos DOT4.',
+    createdAt: '2026-10-16T14:20:00Z',
+  },
+  {
+    id: 'pur-3',
+    nfeNumber: '29410',
+    supplierName: 'Nakata Automotiva',
+    supplierCnpj: '55.111.222/0001-88',
+    issueDate: '2026-10-15',
+    totalValue: 980.0,
+    itemsCount: 2,
+    paidInstallmentsCount: 2,
+    totalInstallmentsCount: 3,
+    paidAmount: 653.34,
+    remainingAmount: 326.66,
+    firstDueDate: '2026-10-15',
+    lastDueDate: '2026-12-15',
+    status: 'parcial',
+    partCodes: ['CT488K1', 'BKR6E-D'],
+    installments: [
+      {
+        id: 'inst-3-1',
+        installmentNumber: 1,
+        totalInstallments: 3,
+        amount: 326.67,
+        dueDate: '2026-10-15',
+        status: 'pago',
+        paidAt: '2026-10-15T11:00:00Z',
+      },
+      {
+        id: 'inst-3-2',
+        installmentNumber: 2,
+        totalInstallments: 3,
+        amount: 326.67,
+        dueDate: '2026-11-15',
+        status: 'pago',
+        paidAt: '2026-11-15T09:30:00Z',
+      },
+      {
+        id: 'inst-3-3',
+        installmentNumber: 3,
+        totalInstallments: 3,
+        amount: 326.66,
+        dueDate: '2026-12-15',
+        status: 'pendente',
+      },
+    ],
+    notes: 'Kits correia e velas de ignição.',
+    createdAt: '2026-10-15T09:00:00Z',
+  },
+];
+
 const INITIAL_PARTS: Part[] = [
   {
     id: 'part-1',
@@ -124,6 +259,9 @@ const INITIAL_PARTS: Part[] = [
     minStock: 10,
     unit: 'L',
     location: 'Prateleira A1',
+    supplierName: 'Distribuidora Pellegrino',
+    lastInvoiceNumber: 'NF-e 45892',
+    purchaseId: 'pur-1',
   },
   {
     id: 'part-2',
@@ -138,6 +276,9 @@ const INITIAL_PARTS: Part[] = [
     minStock: 5,
     unit: 'UN',
     location: 'Prateleira A2',
+    supplierName: 'Distribuidora Pellegrino',
+    lastInvoiceNumber: 'NF-e 45892',
+    purchaseId: 'pur-1',
   },
   {
     id: 'part-3',
@@ -152,6 +293,9 @@ const INITIAL_PARTS: Part[] = [
     minStock: 3,
     unit: 'Jogo',
     location: 'Prateleira B3',
+    supplierName: 'DPaschoal Autopeças',
+    lastInvoiceNumber: 'NF-e 38104',
+    purchaseId: 'pur-2',
   },
   {
     id: 'part-4',
@@ -166,6 +310,9 @@ const INITIAL_PARTS: Part[] = [
     minStock: 4, // Alerta de estoque mínimo
     unit: 'Jogo',
     location: 'Gaveta C1',
+    supplierName: 'Nakata Automotiva',
+    lastInvoiceNumber: 'NF-e 29410',
+    purchaseId: 'pur-3',
   },
   {
     id: 'part-5',
@@ -180,6 +327,9 @@ const INITIAL_PARTS: Part[] = [
     minStock: 3, // Estoque abaixo do mínimo!
     unit: 'Kit',
     location: 'Prateleira C2',
+    supplierName: 'Nakata Automotiva',
+    lastInvoiceNumber: 'NF-e 29410',
+    purchaseId: 'pur-3',
   },
   {
     id: 'part-6',
@@ -194,6 +344,9 @@ const INITIAL_PARTS: Part[] = [
     minStock: 6,
     unit: 'Frasco',
     location: 'Prateleira A3',
+    supplierName: 'DPaschoal Autopeças',
+    lastInvoiceNumber: 'NF-e 38104',
+    purchaseId: 'pur-2',
   },
 ];
 
@@ -345,29 +498,32 @@ const INITIAL_TRANSACTIONS: FinancialTransaction[] = [
   {
     id: 'trx-1',
     type: 'receita',
-    category: 'Serviço Concluído',
+    category: 'Serviço',
     description: 'Recebimento OS-1002 (Toyota Corolla - Dra. Patrícia)',
     amount: 700.0,
     dueDate: '2026-11-18',
     paymentDate: '2026-11-18',
     status: 'pago',
+    paymentMethod: 'pix',
     serviceOrderId: 'ord-102',
     createdAt: '2026-11-18T14:10:00Z',
   },
   {
     id: 'trx-2',
     type: 'despesa',
-    category: 'Fornecedor de Autopeças',
+    category: 'Peças',
     description: 'Boleto Distribuidora Pellegrino - NF 45892 (Óleos e Filtros)',
     amount: 1450.0,
     dueDate: '2026-11-25',
     status: 'pendente',
+    supplierPurchaseId: 'pur-1',
+    installmentInfo: 'Parcela 1/2',
     createdAt: '2026-11-10T10:00:00Z',
   },
   {
     id: 'trx-3',
     type: 'despesa',
-    category: 'Custos Fixos Oficina',
+    category: 'Fixo',
     description: 'Aluguel do Galpão + IPTU',
     amount: 2800.0,
     dueDate: '2026-11-20',
@@ -489,6 +645,9 @@ export const StorageService = {
     if (!localStorage.getItem(STORAGE_KEYS.MAINTENANCE)) {
       setToStorage(STORAGE_KEYS.MAINTENANCE, INITIAL_MAINTENANCE_RECORDS);
     }
+    if (!localStorage.getItem(STORAGE_KEYS.PURCHASES)) {
+      setToStorage(STORAGE_KEYS.PURCHASES, INITIAL_PURCHASES);
+    }
   },
 
   resetToDefault() {
@@ -500,6 +659,7 @@ export const StorageService = {
     setToStorage(STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
     setToStorage(STORAGE_KEYS.TRANSACTIONS, INITIAL_TRANSACTIONS);
     setToStorage(STORAGE_KEYS.MAINTENANCE, INITIAL_MAINTENANCE_RECORDS);
+    setToStorage(STORAGE_KEYS.PURCHASES, INITIAL_PURCHASES);
   },
 
   // Clients
@@ -554,7 +714,21 @@ export const StorageService = {
 
   // Parts
   getParts(): Part[] {
-    return getFromStorage<Part[]>(STORAGE_KEYS.PARTS, INITIAL_PARTS);
+    const parts = getFromStorage<Part[]>(STORAGE_KEYS.PARTS, INITIAL_PARTS);
+    let modified = false;
+    parts.forEach((p) => {
+      const initial = INITIAL_PARTS.find((ip) => ip.id === p.id || ip.code === p.code);
+      if (initial && (!p.supplierName || !p.lastInvoiceNumber)) {
+        p.supplierName = p.supplierName || initial.supplierName;
+        p.lastInvoiceNumber = p.lastInvoiceNumber || initial.lastInvoiceNumber;
+        p.purchaseId = p.purchaseId || initial.purchaseId;
+        modified = true;
+      }
+    });
+    if (modified) {
+      setToStorage(STORAGE_KEYS.PARTS, parts);
+    }
+    return parts;
   },
   savePart(part: Part): void {
     const parts = this.getParts();
@@ -572,6 +746,9 @@ export const StorageService = {
         parts[idx].currentStock += np.currentStock;
         parts[idx].costPrice = np.costPrice;
         if (np.sellPrice > 0) parts[idx].sellPrice = np.sellPrice;
+        if (np.supplierName) parts[idx].supplierName = np.supplierName;
+        if (np.lastInvoiceNumber) parts[idx].lastInvoiceNumber = np.lastInvoiceNumber;
+        if (np.purchaseId) parts[idx].purchaseId = np.purchaseId;
       } else {
         parts.push(np);
       }
@@ -581,6 +758,63 @@ export const StorageService = {
   deletePart(id: string): void {
     const parts = this.getParts().filter((p) => p.id !== id);
     setToStorage(STORAGE_KEYS.PARTS, parts);
+  },
+
+  // Purchases & Supplier Invoices
+  getPurchases(): SupplierPurchase[] {
+    return getFromStorage<SupplierPurchase[]>(STORAGE_KEYS.PURCHASES, INITIAL_PURCHASES);
+  },
+  savePurchase(purchase: SupplierPurchase): void {
+    const purchases = this.getPurchases();
+    const index = purchases.findIndex((p) => p.id === purchase.id);
+    if (index >= 0) purchases[index] = purchase;
+    else purchases.unshift(purchase);
+    setToStorage(STORAGE_KEYS.PURCHASES, purchases);
+  },
+  deletePurchase(id: string): void {
+    const purchases = this.getPurchases().filter((p) => p.id !== id);
+    setToStorage(STORAGE_KEYS.PURCHASES, purchases);
+  },
+  payPurchaseInstallment(purchaseId: string, installmentNumber: number): void {
+    const purchases = this.getPurchases();
+    const purchase = purchases.find((p) => p.id === purchaseId);
+    if (!purchase) return;
+
+    const inst = purchase.installments.find((i) => i.installmentNumber === installmentNumber);
+    if (!inst) return;
+
+    inst.status = 'pago';
+    inst.paidAt = new Date().toISOString();
+
+    const paidCount = purchase.installments.filter((i) => i.status === 'pago').length;
+    const paidAmount = purchase.installments
+      .filter((i) => i.status === 'pago')
+      .reduce((acc, i) => acc + i.amount, 0);
+
+    purchase.paidInstallmentsCount = paidCount;
+    purchase.paidAmount = paidAmount;
+    purchase.remainingAmount = Math.max(0, purchase.totalValue - paidAmount);
+    purchase.status =
+      paidCount === purchase.totalInstallmentsCount
+        ? 'pago'
+        : paidCount > 0
+        ? 'parcial'
+        : 'pendente';
+
+    this.savePurchase(purchase);
+
+    // Marca também a transação financeira vinculada como paga
+    const transactions = this.getTransactions();
+    const matchingTx = transactions.find(
+      (t) =>
+        t.supplierPurchaseId === purchaseId ||
+        (t.description.includes(purchase.nfeNumber) && t.type === 'despesa')
+    );
+    if (matchingTx) {
+      matchingTx.status = 'pago';
+      matchingTx.paymentDate = new Date().toISOString().split('T')[0];
+      setToStorage(STORAGE_KEYS.TRANSACTIONS, transactions);
+    }
   },
 
   // Services Catalog
@@ -627,7 +861,27 @@ export const StorageService = {
 
   // Financial Transactions
   getTransactions(): FinancialTransaction[] {
-    return getFromStorage<FinancialTransaction[]>(STORAGE_KEYS.TRANSACTIONS, INITIAL_TRANSACTIONS);
+    const txs = getFromStorage<FinancialTransaction[]>(STORAGE_KEYS.TRANSACTIONS, INITIAL_TRANSACTIONS);
+    let modified = false;
+    txs.forEach((t) => {
+      if (t.category === 'Fornecedor de Autopeças') {
+        t.category = 'Peças';
+        modified = true;
+      } else if (t.category === 'Custos Fixos Oficina' || t.category === 'Aluguel e IPTU do Pátio/Oficina') {
+        t.category = 'Fixo';
+        modified = true;
+      } else if (t.category === 'Serviço Concluído' || t.category === 'Ordem de Serviço') {
+        t.category = 'Serviço';
+        modified = true;
+      } else if (t.category === 'Comissão de Mecânicos') {
+        t.category = 'Comissão';
+        modified = true;
+      }
+    });
+    if (modified) {
+      setToStorage(STORAGE_KEYS.TRANSACTIONS, txs);
+    }
+    return txs;
   },
   saveTransaction(tx: FinancialTransaction): void {
     const txs = this.getTransactions();
@@ -686,6 +940,7 @@ export const StorageService = {
       orders: this.getOrders(),
       transactions: this.getTransactions(),
       maintenance: this.getMaintenanceRecords(),
+      purchases: this.getPurchases(),
       exportedAt: new Date().toISOString(),
     };
     return JSON.stringify(data, null, 2);
@@ -702,6 +957,7 @@ export const StorageService = {
       if (data.orders) setToStorage(STORAGE_KEYS.ORDERS, data.orders);
       if (data.transactions) setToStorage(STORAGE_KEYS.TRANSACTIONS, data.transactions);
       if (data.maintenance) setToStorage(STORAGE_KEYS.MAINTENANCE, data.maintenance);
+      if (data.purchases) setToStorage(STORAGE_KEYS.PURCHASES, data.purchases);
       return true;
     } catch (e) {
       console.error('Falha ao importar JSON de backup:', e);

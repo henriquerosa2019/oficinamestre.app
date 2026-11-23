@@ -108,6 +108,9 @@ export interface Part {
   minStock: number;
   unit: string; // UN, L, Jogo, etc.
   location?: string; // Prateleira/Gaveta
+  supplierName?: string; // Nome do fornecedor (ex: "DPaschoal Distribuidora")
+  lastInvoiceNumber?: string; // Ex: "NF-e 45892"
+  purchaseId?: string; // ID da compra vinculada
 }
 
 export interface ServiceItem {
@@ -213,6 +216,49 @@ export interface FinancialTransaction {
   paymentDate?: string;
   status: 'pendente' | 'pago' | 'atrasado';
   serviceOrderId?: string;
+  supplierPurchaseId?: string;
+  installmentInfo?: string; // ex: "Parcela 1/3"
+  mechanicId?: string; // Vincula pagamento de comissão ao mecânico
+  paymentMethod?: string; // 'pix' | 'cartao' | 'dinheiro' | etc.
+  createdAt: string;
+}
+
+export interface PurchaseInstallment {
+  id: string;
+  installmentNumber: number; // 1, 2, 3...
+  totalInstallments: number; // 3
+  amount: number;
+  dueDate: string; // YYYY-MM-DD
+  status: 'pendente' | 'pago' | 'atrasado';
+  paidAt?: string;
+  transactionId?: string; // id correspondente em FinancialTransaction
+}
+
+export interface SupplierPurchase {
+  id: string;
+  nfeNumber: string; // Ex: 45892 ou PED-102
+  supplierName: string; // Ex: DPaschoal Distribuidora de Autopeças
+  supplierCnpj?: string;
+  issueDate: string; // YYYY-MM-DD
+  totalValue: number; // R$ 689,00
+  itemsCount: number; // Ex: 3 produtos
+  
+  // Condição e Parcelamento
+  paymentMethod?: 'boleto' | 'pix' | 'cartao' | 'a_prazo';
+  installments: PurchaseInstallment[];
+  
+  // Resumos inteligentes calculados
+  paidInstallmentsCount: number; // Ex: 1
+  totalInstallmentsCount: number; // Ex: 3
+  paidAmount: number; // Ex: R$ 229,67
+  remainingAmount: number; // Ex: R$ 459,33
+  firstDueDate: string; // Vencimento 1ª parcela
+  lastDueDate: string; // Vencimento última parcela
+  status: 'quitado' | 'pago' | 'parcial' | 'pendente' | 'atrasado'; // Status geral da compra
+  
+  // Lista de códigos de peças adquiridas para vincular ao estoque
+  partCodes?: string[];
+  notes?: string;
   createdAt: string;
 }
 
@@ -232,5 +278,9 @@ export interface ParsedXMLInvoice {
   supplierCnpj: string;
   issueDate: string;
   items: ParsedXMLItem[];
+  itemsCount?: number;
   totalValue: number;
+  // Parcelamento detectado no XML ou configurado
+  installmentsCount?: number;
+  firstDueDate?: string;
 }

@@ -5,6 +5,7 @@ import {
   Vehicle,
   Mechanic,
   OrderStatus,
+  PaymentMethod,
 } from '../types';
 import {
   Search,
@@ -20,8 +21,10 @@ import {
   CheckCircle,
   X,
   Hash,
+  DollarSign,
 } from 'lucide-react';
 import { WhatsAppService } from '../services/whatsapp';
+import { QuickOrderCheckoutModal } from './QuickOrderCheckoutModal';
 
 interface KanbanBoardProps {
   orders: ServiceOrder[];
@@ -32,6 +35,7 @@ interface KanbanBoardProps {
   onNewOrder: () => void;
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
   onPrintReceipt: (order: ServiceOrder) => void;
+  onQuickCheckout?: (order: ServiceOrder, paymentMethod: PaymentMethod, isPaid: boolean) => void;
 }
 
 const KANBAN_COLUMNS: { status: OrderStatus; label: string; color: string; badgeClass: string }[] = [
@@ -52,10 +56,12 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onNewOrder,
   onUpdateStatus,
   onPrintReceipt,
+  onQuickCheckout,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [mechanicFilter, setMechanicFilter] = useState('');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [checkoutOrder, setCheckoutOrder] = useState<ServiceOrder | null>(null);
 
   const getClient = (clientId: string) => clients.find((c) => c.id === clientId);
   const getVehicle = (vehicleId: string) => vehicles.find((v) => v.id === vehicleId);
@@ -371,20 +377,37 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                 <Printer className="w-3.5 h-3.5" />
                               </button>
 
-                              {/* Avançar status */}
-                              {nextStatus && (
+                              {/* Botão Finalizar / Receber em 1 Toque */}
+                              {order.status === 'pronto' ? (
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onUpdateStatus(order.id, nextStatus);
+                                    setCheckoutOrder(order);
+                                  }}
+                                  className="px-2 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded text-[11px] shadow-sm flex items-center gap-1 transition-all active:scale-95"
+                                  title="Finalizar O.S. e Receber (Pix / Cartão / Dinheiro)"
+                                >
+                                  <DollarSign className="w-3.5 h-3.5 stroke-[2.5]" />
+                                  <span>Receber</span>
+                                </button>
+                              ) : nextStatus ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (nextStatus === 'finalizado') {
+                                      setCheckoutOrder(order);
+                                    } else {
+                                      onUpdateStatus(order.id, nextStatus);
+                                    }
                                   }}
                                   className="p-1.5 bg-amber-500/15 hover:bg-amber-500 text-amber-400 hover:text-slate-950 rounded transition-colors"
                                   title="Avançar etapa"
                                 >
                                   <ChevronRight className="w-3.5 h-3.5" />
                                 </button>
-                              )}
+                              ) : null}
                             </div>
                           </div>
                         </div>
@@ -506,6 +529,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         </td>
                         <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1.5">
+                            {order.status !== 'finalizado' && (
+                              <button
+                                type="button"
+                                onClick={() => setCheckoutOrder(order)}
+                                className="px-2 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded text-[11px] transition-colors flex items-center gap-1 shadow-sm"
+                                title="Finalizar e Receber O.S."
+                              >
+                                <DollarSign className="w-3 h-3 stroke-[2.5]" />
+                                Receber
+                              </button>
+                            )}
                             {client?.phone && vehicle && (
                               <button
                                 type="button"
@@ -538,6 +572,24 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de Finalização / Checkout Rápido da OS */}
+      <QuickOrderCheckoutModal
+        order={checkoutOrder}
+        isOpen={!!checkoutOrder}
+        onClose={() => setCheckoutOrder(null)}
+        onConfirmCheckout={(ord, method, isPaid) => {
+          if (onQuickCheckout) {
+            onQuickCheckout(ord, method, isPaid);
+          } else {
+            onUpdateStatus(ord.id, 'finalizado');
+          }
+          setCheckoutOrder(null);
+        }}
+        client={checkoutOrder ? getClient(checkoutOrder.clientId) : undefined}
+        vehicle={checkoutOrder ? getVehicle(checkoutOrder.vehicleId) : undefined}
+        mechanic={checkoutOrder ? getMechanic(checkoutOrder.mechanicId) : undefined}
+      />
     </div>
   );
 };

@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { CarDamageCanvas } from './CarDamageCanvas';
 import { WhatsAppService } from '../services/whatsapp';
+import { QuickOrderCheckoutModal } from './QuickOrderCheckoutModal';
 import confetti from 'canvas-confetti';
 
 interface OrderModalProps {
@@ -45,6 +46,7 @@ interface OrderModalProps {
   availableParts: Part[];
   availableServices: ServiceItem[];
   onPrintReceipt: (order: ServiceOrder) => void;
+  onQuickCheckout?: (order: ServiceOrder, paymentMethod: PaymentMethod, isPaid: boolean) => void;
 }
 
 export const OrderModal: React.FC<OrderModalProps> = ({
@@ -58,11 +60,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   availableParts,
   availableServices,
   onPrintReceipt,
+  onQuickCheckout,
 }) => {
   if (!isOpen) return null;
 
   // Estados do formulário
   const isEditing = !!order;
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [orderNumber, setOrderNumber] = useState(order?.orderNumber || `OS-${Math.floor(1000 + Math.random() * 9000)}`);
   const [clientId, setClientId] = useState(order?.clientId || clients[0]?.id || '');
   const [vehicleId, setVehicleId] = useState(order?.vehicleId || vehicles[0]?.id || '');
@@ -743,23 +747,100 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         </div>
 
         {/* Rodapé do Modal */}
-        <div className="px-6 py-4 bg-slate-950 border-t border-slate-800 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-lg transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm rounded-lg shadow-md shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            Salvar Ordem de Serviço
-          </button>
+        <div className="px-6 py-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3">
+          <div>
+            {status !== 'finalizado' && (
+              <button
+                type="button"
+                onClick={() => setIsCheckoutOpen(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm rounded-lg shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <DollarSign className="w-4 h-4 stroke-[2.5]" />
+                Finalizar e Receber
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-lg transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm rounded-lg shadow-md shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Salvar Ordem de Serviço
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Modal de Finalização / Checkout Rápido */}
+      <QuickOrderCheckoutModal
+        order={{
+          id: order?.id || 'ord-' + Date.now(),
+          orderNumber,
+          clientId,
+          vehicleId,
+          mechanicId,
+          status,
+          complaintDescription,
+          technicalDiagnostic,
+          checklist: {
+            mileage: Number(mileage),
+            fuelLevel: Number(fuelLevel),
+            hasSpareWheel,
+            hasJack,
+            hasLugWrench,
+            hasTriangle,
+            hasManual: true,
+            hasKeyChain: true,
+            lightsWorking: true,
+            hornWorking: true,
+            wipersWorking: true,
+            damagePoints,
+          },
+          parts,
+          services,
+          partsTotal,
+          servicesTotal,
+          grossTotal,
+          discount: Number(discount),
+          netTotal,
+          partsCostTotal,
+          mechanicsCommissionTotal,
+          netProfit,
+          profitMarginPercent,
+          paymentMethod,
+          isPaid,
+          paidAt: isPaid ? order?.paidAt || new Date().toISOString() : undefined,
+          createdAt: order?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          finishedAt: status === 'finalizado' ? new Date().toISOString() : undefined,
+        }}
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        onConfirmCheckout={(curOrd, method, isP) => {
+          setIsCheckoutOpen(false);
+          if (onQuickCheckout) {
+            onQuickCheckout(curOrd, method, isP);
+            onClose();
+          } else {
+            setStatus('finalizado');
+            setIsPaid(isP);
+            setPaymentMethod(method);
+            handleSave();
+          }
+        }}
+        client={currentClient}
+        vehicle={currentVehicle}
+        mechanic={mechanics.find((m) => m.id === mechanicId)}
+      />
     </div>
   );
 };

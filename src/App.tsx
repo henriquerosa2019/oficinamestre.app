@@ -10,6 +10,8 @@ import {
   OrderStatus,
   ParsedXMLInvoice,
   MaintenanceRecord,
+  SupplierPurchase,
+  PaymentMethod,
 } from './types';
 import { StorageService } from './services/storage';
 import { PreventiveMaintenanceService } from './services/preventiveMaintenance';
@@ -36,6 +38,7 @@ export const App: React.FC = () => {
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>([]);
+  const [purchases, setPurchases] = useState<SupplierPurchase[]>([]);
 
   // Estados dos Modais
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -59,6 +62,7 @@ export const App: React.FC = () => {
     setOrders(StorageService.getOrders());
     setTransactions(StorageService.getTransactions());
     setMaintenanceRecords(StorageService.getMaintenanceRecords());
+    setPurchases(StorageService.getPurchases());
   };
 
   // Contagem de carros no pátio (ativos)
@@ -162,9 +166,83 @@ export const App: React.FC = () => {
     setOrders(StorageService.getOrders());
   };
 
+  const handleQuickCheckout = (order: ServiceOrder, paymentMethod: PaymentMethod, isPaid: boolean) => {
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date().toISOString();
+
+    const updatedOrder: ServiceOrder = {
+      ...order,
+      status: 'finalizado',
+      paymentMethod,
+      isPaid,
+      paidAt: isPaid ? now : undefined,
+      finishedAt: now,
+      updatedAt: now,
+    };
+
+    // Deduz estoque caso ainda não tenha deduzido
+    StorageService.deductStockForOrder(updatedOrder);
+    setParts(StorageService.getParts());
+
+    // Salva a OS
+    StorageService.saveOrder(updatedOrder);
+    setOrders(StorageService.getOrders());
+
+    // Cria sozinho a linha de entrada no Financeiro (sem ir pra tela do Financeiro)
+    const client = clients.find((c) => c.id === order.clientId);
+    const vehicle = vehicles.find((v) => v.id === order.vehicleId);
+    const clientName = client?.name || 'Cliente';
+    const vehName = vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Veículo';
+
+    const newTx: FinancialTransaction = {
+      id: 'trx-' + Date.now(),
+      type: 'receita',
+      category: 'Serviço',
+      description: `Recebimento ${order.orderNumber} (${vehName} - ${clientName})`,
+      amount: order.netTotal,
+      dueDate: today,
+      paymentDate: isPaid ? today : undefined,
+      status: isPaid ? 'pago' : 'pendente',
+      serviceOrderId: order.id,
+      paymentMethod,
+      createdAt: now,
+    };
+
+    StorageService.saveTransaction(newTx);
+    setTransactions(StorageService.getTransactions());
+
+    // Memoriza os serviços preventivos para retorno do cliente
+    if (vehicle) {
+      order.services.forEach((s) => {
+        const mRec = PreventiveMaintenanceService.createMaintenanceRecord(updatedOrder, s.description, vehicle);
+        StorageService.saveMaintenanceRecord(mRec);
+      });
+      setMaintenanceRecords(StorageService.getMaintenanceRecords());
+    }
+  };
+
   const handlePrintReceipt = (order: ServiceOrder) => {
     setReceiptOrder(order);
     setIsReceiptModalOpen(true);
+  };
+
+  // Ações de Compras de Fornecedores & Parcelas
+  const handleSavePurchase = (purchase: SupplierPurchase) => {
+    StorageService.savePurchase(purchase);
+    setPurchases(StorageService.getPurchases());
+    setTransactions(StorageService.getTransactions());
+  };
+
+  const handleDeletePurchase = (id: string) => {
+    StorageService.deletePurchase(id);
+    setPurchases(StorageService.getPurchases());
+    setTransactions(StorageService.getTransactions());
+  };
+
+  const handlePayPurchaseInstallment = (purchaseId: string, installmentNumber: number) => {
+    StorageService.payPurchaseInstallment(purchaseId, installmentNumber);
+    setPurchases(StorageService.getPurchases());
+    setTransactions(StorageService.getTransactions());
   };
 
   // Ações de Peças & XML
@@ -177,16 +255,61 @@ export const App: React.FC = () => {
     StorageService.bulkUpsertParts(newParts);
     setParts(StorageService.getParts());
 
-    // Registra a conta a pagar se for importação via NF-e XML
+    // Registra a compra e a conta a pagar se for importação via NF-e XML
     if (invoiceInfo) {
+      const purchaseId = 'pur-' + Date.now();
+      const firstDue = invoiceInfo.firstDueDate || new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const instCount = invoiceInfo.installmentsCount || 2;
+      const installmentAmount = Number((invoiceInfo.totalValue / instCount).toFixed(2));
+
+      const installments = Array.from({ length: instCount }).map((_, idx) => {
+        const due = new Date(new Date(firstDue).getTime() + idx * 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split('T')[0];
+        return {
+          id: `inst-${purchaseId}-${idx + 1}`,
+          installmentNumber: idx + 1,
+          totalInstallments: instCount,
+          amount: installmentAmount,
+          dueDate: due,
+          status: 'pendente' as const,
+        };
+      });
+
+      const newPurchase: SupplierPurchase = {
+        id: purchaseId,
+        nfeNumber: invoiceInfo.nfeNumber,
+        supplierName: invoiceInfo.supplierName,
+        supplierCnpj: invoiceInfo.supplierCnpj,
+        issueDate: invoiceInfo.issueDate || new Date().toISOString().split('T')[0],
+        totalValue: invoiceInfo.totalValue,
+        itemsCount: invoiceInfo.items?.length || newParts.length,
+        paidInstallmentsCount: 0,
+        totalInstallmentsCount: instCount,
+        paidAmount: 0,
+        remainingAmount: invoiceInfo.totalValue,
+        firstDueDate: firstDue,
+        lastDueDate: installments[installments.length - 1].dueDate,
+        status: 'pendente',
+        partCodes: newParts.map((p) => p.code),
+        installments,
+        createdAt: new Date().toISOString(),
+      };
+
+      StorageService.savePurchase(newPurchase);
+      setPurchases(StorageService.getPurchases());
+
+      // Registra despesa financeira na categoria Peças
       const newExpense: FinancialTransaction = {
         id: 'trx-' + Date.now(),
         type: 'despesa',
-        category: 'Fornecedor de Autopeças',
-        description: `NF-e ${invoiceInfo.nfeNumber} - ${invoiceInfo.supplierName}`,
+        category: 'Peças',
+        description: `Boleto ${invoiceInfo.supplierName} - NF-e ${invoiceInfo.nfeNumber}`,
         amount: invoiceInfo.totalValue,
-        dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 15 dias para pagar
+        dueDate: firstDue,
         status: 'pendente',
+        supplierPurchaseId: purchaseId,
+        installmentInfo: `Parcela 1/${instCount}`,
         createdAt: new Date().toISOString(),
       };
       StorageService.saveTransaction(newExpense);
@@ -368,15 +491,20 @@ export const App: React.FC = () => {
             onNewOrder={handleOpenNewOrder}
             onUpdateStatus={handleUpdateOrderStatus}
             onPrintReceipt={handlePrintReceipt}
+            onQuickCheckout={handleQuickCheckout}
           />
         )}
 
         {activeTab === 'parts' && (
           <PartsInventoryView
             parts={parts}
+            purchases={purchases}
             onSavePart={handleSavePart}
             onBulkImportParts={handleBulkImportParts}
             onDeletePart={handleDeletePart}
+            onSavePurchase={handleSavePurchase}
+            onDeletePurchase={handleDeletePurchase}
+            onPayPurchaseInstallment={handlePayPurchaseInstallment}
           />
         )}
 
@@ -429,6 +557,7 @@ export const App: React.FC = () => {
         availableParts={parts}
         availableServices={services}
         onPrintReceipt={handlePrintReceipt}
+        onQuickCheckout={handleQuickCheckout}
       />
 
       {/* Modal de Impressão de Recibo / OS */}
