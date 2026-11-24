@@ -1,6 +1,7 @@
 import React, { forwardRef } from 'react';
 import { ServiceOrder, Client, Vehicle, Mechanic } from '../types';
 import { getOrderWarranty } from '../utils/warranty';
+import { AlertCircle } from 'lucide-react';
 
 export interface ReceiptDocumentProps {
   order: ServiceOrder;
@@ -205,6 +206,222 @@ export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
             <div className="text-base font-black text-slate-950 border-t border-slate-300 pt-1">
               VALOR TOTAL: R$ {order.netTotal.toFixed(2)}
             </div>
+          </div>
+        </div>
+
+        {/* Diagnotico & Entrada, do Checklist de Lataria & Avarias Externas */}
+        <div
+          className="mb-5 bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-100 shadow-sm print:bg-slate-950 print:text-slate-100"
+          style={{
+            backgroundColor: '#020617',
+            borderColor: '#1e293b',
+            color: '#f8fafc',
+            WebkitPrintColorAdjust: 'exact',
+            printColorAdjust: 'exact',
+          }}
+        >
+          {/* Cabeçalho */}
+          <div
+            className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2"
+            style={{ borderColor: '#1e293b' }}
+          >
+            <div>
+              <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Diagnotico & Entrada, do Checklist de Lataria & Avarias Externas</span>
+              </h4>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Para fins de ciência ao proprietário e registro para resguardar a oficina.
+              </p>
+            </div>
+            <div className="text-right text-xs text-slate-400 font-mono">
+              <span className="font-semibold text-slate-200">
+                KM: {order.checklist?.mileage?.toLocaleString('pt-BR') || '0'} km
+              </span>
+              <span className="mx-2 text-slate-600">•</span>
+              <span>Combustível: {order.checklist?.fuelLevel ?? 50}%</span>
+            </div>
+          </div>
+
+          {/* Silhueta Vetorial do Carro Interativa (Fiel ao CarDamageCanvas do sistema) */}
+          <div
+            className="relative w-full max-w-lg mx-auto aspect-[16/9] bg-slate-950 border border-slate-800 rounded-xl overflow-hidden select-none"
+            style={{
+              backgroundColor: '#030712',
+              borderColor: '#1e293b',
+            }}
+          >
+            {/* SVG Esquema de Carro Vista Superior */}
+            <svg
+              viewBox="0 0 600 320"
+              className="w-full h-full pointer-events-none"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                stroke: '#94a3b8',
+                fill: 'rgba(15, 23, 42, 0.4)',
+                opacity: 0.6,
+              }}
+            >
+              {/* Contorno Geral do Veículo (Vista de Cima) */}
+              <path d="M 160 30 C 220 20, 380 20, 440 30 C 470 35, 490 60, 500 100 C 510 140, 510 180, 500 220 C 490 260, 470 285, 440 290 C 380 300, 220 300, 160 290 C 130 285, 110 260, 100 220 C 90 180, 90 140, 100 100 C 110 60, 130 35, 160 30 Z" />
+
+              {/* Capô / Dianteira */}
+              <path d="M 130 90 L 190 90 C 190 60, 180 40, 160 35" strokeDasharray="3 3" />
+              <path d="M 130 230 L 190 230 C 190 260, 180 280, 160 285" strokeDasharray="3 3" />
+              <line x1="190" y1="60" x2="190" y2="260" />
+
+              {/* Para-brisa dianteiro */}
+              <path d="M 200 65 Q 230 160 200 255" />
+
+              {/* Teto e Colunas */}
+              <rect x="220" y="70" width="160" height="180" rx="10" />
+
+              {/* Vidro Traseiro */}
+              <path d="M 390 65 Q 370 160 390 255" />
+
+              {/* Porta-malas / Traseira */}
+              <line x1="420" y1="50" x2="420" y2="270" strokeDasharray="3 3" />
+
+              {/* Pneus */}
+              <rect x="150" y="10" width="45" height="18" rx="4" fill="#334155" />
+              <rect x="150" y="292" width="45" height="18" rx="4" fill="#334155" />
+              <rect x="405" y="10" width="45" height="18" rx="4" fill="#334155" />
+              <rect x="405" y="292" width="45" height="18" rx="4" fill="#334155" />
+
+              {/* Retrovisores */}
+              <rect x="200" y="22" width="18" height="10" rx="3" />
+              <rect x="200" y="288" width="18" height="10" rx="3" />
+
+              {/* Identificadores textuais de apoio */}
+              <text x="120" y="165" fill="#94a3b8" stroke="none" fontFamily="sans-serif" fontSize="12" fontWeight="bold">
+                FRENTE
+              </text>
+              <text x="440" y="165" fill="#94a3b8" stroke="none" fontFamily="sans-serif" fontSize="12" fontWeight="bold">
+                TRASEIRA
+              </text>
+            </svg>
+
+            {/* Pontos Marcados */}
+            {(order.checklist?.damagePoints || []).map((point, index) => {
+              const bg =
+                point.type === 'risco'
+                  ? '#f59e0b'
+                  : point.type === 'amassado'
+                  ? '#ef4444'
+                  : point.type === 'quebrado'
+                  ? '#9333ea'
+                  : '#3b82f6';
+              const border =
+                point.type === 'risco'
+                  ? '#fcd34d'
+                  : point.type === 'amassado'
+                  ? '#fca5a5'
+                  : point.type === 'quebrado'
+                  ? '#d8b4fe'
+                  : '#93c5fd';
+              const textCol = point.type === 'risco' ? '#451a03' : '#ffffff';
+
+              return (
+                <div
+                  key={point.id || index}
+                  style={{
+                    left: `${point.x}%`,
+                    top: `${point.y}%`,
+                    backgroundColor: bg,
+                    borderColor: border,
+                    color: textCol,
+                    position: 'absolute',
+                    transform: 'translate(-50%, -50%)',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '9999px',
+                    borderWidth: '2px',
+                    borderStyle: 'solid',
+                    fontSize: '10px',
+                    fontWeight: 900,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)',
+                  }}
+                  title={`${point.partName} (${point.type})`}
+                >
+                  {index + 1}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Lista de Avarias Registradas em Cards Lado a Lado (Exatamente como na imagem) */}
+          {order.checklist?.damagePoints && order.checklist.damagePoints.length > 0 ? (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {order.checklist.damagePoints.map((point, index) => {
+                const bg =
+                  point.type === 'risco'
+                    ? '#f59e0b'
+                    : point.type === 'amassado'
+                    ? '#ef4444'
+                    : point.type === 'quebrado'
+                    ? '#9333ea'
+                    : '#3b82f6';
+                const textCol = point.type === 'risco' ? '#451a03' : '#ffffff';
+
+                return (
+                  <div
+                    key={point.id || index}
+                    className="flex items-center justify-between gap-2 bg-slate-800/80 border border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-slate-300"
+                    style={{
+                      backgroundColor: 'rgba(30, 41, 59, 0.8)',
+                      borderColor: 'rgba(51, 65, 85, 0.6)',
+                    }}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <span
+                        className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black shrink-0"
+                        style={{
+                          backgroundColor: bg,
+                          color: textCol,
+                        }}
+                      >
+                        {index + 1}
+                      </span>
+                      <span className="font-semibold capitalize text-slate-200">[{point.type}]</span>
+                      <span className="truncate text-slate-400">{point.partName}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mt-2 text-center text-xs text-slate-400 italic py-1">
+              ✓ Nenhuma avaria de lataria assinalada no checklist de entrada.
+            </p>
+          )}
+
+          {/* Acessórios e Itens de Segurança na Entrada */}
+          <div
+            className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-800 text-[10px] text-slate-400"
+            style={{ borderColor: '#1e293b' }}
+          >
+            <div className="flex items-center gap-3 flex-wrap">
+              <span>
+                Estepe: <strong className="text-slate-200">{order.checklist?.hasSpareWheel ? 'Sim' : 'Não'}</strong>
+              </span>
+              <span>
+                Macaco: <strong className="text-slate-200">{order.checklist?.hasJack ? 'Sim' : 'Não'}</strong>
+              </span>
+              <span>
+                Chave de Roda: <strong className="text-slate-200">{order.checklist?.hasLugWrench ? 'Sim' : 'Não'}</strong>
+              </span>
+              <span>
+                Triângulo: <strong className="text-slate-200">{order.checklist?.hasTriangle ? 'Sim' : 'Não'}</strong>
+              </span>
+            </div>
+            <span className="text-[9.5px] text-slate-500 italic">
+              Declaração de ciência do proprietário no ato de abertura da O.S.
+            </span>
           </div>
         </div>
 
