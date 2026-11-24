@@ -41,9 +41,9 @@ ${partsList}
       ? order.services.map((s) => `  • ${s.description} (R$ ${s.price.toFixed(2)})`).join('\n')
       : '  (Nenhum serviço adicional)';
 
-    const message = `🔧 *ORÇAMENTO TÉCNICO - OFICINA RICO*
+    const message = `🔧 *ORÇAMENTO TÉCNICO - OFICINA DO RICO*
 -----------------------------------
-Olá *${clientFirstName}*, tudo bem? Aqui é o *Rico da Oficina Rico*!
+Olá *${clientFirstName}*, tudo bem? Aqui é o *Rico da Oficina do Rico*!
 
 Concluímos a avaliação técnica do seu *${vehicle.brand} ${vehicle.model}* (Placa: *${vehicle.plate}*).
 
@@ -62,7 +62,7 @@ ${order.discount > 0 ? `💰 *Desconto Aplicado:* - R$ ${order.discount.toFixed(
 -----------------------------------
 👉 Responda com *"AUTORIZADO"* (ou nos envie uma mensagem se tiver alguma dúvida, ok?)
 
-*Atenção:* 👉 Salve nosso WhatsApp (Oficina Rico) na sua Agenda pra acompanhar o andamento da sua OS no:         e para a Garantia dos Serviços, e Avisos sobre Retornos.`;
+*Atenção:* 👉 Salve nosso WhatsApp (Oficina do Rico - (21) 96463-2820) na sua Agenda pra acompanhar o andamento da sua OS no:         e para a Garantia dos Serviços, e Avisos sobre Retornos.`;
 
     return message;
   },
@@ -74,7 +74,7 @@ ${order.discount > 0 ? `💰 *Desconto Aplicado:* - R$ ${order.discount.toFixed(
 
     const message = `🚗💨 *SEU VEÍCULO ESTÁ PRONTO!* 🏁
 -----------------------------------
-Olá *${clientFirstName}*, tudo bem? Aqui é o *Rico da Oficina Rico*!
+Olá *${clientFirstName}*, tudo bem? Aqui é o *Rico da Oficina do Rico*!
 
 Passando para avisar que o serviço no seu *${vehicle.brand} ${vehicle.model}* (Placa: *${vehicle.plate}*) foi finalizado com sucesso e o veículo foi liberado nos testes finais de segurança.
 
@@ -84,7 +84,7 @@ Passando para avisar que o serviço no seu *${vehicle.brand} ${vehicle.model}* (
 Nosso pátio já está liberado para você retirar o veículo quando desejar!
 
 📲 *Importante para sua Garantia:*
-Por favor, *salve o WhatsApp da Oficina Rico (Rico)* na sua agenda para acompanhar a garantia legal de ${warranty.warrantyDays} dias (*válida até ${warranty.formattedExpiryDate}*) e receber o histórico das próximas preventivas do seu carro.
+Por favor, *salve o WhatsApp da Oficina do Rico (Rico: (21) 96463-2820)* na sua agenda para acompanhar a garantia legal de ${warranty.warrantyDays} dias (*válida até ${warranty.formattedExpiryDate}*) e receber o histórico das próximas preventivas do seu carro.
 
 Qualquer dúvida ou se precisar de um horário especial de retirada, estamos à disposição por aqui! 🤝`;
 

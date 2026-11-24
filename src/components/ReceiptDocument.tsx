@@ -2,6 +2,7 @@ import React, { forwardRef } from 'react';
 import { ServiceOrder, Client, Vehicle, Mechanic } from '../types';
 import { getOrderWarranty } from '../utils/warranty';
 import { AlertCircle } from 'lucide-react';
+import logoImg from '../assets/logo.png';
 
 export interface ReceiptDocumentProps {
   order: ServiceOrder;
@@ -30,19 +31,35 @@ export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
         }}
       >
         {/* Cabeçalho da Oficina */}
-        <div className="border-b-2 border-slate-900 pb-4 mb-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-950 uppercase m-0">
-              OFICINA RICO
-            </h1>
-            <p className="text-[11px] text-slate-600 m-0 mt-0.5">
-              Manutenção Preventiva, Freios, Suspensão, Injeção Eletrônica & Motores
-            </p>
-            <p className="text-[10px] text-slate-500 m-0 mt-0.5">
-              CNPJ: 12.345.678/0001-90 • Tel/WhatsApp: (11) 98244-0071 • Mecânico Responsável: Rico • São Paulo - SP
-            </p>
+        <div className="border-b-2 border-slate-900 pb-4 mb-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <img
+              src={logoImg}
+              alt="Oficina do Rico"
+              className="w-20 h-20 object-contain rounded-full border border-slate-200 shadow-sm shrink-0"
+              style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+            />
+            <div>
+              <h1 className="text-xl font-black tracking-tight text-slate-950 uppercase m-0 leading-none">
+                OFICINA DO RICO
+              </h1>
+              <p className="text-[11px] font-bold text-amber-700 m-0 mt-1 uppercase tracking-wide">
+                Rico Auto Mecânica
+              </p>
+              <p className="text-[10.5px] text-slate-600 m-0 mt-0.5">
+                Manutenção Preventiva, Freios, Suspensão, Injeção Eletrônica & Motores
+              </p>
+              <p className="text-[10px] text-slate-500 m-0 mt-0.5">
+                Rua Barão do Bom Retiro, 1406 - Engenho Novo - Rio de Janeiro - RJ
+              </p>
+              <p className="text-[10px] text-slate-800 font-bold m-0 mt-0.5 flex items-center gap-1">
+                <span>📱 Tel / WhatsApp: (21) 96463-2820</span>
+                <span className="mx-1">•</span>
+                <span>Mecânico Responsável: Rico</span>
+              </p>
+            </div>
           </div>
-          <div className="text-right border-l-2 border-slate-200 pl-4">
+          <div className="text-right border-l-2 border-slate-200 pl-4 shrink-0">
             <span className="text-xs uppercase text-slate-500 block font-semibold">
               {quotation ? 'Orçamento Técnico' : 'Ordem de Serviço'}
             </span>
@@ -438,7 +455,7 @@ export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
               </strong>
               <p className="text-[10px] text-slate-700 mt-0.5 leading-relaxed m-0">
                 Prezado(a) <strong>{client?.name || 'Cliente'}</strong>, salve o WhatsApp comercial da{' '}
-                <strong>Oficina Rico</strong> (Rico: <strong>(11) 98244-0071</strong>) na sua agenda para acompanhar a
+                <strong>Oficina do Rico</strong> (Rico: <strong>(21) 96463-2820</strong>) na sua agenda para acompanhar a
                 garantia legal de 90 dias (válida até <strong>{warranty.formattedExpiryDate}</strong>), receber laudos e o
                 histórico preventivo do seu <strong>{vehicle?.brand} {vehicle?.model}</strong>.
               </p>
@@ -459,7 +476,7 @@ export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
               </span>
             </div>
             <div className="border-t border-slate-400 pt-1 text-center">
-              <span className="block font-bold text-slate-800">Oficina Rico</span>
+              <span className="block font-bold text-slate-800">Oficina do Rico</span>
               <span className="text-[9px] text-slate-500">Rico - Responsável Técnico</span>
             </div>
           </div>

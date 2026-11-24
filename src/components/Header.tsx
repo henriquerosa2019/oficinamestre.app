@@ -39,20 +39,22 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center justify-between h-16 gap-4">
           {/* Logo & Marca */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-black">
-              <Wrench className="w-5 h-5 text-slate-950 stroke-[2.5]" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="Oficina do Rico"
+              className="w-11 h-11 rounded-full object-contain bg-slate-950 border border-amber-500/40 p-0.5 shadow-lg shadow-amber-500/20 shrink-0"
+            />
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-black tracking-tight text-white">
-                  Oficina<span className="text-amber-500">Mestre</span>
+                  Oficina do <span className="text-amber-500">Rico</span>
                 </span>
                 <span className="text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded">
-                  MVP Pro
+                  Auto Mecânica
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 hidden sm:block">
-                Gestão Ágil de Serviços, Peças & Clientes
+                Gestão Ágil de Serviços, Peças & Clientes • (21) 96463-2820
               </p>
             </div>
           </div>
