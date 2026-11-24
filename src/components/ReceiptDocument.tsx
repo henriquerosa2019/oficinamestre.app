@@ -32,29 +32,29 @@ export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
       >
         {/* Cabeçalho da Oficina */}
         <div className="border-b-2 border-slate-900 pb-4 mb-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-4">
             <img
               src={logoImg}
               alt="Oficina do Rico"
-              className="w-20 h-20 object-contain rounded-full border border-slate-200 shadow-sm shrink-0"
-              style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+              className="w-40 h-40 object-contain shrink-0 drop-shadow-md"
+              style={{ width: '160px', height: '160px', objectFit: 'contain' }}
             />
             <div>
-              <h1 className="text-xl font-black tracking-tight text-slate-950 uppercase m-0 leading-none">
+              <h1 className="text-2xl font-black tracking-tight text-slate-950 uppercase m-0 leading-none">
                 OFICINA DO RICO
               </h1>
-              <p className="text-[11px] font-bold text-amber-700 m-0 mt-1 uppercase tracking-wide">
+              <p className="text-xs font-black text-amber-700 m-0 mt-1.5 uppercase tracking-wide">
                 Rico Auto Mecânica
               </p>
-              <p className="text-[10.5px] text-slate-600 m-0 mt-0.5">
+              <p className="text-[11px] text-slate-700 m-0 mt-1 leading-snug">
                 Manutenção Preventiva, Freios, Suspensão, Injeção Eletrônica & Motores
               </p>
-              <p className="text-[10px] text-slate-500 m-0 mt-0.5">
-                Rua Barão do Bom Retiro, 1406 - Engenho Novo - Rio de Janeiro - RJ
+              <p className="text-[10.5px] text-slate-600 m-0 mt-1">
+                📍 Rua Barão do Bom Retiro, 1406 - Engenho Novo - Rio de Janeiro - RJ
               </p>
-              <p className="text-[10px] text-slate-800 font-bold m-0 mt-0.5 flex items-center gap-1">
+              <p className="text-[11px] text-slate-900 font-bold m-0 mt-1 flex items-center gap-1.5">
                 <span>📱 Tel / WhatsApp: (21) 96463-2820</span>
-                <span className="mx-1">•</span>
+                <span className="mx-1 text-slate-400">•</span>
                 <span>Mecânico Responsável: Rico</span>
               </p>
             </div>

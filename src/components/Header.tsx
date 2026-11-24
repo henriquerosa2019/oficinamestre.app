@@ -42,7 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
             <img
               src="/logo.png"
               alt="Oficina do Rico"
-              className="w-11 h-11 rounded-full object-contain bg-slate-950 border border-amber-500/40 p-0.5 shadow-lg shadow-amber-500/20 shrink-0"
+              className="w-12 h-12 rounded-full object-contain bg-slate-950 border border-amber-500/40 p-0.5 shadow-lg shadow-amber-500/20 shrink-0"
             />
             <div>
               <div className="flex items-center gap-2">
