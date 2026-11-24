@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Processo Operacional Vertical - OficinaMestre</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #e2e8f0;
+    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    color: #0f172a;
+  }
+  #app { max-width: 100%; padding: 18px; }
+  #card {
+    background: #f1f5f9;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(15,23,42,0.15);
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+  }
+  #toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+    padding: 14px 20px;
+    background: #0f172a;
+  }
+  #toolbar h1 { margin: 0; color: #fff; font-size: 19px; font-weight: 700; }
+  #toolbar p { margin: 4px 0 0; color: #94a3b8; font-size: 12.5px; }
+  #controls { display: flex; align-items: center; gap: 16px; }
+  #controls label { display: flex; align-items: center; gap: 8px; color: #e2e8f0; font-size: 12.5px; }
+  #zoomVal { width: 36px; display: inline-block; color: #e2e8f0; }
+  #downloadBtn {
+    background: #2563eb; color: #fff; border: none; padding: 10px 18px;
+    border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.4);
+    display: flex; align-items: center; gap: 6px;
+    transition: background 0.2s;
+  }
+  #downloadBtn:hover { background: #1d4ed8; }
+  #scrollWrap { overflow: auto; max-height: 78vh; background: #f8fafc; }
+  #diagramWrap { position: relative; display: inline-block; }
+  #stickyHeader {
+    position: sticky; top: 0; z-index: 30;
+    background: #f8fafc;
+    box-shadow: 0 4px 10px rgba(15,23,42,0.08);
+  }
+  #headerSvg, #bpmnSvg { display: block; }
+  .node { cursor: help; }
+  #tooltip {
+    position: fixed; display: none; max-width: 320px;
+    background: #0f172a; color: #f8fafc;
+    padding: 12px 14px; border-radius: 10px;
+    font-size: 12.5px; line-height: 1.45;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+    z-index: 9999; pointer-events: none; border: 1px solid #334155;
+  }
+  #tooltip .tt-title { font-weight: 700; margin-bottom: 5px; color: #93c5fd; font-size: 12.5px; }
+  #hint { padding: 12px 20px 16px; font-size: 11.5px; color: #64748b; background:#f1f5f9; line-height:1.5; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="card">
+    <div id="toolbar">
+      <div>
+        <h1>Processo Operacional Vertical - OficinaMestre</h1>
+        <p>Fluxo ponta a ponta, de cima para baixo &middot; passe o mouse sobre cada elemento para ver a explica&ccedil;&atilde;o t&eacute;cnica</p>
+      </div>
+      <div id="controls">
+        <label>Zoom
+          <input id="zoomRange" type="range" min="40" max="150" value="58">
+          <span id="zoomVal">58%</span>
+        </label>
+        <button id="downloadBtn">&#11015; Baixar PNG</button>
+      </div>
+    </div>
+    <div id="scrollWrap">
+      <div id="diagramWrap">
+        <div id="stickyHeader">
+          <svg id="headerSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <svg id="bpmnSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+    <div id="hint">
+      As colunas coloridas indicam <b>quem executa</b> cada atividade (Cliente, Mec&acirc;nico, Sistema, WhatsApp e Gest&atilde;o). As etapas se sucedem de cima para baixo. Os c&iacute;rculos com letra (<b>A</b>) s&atilde;o <b>conectores de reten&ccedil;&atilde;o</b>: o fluxo sai de um e retorna no outro, completando o ciclo de fideliza&ccedil;&atilde;o e revis&otilde;es peri&oacute;dicas. Setas tracejadas indicam fluxos condicionais, alimenta&ccedil;&atilde;o de dados ou compras externas. Em conformidade com a <b>Garantia Legal de 90 dias (CDC Art. 26)</b>.
+    </div>
+  </div>
+</div>
+<div id="tooltip"></div>
+
+<script>
+(function () {
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var WIDTH = 1260;
+  var TITLE_H = 132, HEADER_H = 48, ROWH = 118, GAP = 36;
+
+  function el(tag, attrs, kids) {
+    var e = document.createElementNS(SVGNS, tag);
+    attrs = attrs || {};
+    for (var k in attrs) { if (attrs[k] !== null && attrs[k] !== undefined) e.setAttribute(k, attrs[k]); }
+    (kids || []).forEach(function (kid) {
+      if (kid === null || kid === undefined) return;
+      if (typeof kid === 'string') e.appendChild(document.createTextNode(kid));
+      else e.appendChild(kid);
+    });
+    return e;
+  }
+
+  var measureCanvas = document.createElement('canvas');
+  var mctx = measureCanvas.getContext('2d');
+  function textWidth(text, font) { mctx.font = font; return mctx.measureText(text).width; }
+  function wrapLines(text, font, maxWidth) {
+    var words = text.split(' ');
+    var lines = []; var cur = '';
+    words.forEach(function (w) {
+      var test = cur ? cur + ' ' + w : w;
+      if (textWidth(test, font) > maxWidth && cur) { lines.push(cur); cur = w; }
+      else { cur = test; }
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  var COLORS = {
+    C: { fill: '#eff6ff', stroke: '#2563eb', band: 'rgba(37,99,235,0.06)' },  // Cliente (Azul)
+    M: { fill: '#fff7ed', stroke: '#ea580c', band: 'rgba(234,88,12,0.07)' },  // Mecânico (Laranja)
+    S: { fill: '#f5f3ff', stroke: '#7c3aed', band: 'rgba(124,58,237,0.06)' },  // Sistema (Roxo)
+    W: { fill: '#f0fdf4', stroke: '#16a34a', band: 'rgba(22,163,74,0.06)' },  // WhatsApp (Verde)
+    G: { fill: '#f0fdfa', stroke: '#0d9488', band: 'rgba(13,148,136,0.07)' }   // Gestão & Financeiro (Teal)
+  };
+
+  // Colunas fixas (raias) — 5 atores no processo integrado da oficina
+  var COLS = [
+    { actor: 'C', x: 150, label: 'Cliente (Proprietário)' },
+    { actor: 'M', x: 390, label: 'Mecânico (Chão de Oficina)' },
+    { actor: 'S', x: 630, label: 'Sistema (OficinaMestre)' },
+    { actor: 'W', x: 870, label: 'WhatsApp (Comunicação)' },
+    { actor: 'G', x: 1110, label: 'Gestão & Financeiro' }
+  ];
+  var COLW = 240;
+
+  // ---------- SEÇÕES (ETAPAS OPERACIONAIS) ----------
+  function buildSections() {
+    var defs = [
+      { key: 's1', title: 'Etapa 1 · Entrada do Veículo & Abertura da O.S.', sub: 'da chegada do veículo no pátio até o diagnóstico inicial e checklist de segurança', rows: 7 },
+      { key: 's2', title: 'Etapa 2 · Orçamento Inteligente & Peças no Estoque', sub: 'da seleção de serviços e prateleira de peças (Loc. A1) até a cotação com margem', rows: 6 },
+      { key: 's3', title: 'Etapa 3 · Aprovação do Cliente & Execução no Pátio', sub: 'da aprovação no WhatsApp à contagem oficial da garantia legal (90 dias CDC) e baixa de peças', rows: 7 },
+      { key: 's4', title: 'Etapa 4 · Fechamento Rápido, Pagamento & Recibo com QR Code', sub: 'do checkout simplificado em 1 clique ao cálculo automático de comissão e recibo CDC', rows: 6 },
+      { key: 's5', title: 'Etapa 5 · Retenção, Pós-Venda & Gestão de Fornecedores', sub: 'das contas a pagar parceladas ao retorno preventivo do cliente para nova revisão', rows: 7 }
+    ];
+    var y = TITLE_H, out = {};
+    defs.forEach(function (d) {
+      var headerY = y, contentTop = headerY + HEADER_H;
+      var rowCenters = [];
+      for (var i = 0; i < d.rows; i++) rowCenters.push(contentTop + i * ROWH + ROWH / 2);
+      var contentBottom = contentTop + d.rows * ROWH;
+      out[d.key] = { title: d.title, sub: d.sub, headerY: headerY, contentTop: contentTop, contentBottom: contentBottom, rowCenters: rowCenters };
+      y = contentBottom + GAP;
+    });
+    out.__totalHeight = y - GAP + 44;
+    return out;
+  }
+  var S = buildSections();
+  var HEIGHT = S.__totalHeight;
+  var R1 = S.s1.rowCenters, R2 = S.s2.rowCenters, R3 = S.s3.rowCenters, R4 = S.s4.rowCenters, R5 = S.s5.rowCenters;
+
+  // ---------- NÓS (ELEMENTOS DO FLUXO) ----------
+  var nodes = {
+    // ===== Etapa 1 · Entrada do Veículo & Abertura da O.S. =====
+    start: { x: 150, y: R1[0], type: 'start', actor: 'C', label: 'Chegada do veículo na oficina',
+      tip: 'O cliente traz o veículo à oficina para reparo corretivo ou revisão preventiva agendada.' },
+    catchA: { x: 50, y: R1[0], type: 'link', dir: 'catch', letter: 'A', actor: 'C', label: 'Retorno pelo pós-venda (Etapa 5)',
+      tip: 'Conector de retenção: cliente que retornou após receber lembrete preventivo na Etapa 5.' },
+    mRecebe: { x: 390, y: R1[1], type: 'task', actor: 'M', label: 'Recepcionar e abrir Nova O.S.',
+      tip: 'O mecânico ou recepcionista clica em "Nova O.S." no celular, tablet ou balcão.' },
+    gwCli: { x: 390, y: R1[2], type: 'gateway', actor: 'M', label: 'Cliente e veículo cadastrados?',
+      tip: 'Verifica se o proprietário e a placa já estão no banco de dados da oficina.' },
+    mNovo: { x: 390, y: R1[3], type: 'task', actor: 'M', label: 'Cadastrar direto na O.S. com Novo (+)',
+      tip: 'Utiliza os botões Novo (+) abaixo dos seletores para cadastrar cliente e veículo sem sair da O.S.' },
+    mBuscaCli: { x: 150, y: R1[3], type: 'task', actor: 'M', label: 'Selecionar cadastro existente',
+      tip: 'Busca rápida por nome, telefone ou placa com histórico de manutenções anteriores.' },
+    sEntrada: { x: 630, y: R1[4], type: 'task', actor: 'S', label: 'Registrar Data de Entrada (entryDate)',
+      tip: 'O sistema grava a Data de Entrada, cria o número da O.S. e define status "Orçamento". A data do serviço fica aguardando aprovação.' },
+    mChecklist: { x: 390, y: R1[5], type: 'task', actor: 'M', label: 'Preencher checklist e mapa de danos',
+      tip: 'Registro de KM, nível de combustível, estepe, macaco, mapa interativo de avarias da lataria e fotos.' },
+    mSintoma: { x: 390, y: R1[6], type: 'task', actor: 'M', label: 'Registrar sintoma e diagnóstico inicial',
+      tip: 'Anotação técnica das queixas do cliente e pré-diagnóstico no chão de oficina.' },
+
+    // ===== Etapa 2 · Orçamento Inteligente & Peças no Estoque =====
+    mServicos: { x: 390, y: R2[0], type: 'task', actor: 'M', label: 'Lançar serviços e mecânico executor',
+      tip: 'Adiciona itens de mão de obra (tempo estimado, valor e mecânico responsável: Carlos, Marcos ou Rico).' },
+    mBuscaPeca: { x: 390, y: R2[1], type: 'task', actor: 'M', label: 'Buscar peças com saldo e prateleira',
+      tip: 'Busca inteligente exibe estoque disponível, preço sugerido e localização (ex: Loc: Prateleira A1, B3).' },
+    gwEstoque: { x: 630, y: R2[2], type: 'gateway', actor: 'S', label: 'Peça disponível na oficina?',
+      tip: 'Verifica se a quantidade requerida está disponível no estoque local.' },
+    gCompraPeca: { x: 1110, y: R2[2], type: 'task', actor: 'G', label: 'Comprar de fornecedor com NF parcelada',
+      tip: 'Registra compra faturada com fornecedor, nota fiscal e parcelamento (1/3, 2/3) com alertas de vencimento.' },
+    sMargem: { x: 630, y: R2[3], type: 'task', actor: 'S', label: 'Calcular custos, margem e total da O.S.',
+      tip: 'Calcula custo real de peças, margem de contribuição da oficina e total de serviços e produtos.' },
+    sMsgOrc: { x: 630, y: R2[4], type: 'task', actor: 'S', label: 'Gerar mensagem formatada de orçamento',
+      tip: 'Monta a proposta clara e detalhada para envio direto ao cliente.' },
+    wEnvioOrc: { x: 870, y: R2[5], type: 'task', actor: 'W', label: 'Enviar orçamento via WhatsApp',
+      tip: 'Abre o WhatsApp com mensagem completa e botões de ação para o cliente aprovar.' },
+
+    // ===== Etapa 3 · Aprovação do Cliente & Execução no Pátio =====
+    cAprova: { x: 150, y: R3[0], type: 'task', actor: 'C', label: 'Analisar proposta no WhatsApp',
+      tip: 'O cliente examina itens, valores, formas de pagamento e prazos propostos.' },
+    gwAprovado: { x: 150, y: R3[1], type: 'gateway', actor: 'C', label: 'Cliente aprova o orçamento?',
+      tip: 'Decisão do proprietário em autorizar ou declinar a execução dos serviços.' },
+    mCancela: { x: 390, y: R3[1], type: 'task', actor: 'M', label: 'Marcar O.S. Recusada e liberar veículo',
+      tip: 'Se recusado, a O.S. é arquivada, histórico salvo e veículo liberado sem custos adicionais.' },
+    endCancela: { x: 390, y: R3[2], type: 'end', actor: 'M', label: 'O.S. Recusada / Liberado',
+      tip: 'Atendimento encerrado sem execução de serviços.' },
+    sAprovacao: { x: 630, y: R3[2], type: 'task', actor: 'S', label: 'Aprovar O.S. e carimbar Data do Serviço',
+      tip: 'Registra Data do Serviço oficial (serviceDate) e inicia a contagem da Garantia Legal de 90 dias (CDC Art. 26).' },
+    mRetiraPeca: { x: 390, y: R3[3], type: 'task', actor: 'M', label: 'Pegar peças na prateleira (Loc: A1/B3)',
+      tip: 'Localiza com agilidade as peças no almoxarifado pela posição gravada na O.S. e inicia o reparo no elevador.' },
+    sBaixaEstoque: { x: 630, y: R3[4], type: 'task', actor: 'S', label: 'Dar baixa de estoque e checar mínimo',
+      tip: 'Desconta o saldo de peças do almoxarifado e gera alerta visual se atingir o estoque mínimo.' },
+    mExecuta: { x: 390, y: R3[5], type: 'task', actor: 'M', label: 'Executar serviços e teste de rodagem',
+      tip: 'Trabalho mecânico no veículo (suspensão, freios, motor, elétrica) e checagem de qualidade.' },
+    sPronto: { x: 630, y: R3[6], type: 'task', actor: 'S', label: 'Mudar status no Kanban para Pronto',
+      tip: 'Veículo movido para a coluna Pronto para Entrega no pátio virtual.' },
+    wAvisaPronto: { x: 870, y: R3[6], type: 'task', actor: 'W', label: 'Avisar cliente via WhatsApp: "Carro Pronto!"',
+      tip: 'Notificação automática ao cliente com mensagem amigável avisando que o carro já pode ser retirado.' },
+
+    // ===== Etapa 4 · Fechamento Rápido, Pagamento & Recibo com QR Code =====
+    mCheckout: { x: 390, y: R4[0], type: 'task', actor: 'M', label: 'Finalizar O.S. com botões rápidos',
+      tip: 'Check-out simplificado com botões grandes: [ Pix ] [ Cartão ] [ Dinheiro ] [ A Prazo ], sem burocracia.' },
+    cPagto: { x: 150, y: R4[1], type: 'task', actor: 'C', label: 'Efetuar pagamento na forma escolhida',
+      tip: 'Cliente realiza o pagamento via Pix, cartão de crédito/débito, dinheiro ou a prazo.' },
+    sFinanceiro: { x: 630, y: R4[2], type: 'task', actor: 'S', label: 'Lançar caixa e calcular comissão',
+      tip: 'Entrada gerada automaticamente no Financeiro/DRE e cálculo da comissão do mecânico (Carlos/Marcos/Rico).' },
+    sRecibo: { x: 630, y: R4[3], type: 'task', actor: 'S', label: 'Emitir Recibo com QR Code e Garantia 90d',
+      tip: 'Recibo oficial destacando em negrito o Vencimento da Garantia (CDC 90 dias), Data de Entrada e Data do Serviço.' },
+    wEnvioRecibo: { x: 870, y: R4[4], type: 'task', actor: 'W', label: 'Disparar recibo digital no WhatsApp',
+      tip: 'Envia o recibo, dados do veículo e termo de garantia direto no WhatsApp do cliente com 1 toque.' },
+    mEntrega: { x: 390, y: R4[5], type: 'task', actor: 'M', label: 'Entregar veículo e chaves ao cliente',
+      tip: 'Mecânico ou atendente entrega o veículo pronto com apresentação das peças trocadas.' },
+    endOS: { x: 150, y: R4[5], type: 'end', actor: 'C', label: 'Veículo entregue & O.S. Concluída',
+      tip: 'O.S. finalizada no sistema, cliente satisfeito e histórico gravado no prontuário do veículo.' },
+
+    // ===== Etapa 5 · Retenção, Pós-Venda & Gestão de Fornecedores =====
+    tTimer: { x: 1110, y: R5[0], type: 'timer', actor: 'G', label: 'Rotina diária de gestão e DRE',
+      tip: 'Evento de tempo: acompanhamento de faturamento, fluxo de caixa e compromissos financeiros.' },
+    gAlertasNF: { x: 1110, y: R5[1], type: 'task', actor: 'G', label: 'Alertas de NFs a vencer e vencidas',
+      tip: 'Painel destaca notas: amarelo piscante (Vence Hoje), vermelho (Vencidas) e filtros de 1 a 5 dias.' },
+    gBaixaNF: { x: 1110, y: R5[2], type: 'task', actor: 'G', label: '1 toque para quitar parcela de fornecedor',
+      tip: 'Na tabela Contas a Pagar, 1 toque no selo Pendente registra quitação (ex: parcela 1/3) com data automática.' },
+    sDRE: { x: 630, y: R5[3], type: 'task', actor: 'S', label: 'Consolidar DRE e comissões da equipe',
+      tip: 'Visão executiva em tempo real: receita bruta, custo de peças, margem líquida e comissões a pagar.' },
+    tRevisao: { x: 630, y: R5[4], type: 'timer', actor: 'S', label: 'Vencimento de 90 dias / KM de revisão',
+      tip: 'Evento de tempo: sistema detecta veículos que atingiram o período ideal para troca de óleo ou revisão periódica.' },
+    wPosVenda: { x: 870, y: R5[5], type: 'task', actor: 'W', label: 'Disparar lembrete de revisão no WhatsApp',
+      tip: 'Mensagem de pós-venda lembrando o cliente de trocar óleo, verificar freios ou revisar a suspensão.' },
+    cRetorno: { x: 150, y: R5[6], type: 'task', actor: 'C', label: 'Cliente agenda retorno preventivo',
+      tip: 'Proprietário recebe o lembrete, percebe o cuidado profissional da oficina e traz o carro novamente.' },
+    throwA: { x: 50, y: R5[6], type: 'link', dir: 'throw', letter: 'A', actor: 'C', label: 'Volta para Etapa 1 (Conector A)',
+      tip: 'Conector de Retenção A: fecha o ciclo virtuoso do cliente fidelizado, iniciando uma nova O.S.' }
+  };
+
+  // ---------- CONEXÕES (FLUXO DAS SETAS) ----------
+  var edges = [
+    // Etapa 1
+    { from: 'start', to: 'mRecebe' },
+    { from: 'catchA', to: 'mRecebe', dashed: true, label: 'Cliente retorna' },
+    { from: 'mRecebe', to: 'gwCli' },
+    { from: 'gwCli', to: 'mNovo', label: 'Novo cliente/veículo' },
+    { from: 'gwCli', to: 'mBuscaCli', label: 'Já cadastrado',
+      points: [[390, R1[2]], [390, R1[2] + 34], [150, R1[2] + 34], [150, R1[3]]],
+      labelAt: [270, R1[2] + 34] },
+    { from: 'mNovo', to: 'sEntrada' },
+    { from: 'mBuscaCli', to: 'sEntrada',
+      points: [[150, R1[3]], [150, R1[3] + 46], [630, R1[3] + 46], [630, R1[4]]] },
+    { from: 'sEntrada', to: 'mChecklist' },
+    { from: 'mChecklist', to: 'mSintoma' },
+
+    // Etapa 2
+    { from: 'mSintoma', to: 'mServicos' },
+    { from: 'mServicos', to: 'mBuscaPeca' },
+    { from: 'mBuscaPeca', to: 'gwEstoque' },
+    { from: 'gwEstoque', to: 'sMargem', label: 'Em estoque' },
+    { from: 'gwEstoque', to: 'gCompraPeca', label: 'Falta peça',
+      points: [[630, R2[2]], [630, R2[2] - 34], [1110, R2[2] - 34], [1110, R2[2]]],
+      labelAt: [870, R2[2] - 34] },
+    { from: 'gCompraPeca', to: 'sMargem', dashed: true, label: 'NF faturada 1/3, 2/3',
+      points: [[1110, R2[2]], [1110, R2[2] + 46], [630, R2[2] + 46], [630, R2[3]]],
+      labelAt: [870, R2[2] + 46] },
+    { from: 'sMargem', to: 'sMsgOrc' },
+    { from: 'sMsgOrc', to: 'wEnvioOrc' },
+
+    // Etapa 3
+    { from: 'wEnvioOrc', to: 'cAprova',
+      points: [[870, R2[5]], [870, R2[5] + 36], [150, R2[5] + 36], [150, R3[0]]] },
+    { from: 'cAprova', to: 'gwAprovado' },
+    { from: 'gwAprovado', to: 'mCancela', label: 'Recusou',
+      points: [[150, R3[1]], [270, R3[1]], [270, R3[1]], [285, R3[1]]],
+      labelAt: [215, R3[1]] },
+    { from: 'mCancela', to: 'endCancela' },
+    { from: 'gwAprovado', to: 'sAprovacao', label: 'Aprovou',
+      points: [[150, R3[1]], [150, R3[1] + 46], [630, R3[1] + 46], [630, R3[2]]],
+      labelAt: [390, R3[1] + 46] },
+    { from: 'sAprovacao', to: 'mRetiraPeca' },
+    { from: 'mRetiraPeca', to: 'sBaixaEstoque' },
+    { from: 'sBaixaEstoque', to: 'mExecuta' },
+    { from: 'mExecuta', to: 'sPronto' },
+    { from: 'sPronto', to: 'wAvisaPronto' },
+
+    // Etapa 4
+    { from: 'wAvisaPronto', to: 'mCheckout',
+      points: [[870, R3[6]], [870, R3[6] + 36], [390, R3[6] + 36], [390, R4[0]]] },
+    { from: 'mCheckout', to: 'cPagto' },
+    { from: 'cPagto', to: 'sFinanceiro' },
+    { from: 'sFinanceiro', to: 'sRecibo' },
+    { from: 'sRecibo', to: 'wEnvioRecibo' },
+    { from: 'wEnvioRecibo', to: 'mEntrega' },
+    { from: 'mEntrega', to: 'endOS' },
+
+    // Etapa 5
+    { from: 'tTimer', to: 'gAlertasNF' },
+    { from: 'gAlertasNF', to: 'gBaixaNF' },
+    { from: 'gBaixaNF', to: 'sDRE' },
+    { from: 'sRecibo', to: 'tRevisao', dashed: true, label: 'Gera ciclo preventivo 90d',
+      points: [[630, R4[3]], [630, R5[4]]] },
+    { from: 'tRevisao', to: 'wPosVenda' },
+    { from: 'wPosVenda', to: 'cRetorno' },
+    { from: 'cRetorno', to: 'throwA' }
+  ];
+
+  // ---------- MONTAGEM DO SVG ----------
+  var headerSvg = document.getElementById('headerSvg');
+  headerSvg.setAttribute('viewBox', '0 0 ' + WIDTH + ' ' + TITLE_H);
+  headerSvg.setAttribute('width', WIDTH);
+  headerSvg.setAttribute('height', TITLE_H);
+
+  var svg = document.getElementById('bpmnSvg');
+  svg.setAttribute('viewBox', '0 ' + TITLE_H + ' ' + WIDTH + ' ' + (HEIGHT - TITLE_H));
+  svg.setAttribute('width', WIDTH);
+  svg.setAttribute('height', HEIGHT - TITLE_H);
+
+  svg.appendChild(el('defs', {}, [
+    el('marker', { id: 'arrow', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' }, [
+      el('path', { d: 'M0,0 L10,5 L0,10 z', fill: '#334155' })
+    ])
+  ]));
+  svg.appendChild(el('rect', { x: 0, y: TITLE_H, width: WIDTH, height: HEIGHT - TITLE_H, fill: '#f8fafc' }));
+  headerSvg.appendChild(el('rect', { x: 0, y: 0, width: WIDTH, height: TITLE_H, fill: '#f8fafc' }));
+
+  headerSvg.appendChild(el('text', { x: WIDTH / 2, y: 32, 'text-anchor': 'middle', 'font-size': 22, 'font-weight': 800, fill: '#0f172a' }, ['Processo Operacional Vertical - OficinaMestre']));
+  headerSvg.appendChild(el('text', { x: WIDTH / 2, y: 53, 'text-anchor': 'middle', 'font-size': 12.5, fill: '#475569' }, ['Fluxo ponta a ponta, de cima para baixo — passe o mouse sobre cada elemento para ver a explicação técnica']));
+
+  // Legenda (centralizada)
+  var legendItems = [
+    { shape: 'circle-thin', label: 'Início' },
+    { shape: 'circle-thick', label: 'Fim' },
+    { shape: 'rect', label: 'Atividade' },
+    { shape: 'diamond', label: 'Decisão' },
+    { shape: 'timer', label: 'Evento de tempo' },
+    { shape: 'link', label: 'Conector (Retenção A)' }
+  ];
+  var lfont = '11.5px Segoe UI, Arial, sans-serif';
+  var legendTotal = 0;
+  legendItems.forEach(function (it, i) { legendTotal += 22 + textWidth(it.label, lfont) + (i < legendItems.length - 1 ? 24 : 0); });
+  var lx = (WIDTH - legendTotal) / 2, gy = 74;
+  legendItems.forEach(function (it) {
+    if (it.shape === 'circle-thin') {
+      headerSvg.appendChild(el('circle', { cx: lx + 8, cy: gy, r: 8, fill: '#fff', stroke: '#16a34a', 'stroke-width': 2 }));
+    } else if (it.shape === 'circle-thick') {
+      headerSvg.appendChild(el('circle', { cx: lx + 8, cy: gy, r: 8, fill: '#fff', stroke: '#b91c1c', 'stroke-width': 3 }));
+    } else if (it.shape === 'rect') {
+      headerSvg.appendChild(el('rect', { x: lx, y: gy - 8, width: 16, height: 16, rx: 4, fill: '#eff6ff', stroke: '#2563eb', 'stroke-width': 2 }));
+    } else if (it.shape === 'diamond') {
+      headerSvg.appendChild(el('rect', { x: lx, y: gy - 8, width: 16, height: 16, fill: '#fef3c7', stroke: '#d97706', 'stroke-width': 2, transform: 'rotate(45 ' + (lx + 8) + ' ' + gy + ')' }));
+    } else if (it.shape === 'timer') {
+      headerSvg.appendChild(el('circle', { cx: lx + 8, cy: gy, r: 8, fill: '#fff', stroke: '#0d9488', 'stroke-width': 2 }));
+      headerSvg.appendChild(el('path', { d: 'M' + (lx + 8) + ',' + (gy - 4) + ' L' + (lx + 8) + ',' + gy + ' L' + (lx + 11.5) + ',' + (gy + 2), fill: 'none', stroke: '#0d9488', 'stroke-width': 1.6, 'stroke-linecap': 'round' }));
+    } else {
+      headerSvg.appendChild(el('circle', { cx: lx + 8, cy: gy, r: 8, fill: '#fff', stroke: '#475569', 'stroke-width': 1.6 }));
+      headerSvg.appendChild(el('circle', { cx: lx + 8, cy: gy, r: 5.4, fill: '#fff', stroke: '#475569', 'stroke-width': 1.4 }));
+    }
+    headerSvg.appendChild(el('text', { x: lx + 22, y: gy + 4, 'font-size': 11.5, fill: '#334155' }, [it.label]));
+    lx += 22 + textWidth(it.label, lfont) + 24;
+  });
+
+  // Cabeçalhos das colunas (raias), fixos no topo
+  COLS.forEach(function (col) {
+    var c = COLORS[col.actor];
+    headerSvg.appendChild(el('rect', { x: col.x - 110, y: 96, width: 220, height: 30, rx: 8, fill: c.stroke }));
+    headerSvg.appendChild(el('text', { x: col.x, y: 116, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 700, fill: '#fff' }, [col.label]));
+  });
+
+  // Faixas verticais das colunas
+  var bandTop = TITLE_H, bandBottom = HEIGHT - 34;
+  COLS.forEach(function (col) {
+    var c = COLORS[col.actor];
+    svg.appendChild(el('rect', { x: col.x - COLW / 2, y: bandTop, width: COLW, height: bandBottom - bandTop, fill: c.band }));
+    svg.appendChild(el('line', { x1: col.x - COLW / 2, y1: bandTop, x2: col.x - COLW / 2, y2: bandBottom, stroke: '#e2e8f0', 'stroke-width': 1 }));
+  });
+  // Linha final da última coluna
+  var lastCol = COLS[COLS.length - 1];
+  svg.appendChild(el('line', { x1: lastCol.x + COLW / 2, y1: bandTop, x2: lastCol.x + COLW / 2, y2: bandBottom, stroke: '#e2e8f0', 'stroke-width': 1 }));
+
+  // Barras das etapas (seções horizontais)
+  [S.s1, S.s2, S.s3, S.s4, S.s5].forEach(function (sec) {
+    svg.appendChild(el('rect', { x: 0, y: sec.headerY, width: WIDTH, height: HEADER_H, fill: '#0f172a' }));
+    var ty = sec.headerY + HEADER_H / 2 + 5;
+    svg.appendChild(el('text', { x: 22, y: ty, 'font-size': 15, 'font-weight': 700, fill: '#fff' }, [sec.title]));
+    var tw = textWidth(sec.title, '700 15px Segoe UI, Arial, sans-serif');
+    svg.appendChild(el('text', { x: 22 + tw + 18, y: ty - 1, 'font-size': 12, fill: '#94a3b8' }, [sec.sub]));
+  });
+
+  // ---------- CONEXÕES (desenhadas abaixo dos nós) ----------
+  function edgePoints(edge) {
+    if (edge.points) return edge.points;
+    var a = nodes[edge.from], b = nodes[edge.to];
+    if (!a || !b) { console.warn('Missing node:', edge.from, edge.to); return [[0,0],[0,0]]; }
+    var midY = a.y + (b.y - a.y) / 2;
+    return [[a.x, a.y], [a.x, midY], [b.x, midY], [b.x, b.y]];
+  }
+  edges.forEach(function (edge) {
+    var pts = edgePoints(edge);
+    var d = pts.map(function (p, i) { return (i === 0 ? 'M' : 'L') + p[0] + ',' + p[1]; }).join(' ');
+    svg.appendChild(el('path', {
+      d: d, fill: 'none', stroke: '#475569', 'stroke-width': 2,
+      'stroke-dasharray': edge.dashed ? '7,6' : null, 'marker-end': 'url(#arrow)'
+    }));
+    if (edge.label) {
+      var mid = edge.labelAt || pts[Math.floor(pts.length / 2)];
+      var font = '700 11px Segoe UI, Arial, sans-serif';
+      var tw = textWidth(edge.label, font);
+      svg.appendChild(el('rect', { x: mid[0] - tw / 2 - 6, y: mid[1] - 11, width: tw + 12, height: 18, rx: 5, fill: '#ffffff', stroke: '#cbd5e1' }));
+      svg.appendChild(el('text', { x: mid[0], y: mid[1] + 3, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 700, fill: '#334155' }, [edge.label]));
+    }
+  });
+
+  // ---------- NÓS (desenhados acima das conexões) ----------
+  var tooltip = document.getElementById('tooltip');
+  function attachTip(group, n) {
+    group.addEventListener('mouseenter', function (e) { showTip(e, n.label, n.tip); highlight(group, true); });
+    group.addEventListener('mousemove', positionTip);
+    group.addEventListener('mouseleave', function () { hideTip(); highlight(group, false); });
+  }
+  function highlight(group, on) {
+    var shape = group.querySelector('.shape');
+    if (shape) shape.setAttribute('stroke-width', on ? 3.5 : (shape.dataset.defaultWidth || 2));
+  }
+  function sideLabel(g, n, offsetX, font, fontSize) {
+    var lines = wrapLines(n.label, font, 175);
+    var w = Math.max.apply(null, lines.map(function (l) { return textWidth(l, font); })) + 16;
+    var x0 = n.x + offsetX;
+    var y0 = n.y - (lines.length * 15) / 2 + 10;
+    g.appendChild(el('rect', { x: x0 - 5, y: y0 - 12, width: w, height: lines.length * 15 + 6, rx: 6, fill: '#ffffff', 'fill-opacity': 0.94, stroke: '#cbd5e1', 'stroke-width': 1 }));
+    lines.forEach(function (line, i) {
+      g.appendChild(el('text', { x: x0, y: y0 + i * 15, 'font-size': fontSize, 'font-weight': 700, fill: '#0f172a' }, [line]));
+    });
+  }
+
+  Object.keys(nodes).forEach(function (id) {
+    var n = nodes[id];
+    var c = COLORS[n.actor] || COLORS.S;
+    var g = el('g', { class: 'node' }, []);
+
+    if (n.type === 'task') {
+      var w = 206, h = 74;
+      var shape = el('rect', { class: 'shape', x: n.x - w / 2, y: n.y - h / 2, width: w, height: h, rx: 13, ry: 13, fill: c.fill, stroke: c.stroke, 'stroke-width': 2 });
+      shape.dataset.defaultWidth = '2';
+      g.appendChild(shape);
+      var lines = wrapLines(n.label, '700 12px Segoe UI, Arial, sans-serif', w - 20);
+      var lh = 15;
+      var startY = n.y - ((lines.length - 1) * lh) / 2 + 4;
+      lines.forEach(function (line, i) {
+        g.appendChild(el('text', { x: n.x, y: startY + i * lh, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, fill: '#0f172a' }, [line]));
+      });
+    } else if (n.type === 'gateway') {
+      var s = 62;
+      var shape = el('rect', { class: 'shape', x: n.x - s / 2, y: n.y - s / 2, width: s, height: s, fill: '#fef3c7', stroke: '#d97706', 'stroke-width': 2.3, transform: 'rotate(45 ' + n.x + ' ' + n.y + ')' });
+      shape.dataset.defaultWidth = '2.3';
+      g.appendChild(shape);
+      g.appendChild(el('text', { x: n.x, y: n.y + 7, 'text-anchor': 'middle', 'font-size': 21, 'font-weight': 800, fill: '#b45309' }, ['X']));
+      sideLabel(g, n, s / 2 + 16, '700 12px Segoe UI, Arial, sans-serif', 12);
+    } else if (n.type === 'start' || n.type === 'end' || n.type === 'timer') {
+      var r = 27;
+      var col = n.type === 'end' ? '#b91c1c' : (n.type === 'timer' ? '#0d9488' : '#16a34a');
+      var sw = n.type === 'end' ? 4 : 2.5;
+      var shape = el('circle', { class: 'shape', cx: n.x, cy: n.y, r: r, fill: '#ffffff', stroke: col, 'stroke-width': sw });
+      shape.dataset.defaultWidth = sw;
+      g.appendChild(shape);
+      if (n.type === 'start') {
+        g.appendChild(el('polygon', { points: (n.x - 6) + ',' + (n.y - 9) + ' ' + (n.x - 6) + ',' + (n.y + 9) + ' ' + (n.x + 9) + ',' + n.y, fill: '#16a34a' }));
+      } else if (n.type === 'end') {
+        g.appendChild(el('rect', { x: n.x - 8, y: n.y - 8, width: 16, height: 16, rx: 2, fill: '#b91c1c' }));
+      } else {
+        g.appendChild(el('circle', { cx: n.x, cy: n.y, r: 13, fill: 'none', stroke: col, 'stroke-width': 1.8 }));
+        g.appendChild(el('path', { d: 'M' + n.x + ',' + (n.y - 7) + ' L' + n.x + ',' + n.y + ' L' + (n.x + 6) + ',' + (n.y + 4), fill: 'none', stroke: col, 'stroke-width': 1.8, 'stroke-linecap': 'round' }));
+      }
+      sideLabel(g, n, r + 16, '700 12.5px Segoe UI, Arial, sans-serif', 12.5);
+    } else if (n.type === 'link') {
+      var ro = 25;
+      var shape = el('circle', { class: 'shape', cx: n.x, cy: n.y, r: ro, fill: '#ffffff', stroke: '#475569', 'stroke-width': 2 });
+      shape.dataset.defaultWidth = '2';
+      g.appendChild(shape);
+      g.appendChild(el('circle', { cx: n.x, cy: n.y, r: ro - 5, fill: n.dir === 'throw' ? '#475569' : '#ffffff', stroke: '#475569', 'stroke-width': 1.6 }));
+      g.appendChild(el('text', { x: n.x, y: n.y + 7, 'text-anchor': 'middle', 'font-size': 19, 'font-weight': 800, fill: n.dir === 'throw' ? '#ffffff' : '#475569' }, [n.letter]));
+      sideLabel(g, n, ro + 16, '700 12px Segoe UI, Arial, sans-serif', 12);
+    }
+
+    attachTip(g, n);
+    svg.appendChild(g);
+  });
+
+  svg.appendChild(el('text', { x: WIDTH / 2, y: HEIGHT - 14, 'text-anchor': 'middle', 'font-size': 11.5, fill: '#64748b' },
+    ['OficinaMestre · Sistema Integrado de Gestão Automotiva · ' + new Date().toLocaleDateString('pt-BR') + ' · Garantia Legal de 90 dias (CDC Art. 26)']));
+
+  // ---------- TOOLTIP INTERATIVO ----------
+  function showTip(e, label, tip) {
+    tooltip.innerHTML = '<div class="tt-title">' + label + '</div><div>' + tip + '</div>';
+    tooltip.style.display = 'block';
+    positionTip(e);
+  }
+  function positionTip(e) {
+    var pad = 18;
+    var x = e.clientX + pad, y = e.clientY + pad;
+    var rect = tooltip.getBoundingClientRect();
+    if (x + rect.width > window.innerWidth - 10) x = e.clientX - rect.width - pad;
+    if (y + rect.height > window.innerHeight - 10) y = e.clientY - rect.height - pad;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+  }
+  function hideTip() { tooltip.style.display = 'none'; }
+
+  // ---------- ZOOM INTERATIVO ----------
+  var zoomRange = document.getElementById('zoomRange');
+  var zoomVal = document.getElementById('zoomVal');
+  function applyZoom() {
+    var pct = parseInt(zoomRange.value, 10);
+    zoomVal.textContent = pct + '%';
+    headerSvg.style.width = (WIDTH * pct / 100) + 'px';
+    headerSvg.style.height = (TITLE_H * pct / 100) + 'px';
+    svg.style.width = (WIDTH * pct / 100) + 'px';
+    svg.style.height = ((HEIGHT - TITLE_H) * pct / 100) + 'px';
+  }
+  zoomRange.addEventListener('input', applyZoom);
+  applyZoom();
+
+  // ---------- DOWNLOAD EM PNG ALTA RESOLUÇÃO ----------
+  document.getElementById('downloadBtn').addEventListener('click', function () {
+    var exportSvg = document.createElementNS(SVGNS, 'svg');
+    exportSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    exportSvg.setAttribute('viewBox', '0 0 ' + WIDTH + ' ' + HEIGHT);
+    exportSvg.setAttribute('width', WIDTH);
+    exportSvg.setAttribute('height', HEIGHT);
+    Array.prototype.forEach.call(headerSvg.childNodes, function (n) { exportSvg.appendChild(n.cloneNode(true)); });
+    Array.prototype.forEach.call(svg.childNodes, function (n) { exportSvg.appendChild(n.cloneNode(true)); });
+    var svgStr = new XMLSerializer().serializeToString(exportSvg);
+    var svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    var url = URL.createObjectURL(svgBlob);
+    var img = new Image();
+    img.onload = function () {
+      var scale = 2;
+      var canvas = document.createElement('canvas');
+      canvas.width = WIDTH * scale;
+      canvas.height = HEIGHT * scale;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(function (blob) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'processo-operacional-vertical-oficinamestre.png';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+    };
+    img.onerror = function () { alert('Não foi possível gerar o PNG. Tente novamente.'); };
+    img.src = url;
+  });
+})();
+</script>
+</body>
+</html>

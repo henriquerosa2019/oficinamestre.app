@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Car,
   BellRing,
+  Workflow,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -139,6 +140,17 @@ export const Header: React.FC<HeaderProps> = ({
               <DollarSign className="w-3.5 h-3.5" />
               Financeiro
             </button>
+
+            <a
+              href="/fluxo-operacional.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all text-amber-400/90 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/30 ml-1 shadow-sm"
+              title="Abrir Fluxo Operacional Vertical em nova aba (Demonstração do Sistema)"
+            >
+              <Workflow className="w-3.5 h-3.5 text-amber-400" />
+              Fluxo do App 🗺️
+            </a>
           </nav>
 
           {/* Ações Rápidas */}
@@ -247,6 +259,16 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="absolute top-0 right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
           )}
         </button>
+        <a
+          href="/fluxo-operacional.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col items-center py-1 px-2 text-[11px] font-medium rounded text-amber-400 hover:text-amber-300"
+          title="Ver Fluxo Operacional"
+        >
+          <Workflow className="w-4 h-4 mb-0.5 text-amber-400" />
+          Fluxo
+        </a>
       </div>
     </header>
   );
