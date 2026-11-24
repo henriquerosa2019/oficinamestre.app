@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ServiceOrder,
   Client,
@@ -45,11 +45,14 @@ import {
   ChevronRight,
   ChevronLeft,
   Lock,
+  Download,
 } from 'lucide-react';
 import { CarDamageCanvas } from './CarDamageCanvas';
 import { WhatsAppService } from '../services/whatsapp';
 import { QuickOrderCheckoutModal } from './QuickOrderCheckoutModal';
 import { getOrderWarranty, toIsoDate, formatBrDate } from '../utils/warranty';
+import { ReceiptDocument } from './ReceiptDocument';
+import { QuotationImageService } from '../services/quotationImageService';
 import confetti from 'canvas-confetti';
 
 interface OrderModalProps {
@@ -307,6 +310,58 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     if (success) {
       setCopiedMsg(true);
       setTimeout(() => setCopiedMsg(false), 2000);
+    }
+  };
+
+  // Referência para captura da proposta oficial em PNG (layout idêntico ao Imprimir Orçamento)
+  const quotationDocRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingQuotationPng, setIsGeneratingQuotationPng] = useState(false);
+  const [pngFeedbackInfo, setPngFeedbackInfo] = useState<{
+    copied: boolean;
+    shared: boolean;
+    dataUrl: string;
+    blob: Blob;
+  } | null>(null);
+
+  const handleSendQuotationWhatsAppPng = async () => {
+    if (!quotationDocRef.current || !currentClient?.phone) return;
+    setIsGeneratingQuotationPng(true);
+    if (status === 'orcamento') {
+      handleStatusChange('aguardando_aprovacao');
+    }
+    try {
+      const orderData = getOrderDataSnapshot();
+      const res = await QuotationImageService.sendQuotationToWhatsApp({
+        element: quotationDocRef.current,
+        orderNumber: orderData.orderNumber,
+        phone: currentClient.phone,
+        customText: 'Para darmos início aos serviços, responda com *AUTORIZADO*',
+      });
+      setPngFeedbackInfo({
+        copied: res.copiedToClipboard,
+        shared: res.sharedNatively,
+        dataUrl: res.dataUrl,
+        blob: res.blob,
+      });
+    } catch (err) {
+      console.error('Erro ao gerar orçamento em PNG:', err);
+      alert('Não foi possível gerar a imagem do orçamento. Tente novamente.');
+    } finally {
+      setIsGeneratingQuotationPng(false);
+    }
+  };
+
+  const handleDownloadQuotationPng = async () => {
+    if (!quotationDocRef.current) return;
+    setIsGeneratingQuotationPng(true);
+    try {
+      const { dataUrl } = await QuotationImageService.generateImage(quotationDocRef.current);
+      QuotationImageService.downloadImage(dataUrl, `orcamento-${orderNumber}.png`);
+    } catch (err) {
+      console.error('Erro ao baixar PNG do orçamento:', err);
+      alert('Não foi possível baixar a imagem. Tente novamente.');
+    } finally {
+      setIsGeneratingQuotationPng(false);
     }
   };
 
@@ -2186,24 +2241,18 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </div>
 
                   {/* Grid de Ações Principais da Proposta */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {/* Botão 1: Enviar Orçamento no WhatsApp */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                    {/* Botão 1: Enviar Orçamento no WhatsApp (PNG) */}
                     {currentClient?.phone && currentVehicle ? (
                       <button
                         type="button"
-                        onClick={() => {
-                          if (status === 'orcamento') {
-                            handleStatusChange('aguardando_aprovacao');
-                          }
-                          const orderData = getOrderDataSnapshot();
-                          const msg = WhatsAppService.generateBudgetMessage(orderData, currentClient, currentVehicle);
-                          WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
-                        }}
-                        className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                        title="Abre o WhatsApp com a proposta e atualiza status para 2. Aguardando Aprovação"
+                        onClick={handleSendQuotationWhatsAppPng}
+                        disabled={isGeneratingQuotationPng}
+                        className="flex items-center justify-center gap-2 px-3 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                        title="Gera imagem PNG da proposta oficial e envia no WhatsApp do cliente com o texto: Para darmos início aos serviços, responda com AUTORIZADO"
                       >
                         <MessageCircle className="w-4 h-4 stroke-[2.5]" />
-                        <span>Enviar Orçamento no WhatsApp</span>
+                        <span>{isGeneratingQuotationPng ? 'Gerando PNG...' : 'Enviar no WhatsApp (PNG)'}</span>
                       </button>
                     ) : (
                       <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-center text-xs text-slate-500 italic">
@@ -2211,7 +2260,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       </div>
                     )}
 
-                    {/* Botão 2: Aprovação Manual pelo Mecânico */}
+                    {/* Botão 2: Baixar Imagem PNG */}
+                    <button
+                      type="button"
+                      onClick={handleDownloadQuotationPng}
+                      disabled={isGeneratingQuotationPng}
+                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors disabled:opacity-50"
+                      title="Baixar imagem em PNG da proposta para guardar ou enviar"
+                    >
+                      <Download className="w-4 h-4 text-slate-400" />
+                      <span>Baixar PNG</span>
+                    </button>
+
+                    {/* Botão 3: Aprovação Manual pelo Mecânico */}
                     <button
                       type="button"
                       onClick={() => {
@@ -2222,29 +2283,29 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           origin: { y: 0.6 },
                         });
                       }}
-                      className="flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      className="flex items-center justify-center gap-2 px-3 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
                       title="Cliente aprovou presencialmente ou por telefone. Avança o status direto para 3. Aprovado / Peças"
                     >
                       <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
                       <span>Aprovar Orçamento</span>
                     </button>
 
-                    {/* Botão 3: Imprimir Orçamento */}
+                    {/* Botão 4: Imprimir Orçamento */}
                     <button
                       type="button"
                       onClick={() => onPrintReceipt(getOrderDataSnapshot())}
-                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
                       title="Imprime a proposta de orçamento em formato oficial"
                     >
                       <Printer className="w-4 h-4 text-slate-400" />
                       <span>Imprimir Orçamento</span>
                     </button>
 
-                    {/* Botão 4: Copiar Texto */}
+                    {/* Botão 5: Copiar Texto */}
                     <button
                       type="button"
                       onClick={handleCopyOrderMessage}
-                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
                       title="Copiar texto do orçamento técnico"
                     >
                       {copiedMsg ? (
@@ -2749,6 +2810,127 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de Feedback do Orçamento PNG Enviado */}
+      {pngFeedbackInfo && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-slate-100 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">Orçamento em Imagem PNG Gerado!</h3>
+                  <p className="text-xs text-slate-400">Layout oficial idêntico ao Imprimir Orçamento</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPngFeedbackInfo(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs leading-relaxed">
+              <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700/60 space-y-1.5">
+                <p className="font-semibold text-emerald-400 flex items-center gap-1.5">
+                  <span>📋</span>
+                  <span>A imagem foi copiada para sua Área de Transferência e baixada no seu computador!</span>
+                </p>
+                <p className="text-slate-300">
+                  A conversa do WhatsApp Web com <strong>{currentClient?.name}</strong> foi aberta.
+                </p>
+              </div>
+
+              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-200 space-y-1">
+                <p className="font-bold flex items-center gap-1.5 text-amber-300">
+                  <span>👉</span>
+                  <span>Como enviar ao cliente:</span>
+                </p>
+                <p>
+                  1. No WhatsApp Web aberto, clique no campo de texto e tecle{' '}
+                  <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-amber-300 font-mono font-bold">
+                    Ctrl + V
+                  </kbd>{' '}
+                  para colar a imagem do orçamento.
+                </p>
+                <p>
+                  2. A mensagem fora da proposta já está preenchida automaticamente:
+                  <span className="block mt-1 font-mono text-[11px] bg-slate-950/60 p-2 rounded text-emerald-300 border border-slate-800">
+                    Para darmos início aos serviços, responda com *AUTORIZADO*
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800 flex-wrap">
+              <div className="flex items-center gap-2">
+                {currentClient?.phone && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      WhatsAppService.openWhatsAppChat(
+                        currentClient.phone,
+                        'Para darmos início aos serviços, responda com *AUTORIZADO*'
+                      )
+                    }
+                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>Reabrir WhatsApp</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (pngFeedbackInfo.blob) {
+                      const ok = await QuotationImageService.copyImageToClipboard(pngFeedbackInfo.blob);
+                      if (ok) alert('Imagem copiada para a área de transferência!');
+                    }
+                  }}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copiar Imagem</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPngFeedbackInfo(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors ml-auto"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Container off-screen para captura da imagem PNG idêntica ao Imprimir Orçamento */}
+      <div
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: 0,
+          width: '780px',
+          pointerEvents: 'none',
+          zIndex: -100,
+        }}
+      >
+        <ReceiptDocument
+          ref={quotationDocRef}
+          order={getOrderDataSnapshot()}
+          client={currentClient}
+          vehicle={currentVehicle}
+          mechanic={currentMechanic}
+          isQuotation={true}
+        />
+      </div>
     </div>
   );
 };
