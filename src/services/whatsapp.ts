@@ -14,9 +14,27 @@ export const WhatsAppService = {
   // Gera o texto formatado para envio do Orçamento ao Cliente (Tom consultivo e transparente)
   generateBudgetMessage(order: ServiceOrder, client: Client, vehicle: Vehicle): string {
     const clientFirstName = client.name.split(' ')[0];
-    const partsList = order.parts.length
-      ? order.parts.map((p) => `  • ${p.quantity}x ${p.description} (R$ ${p.total.toFixed(2)})`).join('\n')
-      : '  (Nenhuma peça necessária)';
+    
+    let partsSection = '';
+    if (order.partsSupplyMode === 'cliente_todas') {
+      partsSection = `📦 *Peças & Insumos:*
+  • Fornecidas integralmente pelo cliente (Sem cobrança de peças)
+${order.clientProvidedPartsNotes ? `  ℹ️ *Itens trazidos:* ${order.clientProvidedPartsNotes}\n` : ''}*Total Peças:* R$ 0,00`;
+    } else if (order.partsSupplyMode === 'cliente_parcial') {
+      const partsList = order.parts.length
+        ? order.parts.map((p) => `  • ${p.quantity}x ${p.description} (R$ ${p.total.toFixed(2)})`).join('\n')
+        : '  (Nenhuma peça faltante)';
+      partsSection = `📦 *Peças Faltantes (Fornecidas pela Oficina):*
+${partsList}
+${order.clientProvidedPartsNotes ? `  ℹ️ *Peças já trazidas pelo cliente:* ${order.clientProvidedPartsNotes}\n` : ''}*Total Peças Oficina:* R$ ${order.partsTotal.toFixed(2)}`;
+    } else {
+      const partsList = order.parts.length
+        ? order.parts.map((p) => `  • ${p.quantity}x ${p.description} (R$ ${p.total.toFixed(2)})`).join('\n')
+        : '  (Nenhuma peça necessária)';
+      partsSection = `📦 *Peças Recomendadas:*
+${partsList}
+*Total Peças:* R$ ${order.partsTotal.toFixed(2)}`;
+    }
 
     const servicesList = order.services.length
       ? order.services.map((s) => `  • ${s.description} (R$ ${s.price.toFixed(2)})`).join('\n')
@@ -32,9 +50,7 @@ Concluímos a avaliação técnica do seu *${vehicle.brand} ${vehicle.model}* (P
 🔍 *Diagnóstico / Avaliação:*
 ${order.technicalDiagnostic || order.complaintDescription || 'Revisão técnica de rotina.'}
 
-📦 *Peças Recomendadas:*
-${partsList}
-*Total Peças:* R$ ${order.partsTotal.toFixed(2)}
+${partsSection}
 
 🛠️ *Mão de Obra Especializada:*
 ${servicesList}

@@ -168,6 +168,8 @@ export interface VehicleChecklist {
 
 export type PaymentMethod = 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'a_prazo' | 'boleto';
 
+export type PartsSupplyMode = 'oficina' | 'cliente_todas' | 'cliente_parcial';
+
 export interface ServiceOrder {
   id: string;
   orderNumber: string;
@@ -180,6 +182,8 @@ export interface ServiceOrder {
   checklist: VehicleChecklist;
   parts: OrderPartItem[];
   services: OrderServiceItem[];
+  partsSupplyMode?: PartsSupplyMode; // 'oficina' | 'cliente_todas' | 'cliente_parcial'
+  clientProvidedPartsNotes?: string; // Anotações sobre as peças trazidas pelo cliente
   
   // Financeiro da OS
   partsTotal: number;

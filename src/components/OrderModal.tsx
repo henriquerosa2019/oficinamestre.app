@@ -10,6 +10,7 @@ import {
   OrderPartItem,
   OrderServiceItem,
   PaymentMethod,
+  PartsSupplyMode,
 } from '../types';
 import {
   X,
@@ -18,6 +19,9 @@ import {
   Trash2,
   Wrench,
   Package,
+  Store,
+  Split,
+  Boxes,
   Car,
   User,
   CheckCircle2,
@@ -157,11 +161,22 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [newVehYear, setNewVehYear] = useState<number>(new Date().getFullYear());
   const [newVehMileage, setNewVehMileage] = useState<number>(50000);
 
-  // Seletores com Busca Digitável - Peças
+  // Modo de Fornecimento de Peças & Insumos
+  const [partsSupplyMode, setPartsSupplyMode] = useState<PartsSupplyMode>(
+    order?.partsSupplyMode || 'oficina'
+  );
+  const [clientProvidedPartsNotes, setClientProvidedPartsNotes] = useState<string>(
+    order?.clientProvidedPartsNotes || ''
+  );
+
+  // Seletores com Busca Digitável - Peças & Insumos
   const [partSearch, setPartSearch] = useState('');
   const [selectedPartId, setSelectedPartId] = useState('');
   const [partQty, setPartQty] = useState(1);
+  const [partPriceInput, setPartPriceInput] = useState('');
   const [isPartDropdownOpen, setIsPartDropdownOpen] = useState(false);
+  const [totalPartsInput, setTotalPartsInput] = useState('');
+  const [isEditingTotalParts, setIsEditingTotalParts] = useState(false);
 
   // Seletores com Busca Digitável - Serviços
   const [serviceSearch, setServiceSearch] = useState('');
@@ -197,12 +212,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   };
 
   // Cálculos Automáticos em Tempo Real
-  const partsTotal = parts.reduce((acc, p) => acc + p.total, 0);
+  const partsTotal = partsSupplyMode === 'cliente_todas' ? 0 : parts.reduce((acc, p) => acc + p.total, 0);
   const servicesTotal = services.reduce((acc, s) => acc + s.price, 0);
   const grossTotal = partsTotal + servicesTotal;
   const netTotal = Math.max(0, grossTotal - discount);
 
-  const partsCostTotal = parts.reduce((acc, p) => acc + p.unitCost * p.quantity, 0);
+  const partsCostTotal = partsSupplyMode === 'cliente_todas' ? 0 : parts.reduce((acc, p) => acc + p.unitCost * p.quantity, 0);
   const mechanicsCommissionTotal = services.reduce((acc, s) => acc + s.commissionValue, 0);
   const netProfit = netTotal - partsCostTotal - mechanicsCommissionTotal;
   const profitMarginPercent = netTotal > 0 ? (netProfit / netTotal) * 100 : 0;
@@ -233,58 +248,94 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     return s.name.toLowerCase().includes(term);
   });
 
-  // Handlers para Peças
-  const handleAddPart = (targetPartId?: string) => {
+  // Handlers para Peças & Insumos
+  const handleAddPart = (
+    targetPartId?: string,
+    customDescription?: string,
+    customUnitPrice?: number,
+    customQty?: number
+  ) => {
     const pId = targetPartId || selectedPartId;
-    if (!pId) {
-      if (filteredParts.length === 1) {
-        return handleAddPart(filteredParts[0].id);
-      }
-      return;
-    }
     const partFound = availableParts.find((p) => p.id === pId);
-    if (!partFound) return;
+    const qty = customQty !== undefined ? customQty : Math.max(1, partQty);
 
-    // Se a peça já está na lista, apenas incrementa a quantidade
-    const existingIndex = parts.findIndex((p) => p.partId === partFound.id);
-    if (existingIndex >= 0) {
-      const updated = [...parts];
-      const newQty = updated[existingIndex].quantity + partQty;
-      updated[existingIndex] = {
-        ...updated[existingIndex],
-        quantity: newQty,
-        total: updated[existingIndex].unitPrice * newQty,
-      };
-      setParts(updated);
+    const parsedPrice = parseFloat(partPriceInput.replace(',', '.'));
+    const hasValidInputPrice = !isNaN(parsedPrice) && parsedPrice >= 0;
+
+    if (partFound) {
+      const unitPrice =
+        customUnitPrice !== undefined
+          ? customUnitPrice
+          : hasValidInputPrice
+          ? parsedPrice
+          : partFound.sellPrice;
+
+      // Se a peça já está na lista, apenas incrementa a quantidade
+      const existingIndex = parts.findIndex((p) => p.partId === partFound.id);
+      if (existingIndex >= 0) {
+        const updated = [...parts];
+        const newQty = updated[existingIndex].quantity + qty;
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: newQty,
+          unitPrice,
+          total: Math.round(unitPrice * newQty * 100) / 100,
+        };
+        setParts(updated);
+      } else {
+        const newItem: OrderPartItem = {
+          id: 'poi-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          partId: partFound.id,
+          code: partFound.code,
+          description: partFound.description,
+          quantity: qty,
+          unitCost: partFound.costPrice,
+          unitPrice,
+          total: Math.round(unitPrice * qty * 100) / 100,
+        };
+        setParts((prev) => [...prev, newItem]);
+      }
     } else {
+      // Inserção de Peça/Insumo Avulso fora do catálogo
+      const typedText = (customDescription || partSearch).trim();
+      if (!typedText) return;
+
+      const unitPrice =
+        customUnitPrice !== undefined
+          ? customUnitPrice
+          : hasValidInputPrice
+          ? parsedPrice
+          : 0;
+
       const newItem: OrderPartItem = {
-        id: 'poi-' + Date.now(),
-        partId: partFound.id,
-        code: partFound.code,
-        description: partFound.description,
-        quantity: partQty,
-        unitCost: partFound.costPrice,
-        unitPrice: partFound.sellPrice,
-        total: partFound.sellPrice * partQty,
+        id: 'poi-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+        partId: undefined,
+        code: 'AVULSO',
+        description: typedText,
+        quantity: qty,
+        unitCost: 0,
+        unitPrice,
+        total: Math.round(unitPrice * qty * 100) / 100,
       };
-      setParts([...parts, newItem]);
+      setParts((prev) => [...prev, newItem]);
     }
 
     setSelectedPartId('');
     setPartSearch('');
+    setPartPriceInput('');
     setPartQty(1);
     setIsPartDropdownOpen(false);
   };
 
   const handleUpdatePartQty = (id: string, newQty: number) => {
     if (newQty < 1) return;
-    setParts(
-      parts.map((p) => {
+    setParts((prev) =>
+      prev.map((p) => {
         if (p.id === id) {
           return {
             ...p,
             quantity: newQty,
-            total: p.unitPrice * newQty,
+            total: Math.round(p.unitPrice * newQty * 100) / 100,
           };
         }
         return p;
@@ -292,8 +343,81 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     );
   };
 
+  const handleUpdatePartUnitPrice = (id: string, newUnitPrice: number) => {
+    const price = Math.max(0, isNaN(newUnitPrice) ? 0 : newUnitPrice);
+    setParts((prev) =>
+      prev.map((p) => {
+        if (p.id === id) {
+          return {
+            ...p,
+            unitPrice: price,
+            total: Math.round(price * p.quantity * 100) / 100,
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  const handleApplyTotalParts = (val: string) => {
+    const newTotal = parseFloat(val.replace(',', '.'));
+    if (isNaN(newTotal) || newTotal < 0) return;
+
+    if (parts.length === 0) {
+      if (newTotal > 0) {
+        const newItem: OrderPartItem = {
+          id: 'poi-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          partId: undefined,
+          code: 'AVULSO',
+          description: 'Peças & Insumos Gerais',
+          quantity: 1,
+          unitCost: 0,
+          unitPrice: newTotal,
+          total: newTotal,
+        };
+        setParts([newItem]);
+      }
+      return;
+    }
+
+    if (parts.length === 1) {
+      const q = Math.max(1, parts[0].quantity);
+      const unitP = Math.round((newTotal / q) * 100) / 100;
+      setParts([
+        {
+          ...parts[0],
+          unitPrice: unitP,
+          total: newTotal,
+        },
+      ]);
+      return;
+    }
+
+    // Distribuir proporcionalmente entre as peças existentes (ou igualmente se soma atual for zero)
+    const currentSum = parts.reduce((acc, p) => acc + p.total, 0);
+    let allocated = 0;
+    const updated = parts.map((p, idx) => {
+      let itemTotal: number;
+      if (idx === parts.length - 1) {
+        itemTotal = Math.max(0, Math.round((newTotal - allocated) * 100) / 100);
+      } else {
+        const ratio = currentSum > 0 ? p.total / currentSum : 1 / parts.length;
+        itemTotal = Math.round(ratio * newTotal * 100) / 100;
+        allocated += itemTotal;
+      }
+      const unitPrice = Math.round((itemTotal / Math.max(1, p.quantity)) * 100) / 100;
+      return {
+        ...p,
+        unitPrice,
+        total: itemTotal,
+      };
+    });
+
+    setParts(updated);
+  };
+
   const handleRemovePart = (id: string) => {
-    setParts(parts.filter((p) => p.id !== id));
+    setParts((prev) => prev.filter((p) => p.id !== id));
   };
 
   // Handlers para Serviços
@@ -543,6 +667,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       },
       parts,
       services,
+      partsSupplyMode,
+      clientProvidedPartsNotes,
       partsTotal,
       servicesTotal,
       grossTotal,
@@ -1032,9 +1158,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </span>
                 </div>
                 <div>
-                  <span className="text-[11px] text-slate-400 block">Peças ({parts.length})</span>
+                  <span className="text-[11px] text-slate-400 block">
+                    Peças {partsSupplyMode === 'cliente_todas' ? '(Cliente)' : `(${parts.length})`}
+                  </span>
                   <span className="font-mono text-xs sm:text-sm font-bold text-white">
-                    R$ {partsTotal.toFixed(2)}
+                    {partsSupplyMode === 'cliente_todas' ? 'R$ 0,00' : `R$ ${partsTotal.toFixed(2)}`}
                   </span>
                 </div>
                 <div className="border-l border-slate-800 pl-2">
@@ -1291,196 +1419,471 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
               </div>
 
-              {/* Bloco 2: Peças & Insumos do Estoque */}
-              <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              {/* Bloco 2: Peças & Insumos Utilizados */}
+              <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
                     <Package className="w-4 h-4 text-amber-400" />
-                    Peças & Insumos Utilizados
-                  </h4>
-                  <span className="text-xs font-bold text-amber-400">
-                    Subtotal: R$ {partsTotal.toFixed(2)}
-                  </span>
+                    <h4 className="text-sm font-bold text-white">Peças & Insumos</h4>
+                    {partsSupplyMode === 'cliente_todas' && (
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Cliente Forneceu Todas
+                      </span>
+                    )}
+                    {partsSupplyMode === 'cliente_parcial' && (
+                      <span className="text-[10px] bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded-full border border-sky-500/30 font-bold flex items-center gap-1">
+                        <Split className="w-3 h-3" />
+                        Fornecimento Parcial
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-amber-400">
+                      {partsSupplyMode === 'cliente_todas' ? (
+                        <span className="text-emerald-400 font-mono">Total Peças: R$ 0,00</span>
+                      ) : (
+                        <span>Subtotal: R$ {partsTotal.toFixed(2)}</span>
+                      )}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Campo de Busca Digitável para Peças com Estoque e Quantidade */}
-                <div className="relative">
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      <input
-                        type="text"
-                        placeholder="Digite o nome, código ou marca da peça (ex: óleo, filtro, pastilha)..."
-                        value={partSearch}
-                        onChange={(e) => {
-                          setPartSearch(e.target.value);
-                          setIsPartDropdownOpen(true);
-                          setSelectedPartId('');
-                        }}
-                        onFocus={() => setIsPartDropdownOpen(true)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            if (selectedPartId) {
-                              handleAddPart(selectedPartId);
-                            } else if (filteredParts.length > 0) {
-                              handleAddPart(filteredParts[0].id);
-                            }
-                          }
-                        }}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
-                      />
-                      {partSearch && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPartSearch('');
-                            setSelectedPartId('');
-                          }}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
+                {/* Seletor Rápido de Fornecimento de Peças */}
+                <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-300">Origem das Peças & Insumos:</span>
+                    <span className="text-[11px] text-slate-500">Clique para alternar o modo</span>
+                  </div>
 
-                    {/* Quantidade Inicial */}
-                    <div className="w-20 shrink-0">
-                      <input
-                        type="number"
-                        min="1"
-                        value={partQty}
-                        onChange={(e) => setPartQty(Math.max(1, Number(e.target.value)))}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-xs sm:text-sm text-white text-center font-bold font-mono focus:outline-none focus:border-amber-500"
-                        title="Quantidade a adicionar"
-                      />
-                    </div>
-
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {/* Opção 1: Oficina Fornece */}
                     <button
                       type="button"
-                      onClick={() => handleAddPart()}
-                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 py-2 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 shrink-0 transition-colors shadow-sm"
+                      onClick={() => setPartsSupplyMode('oficina')}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 ${
+                        partsSupplyMode === 'oficina'
+                          ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm ring-1 ring-amber-500/30'
+                          : 'bg-slate-800/60 border-slate-700/70 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      }`}
                     >
-                      <Plus className="w-4 h-4 stroke-[2.5]" />
-                      Adicionar
+                      <Store className="w-4 h-4 shrink-0 text-amber-400" />
+                      <div className="min-w-0">
+                        <div className="truncate font-black">Oficina Fornece</div>
+                        <div className="text-[10px] opacity-75 font-normal truncate">Catálogo & estoque próprio</div>
+                      </div>
+                    </button>
+
+                    {/* Opção 2: Cliente Forneceu Parcialmente */}
+                    <button
+                      type="button"
+                      onClick={() => setPartsSupplyMode('cliente_parcial')}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 ${
+                        partsSupplyMode === 'cliente_parcial'
+                          ? 'bg-sky-500/20 border-sky-500 text-sky-300 shadow-sm ring-1 ring-sky-500/30'
+                          : 'bg-slate-800/60 border-slate-700/70 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      }`}
+                    >
+                      <Split className="w-4 h-4 shrink-0 text-sky-400" />
+                      <div className="min-w-0">
+                        <div className="truncate font-black">Cliente Parcialmente</div>
+                        <div className="text-[10px] opacity-75 font-normal truncate">Lançar peças faltantes</div>
+                      </div>
+                    </button>
+
+                    {/* Opção 3: Cliente Forneceu Todas as Peças */}
+                    <button
+                      type="button"
+                      onClick={() => setPartsSupplyMode('cliente_todas')}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 ${
+                        partsSupplyMode === 'cliente_todas'
+                          ? 'bg-emerald-500/25 border-emerald-500 text-emerald-300 shadow-sm ring-1 ring-emerald-500/30'
+                          : 'bg-slate-800/60 border-slate-700/70 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <div className="min-w-0">
+                        <div className="truncate font-black">Cliente Forneceu Todas</div>
+                        <div className="text-[10px] opacity-75 font-normal truncate">Sem custo de peças (Avançar)</div>
+                      </div>
                     </button>
                   </div>
 
-                  {/* Dropdown de Sugestões de Peças com Estoque e Venda */}
-                  {isPartDropdownOpen && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto z-40 divide-y divide-slate-800">
-                      {filteredParts.length === 0 ? (
-                        <div className="p-3 text-xs text-slate-400 text-center">
-                          Nenhuma peça encontrada com "{partSearch}".
+                  {/* Banner & Ação Direta se 'cliente_todas' */}
+                  {partsSupplyMode === 'cliente_todas' && (
+                    <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3.5 space-y-3 mt-1 animate-in fade-in duration-150">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-xs font-black text-emerald-400">
+                            <CheckCircle2 className="w-4 h-4 shrink-0" />
+                            <span>Cliente forneceu 100% das peças e insumos!</span>
+                          </div>
+                          <p className="text-[11px] text-emerald-200/90 leading-relaxed">
+                            Nenhum valor de peças será cobrado na O.S. (Total de Peças: <strong>R$ 0,00</strong>). A oficina cobra e garante apenas a mão de obra de montagem e instalação.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('fechamento')}
+                          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 shadow-lg transition-all active:scale-95"
+                          title="Avançar diretamente para o fechamento da O.S."
+                        >
+                          <span>Avançar para Fechamento</span>
+                          <ChevronRight className="w-4 h-4 stroke-[3]" />
+                        </button>
+                      </div>
+
+                      <div className="pt-2 border-t border-emerald-800/40">
+                        <label className="text-[10px] font-bold text-emerald-300 block mb-1">
+                          Anotação das peças trazidas (para constar na O.S. e recibo):
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ex: 4L Óleo Sintético 5W30 Motul + Filtro Mann trazidos pelo cliente no porta-malas..."
+                          value={clientProvidedPartsNotes}
+                          onChange={(e) => setClientProvidedPartsNotes(e.target.value)}
+                          className="w-full bg-slate-950/70 border border-emerald-600/50 rounded-lg px-3 py-1.5 text-xs text-emerald-100 placeholder-emerald-400/50 focus:outline-none focus:border-emerald-400"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Banner se 'cliente_parcial' */}
+                  {partsSupplyMode === 'cliente_parcial' && (
+                    <div className="bg-sky-950/30 border border-sky-500/40 rounded-xl p-3.5 space-y-2 mt-1 animate-in fade-in duration-150">
+                      <div className="flex items-start gap-2 text-xs text-sky-200">
+                        <Split className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold text-white">Fornecimento Parcial de Peças:</span> O cliente trouxe parte dos materiais.
+                          Insira abaixo <strong>apenas as peças faltantes</strong> que a oficina irá fornecer e cobrar na O.S.
+                        </div>
+                      </div>
+                      <div className="pt-1">
+                        <label className="text-[10px] font-bold text-sky-300 block mb-1">
+                          O que o cliente já trouxe? (para resguardo da oficina):
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Cliente trouxe pastilhas dianteiras; oficina fornece discos e fluído de freio..."
+                          value={clientProvidedPartsNotes}
+                          onChange={(e) => setClientProvidedPartsNotes(e.target.value)}
+                          className="w-full bg-slate-950/70 border border-sky-600/50 rounded-lg px-3 py-1.5 text-xs text-sky-100 placeholder-sky-400/50 focus:outline-none focus:border-sky-400"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Seletor & Inclusão de Peças (Ativo quando a oficina fornece ou faltam peças) */}
+                {partsSupplyMode !== 'cliente_todas' && (
+                  <>
+                    <div className="relative">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        {/* Busca Digitável */}
+                        <div className="relative flex-1">
+                          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            type="text"
+                            placeholder={
+                              partsSupplyMode === 'cliente_parcial'
+                                ? 'Digite a peça FALTANTE da oficina (ou insumo avulso)...'
+                                : 'Digite a peça (ex: óleo, filtro, pastilha) ou insumo avulso...'
+                            }
+                            value={partSearch}
+                            onChange={(e) => {
+                              setPartSearch(e.target.value);
+                              setIsPartDropdownOpen(true);
+                              setSelectedPartId('');
+                            }}
+                            onFocus={() => setIsPartDropdownOpen(true)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddPart();
+                              }
+                            }}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
+                          />
+                          {partSearch && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPartSearch('');
+                                setSelectedPartId('');
+                                setPartPriceInput('');
+                              }}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Quantidade Inicial + Valor Unitário Individual + Botão Adicionar */}
+                        <div className="flex gap-2">
+                          <div className="w-16 sm:w-20 shrink-0">
+                            <input
+                              type="number"
+                              min="1"
+                              value={partQty}
+                              onChange={(e) => setPartQty(Math.max(1, Number(e.target.value)))}
+                              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-xs sm:text-sm text-white text-center font-bold font-mono focus:outline-none focus:border-amber-500"
+                              title="Quantidade a adicionar"
+                            />
+                          </div>
+
+                          <div className="relative w-28 sm:w-32 shrink-0">
+                            <span className="text-slate-400 text-xs absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none font-bold">
+                              R$
+                            </span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="Unitário"
+                              value={partPriceInput}
+                              onChange={(e) => setPartPriceInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddPart();
+                                }
+                              }}
+                              className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-2 py-2 text-xs sm:text-sm text-white font-mono font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500 text-right"
+                              title="Valor unitário da peça (ou deixe vazio para o preço de catálogo)"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleAddPart()}
+                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 py-2 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 shrink-0 transition-colors shadow-sm"
+                            title="Adicionar peça com quantidade e valor informados"
+                          >
+                            <Plus className="w-4 h-4 stroke-[2.5]" />
+                            Adicionar
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Dropdown de Sugestões de Peças com Estoque e Venda */}
+                      {isPartDropdownOpen && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto z-40 divide-y divide-slate-800">
+                          {partSearch.trim() && (
+                            <div
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleAddPart(undefined, partSearch.trim());
+                              }}
+                              className="p-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 cursor-pointer flex items-center justify-between text-xs font-bold border-b border-slate-800 transition-colors"
+                            >
+                              <span className="flex items-center gap-1.5 truncate pr-2">
+                                <Plus className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">Adicionar como peça/insumo avulso: "{partSearch.trim()}"</span>
+                              </span>
+                              <span className="font-mono text-xs shrink-0">
+                                {partPriceInput ? `R$ ${parseFloat(partPriceInput.replace(',', '.')).toFixed(2)}/un` : '(definir unitário)'}
+                              </span>
+                            </div>
+                          )}
+
+                          {filteredParts.length === 0 && !partSearch.trim() ? (
+                            <div className="p-3 text-xs text-slate-400 text-center">
+                              Nenhuma peça cadastrada no estoque.
+                            </div>
+                          ) : (
+                            filteredParts.slice(0, 15).map((p) => (
+                              <div
+                                key={p.id}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setSelectedPartId(p.id);
+                                  setPartSearch(`${p.description} (Cód: ${p.code})`);
+                                  setPartPriceInput(p.sellPrice.toString());
+                                  setIsPartDropdownOpen(false);
+                                }}
+                                className={`p-2.5 hover:bg-slate-800 cursor-pointer flex items-center justify-between text-xs transition-colors ${
+                                  selectedPartId === p.id ? 'bg-amber-500/20 border-l-4 border-amber-500' : ''
+                                }`}
+                              >
+                                <div>
+                                  <span className="font-semibold text-white">{p.description}</span>
+                                  <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                                    <span className="font-mono text-amber-400/90 font-bold">Cód: {p.code}</span>
+                                    {p.brand && <span>• {p.brand}</span>}
+                                    {p.location && (
+                                      <span className="text-amber-300 font-medium bg-amber-500/10 px-1 rounded">
+                                        Loc: {p.location}
+                                      </span>
+                                    )}
+                                    <span
+                                      className={
+                                        p.currentStock <= p.minStock
+                                          ? 'text-red-400 font-bold'
+                                          : 'text-slate-400'
+                                      }
+                                    >
+                                      • Estoque: {p.currentStock} {p.unit || 'un'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-right ml-2 shrink-0">
+                                  <span className="font-mono font-bold text-amber-400 text-xs sm:text-sm">
+                                    R$ {p.sellPrice.toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Lista de Peças Adicionadas */}
+                    <div className="divide-y divide-slate-800/80 max-h-56 overflow-y-auto bg-slate-900/40 rounded-lg p-2 border border-slate-800/60">
+                      {parts.length === 0 ? (
+                        <div className="py-4 text-center text-xs text-slate-500 italic">
+                          {partsSupplyMode === 'cliente_parcial'
+                            ? 'Nenhuma peça faltante lançada ainda. Adicione as peças que a oficina fornecerá.'
+                            : 'Nenhuma peça ou insumo adicionado ainda.'}
                         </div>
                       ) : (
-                        filteredParts.slice(0, 15).map((p) => (
-                          <div
-                            key={p.id}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setSelectedPartId(p.id);
-                              setPartSearch(`${p.description} (Cód: ${p.code})`);
-                              setIsPartDropdownOpen(false);
-                            }}
-                            className={`p-2.5 hover:bg-slate-800 cursor-pointer flex items-center justify-between text-xs transition-colors ${
-                              selectedPartId === p.id ? 'bg-amber-500/20 border-l-4 border-amber-500' : ''
-                            }`}
-                          >
-                            <div>
-                              <span className="font-semibold text-white">{p.description}</span>
-                              <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
-                                <span className="font-mono text-amber-400/90 font-bold">Cód: {p.code}</span>
-                                {p.brand && <span>• {p.brand}</span>}
-                                {p.location && (
-                                  <span className="text-amber-300 font-medium bg-amber-500/10 px-1 rounded">
-                                    Loc: {p.location}
-                                  </span>
-                                )}
-                                <span
-                                  className={
-                                    p.currentStock <= p.minStock
-                                      ? 'text-red-400 font-bold'
-                                      : 'text-slate-400'
-                                  }
-                                >
-                                  • Estoque: {p.currentStock} {p.unit || 'un'}
-                                </span>
+                        parts.map((item) => (
+                          <div key={item.id} className="py-2.5 flex items-center justify-between text-xs gap-3">
+                            <div className="flex-1 min-w-0 pr-2">
+                              <div className="font-bold text-slate-100 truncate">{item.description}</div>
+                              <div className="text-slate-400 text-[11px] flex items-center gap-2">
+                                <span className="font-mono text-slate-500">Cód: {item.code}</span>
+                                <span>• Subtotal: R$ {item.total.toFixed(2)}</span>
                               </div>
                             </div>
-                            <div className="text-right ml-2 shrink-0">
-                              <span className="font-mono font-bold text-amber-400 text-xs sm:text-sm">
-                                R$ {p.sellPrice.toFixed(2)}
+
+                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                              {/* Controles de Quantidade Rápida [-] [Qtd] [+] */}
+                              <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePartQty(item.id, item.quantity - 1)}
+                                  disabled={item.quantity <= 1}
+                                  className="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent rounded transition-colors"
+                                  title="Diminuir quantidade"
+                                >
+                                  <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
+                                </button>
+                                <span className="font-mono font-bold text-white text-xs px-2 min-w-[28px] text-center">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePartQty(item.id, item.quantity + 1)}
+                                  className="w-7 h-7 flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-slate-800 rounded transition-colors"
+                                  title="Aumentar quantidade"
+                                >
+                                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                                </button>
+                              </div>
+
+                              {/* Input Editável de Valor Unitário */}
+                              <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 focus-within:border-amber-500">
+                                <span className="text-slate-400 text-xs font-bold">R$</span>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={item.unitPrice}
+                                  onChange={(e) => handleUpdatePartUnitPrice(item.id, parseFloat(e.target.value) || 0)}
+                                  className="w-16 sm:w-20 bg-transparent text-xs sm:text-sm font-mono font-bold text-white text-right focus:outline-none"
+                                  title="Clique para alterar o valor unitário desta peça"
+                                />
+                              </div>
+
+                              {/* Subtotal da Peça */}
+                              <span className="font-mono font-bold text-white text-xs sm:text-sm min-w-[70px] text-right">
+                                R$ {item.total.toFixed(2)}
                               </span>
+
+                              {/* Botão de Exclusão */}
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePart(item.id)}
+                                className="p-1 text-slate-500 hover:text-red-400 transition-colors"
+                                title="Remover peça"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
                         ))
                       )}
                     </div>
-                  )}
-                </div>
 
-                {/* Lista de Peças Adicionadas com Controles Táteis [-] e [+] */}
-                <div className="divide-y divide-slate-800/80 max-h-56 overflow-y-auto bg-slate-900/40 rounded-lg p-2 border border-slate-800/60">
-                  {parts.length === 0 ? (
-                    <div className="py-4 text-center text-xs text-slate-500 italic">
-                      Nenhuma peça ou insumo adicionado ainda.
-                    </div>
-                  ) : (
-                    parts.map((item) => (
-                      <div key={item.id} className="py-2.5 flex items-center justify-between text-xs gap-3">
-                        <div className="truncate pr-2">
-                          <span className="font-bold text-slate-100">{item.description}</span>
-                          <span className="text-slate-500 ml-2 font-mono text-[11px]">Cód: {item.code}</span>
-                          <span className="text-slate-400 ml-2 text-[11px]">
-                            (R$ {item.unitPrice.toFixed(2)}/un)
+                    {/* Barra de Ajuste do Total de Peças & Insumos (Distribuição Proporcional) */}
+                    <div className="bg-slate-900/90 border border-amber-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-inner">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                            Total de Peças & Insumos:
                           </span>
-                        </div>
-
-                        <div className="flex items-center gap-3 shrink-0">
-                          {/* Controles de Quantidade Rápida [-] [Qtd] [+] */}
-                          <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                            <button
-                              type="button"
-                              onClick={() => handleUpdatePartQty(item.id, item.quantity - 1)}
-                              disabled={item.quantity <= 1}
-                              className="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent rounded transition-colors"
-                              title="Diminuir quantidade"
-                            >
-                              <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
-                            </button>
-                            <span className="font-mono font-bold text-white text-xs px-2 min-w-[28px] text-center">
-                              {item.quantity}
+                          {parts.length > 0 && (
+                            <span className="text-[10px] text-slate-300 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700 font-bold">
+                              {parts.length} {parts.length === 1 ? 'item' : 'itens'}
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdatePartQty(item.id, item.quantity + 1)}
-                              className="w-7 h-7 flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-slate-800 rounded transition-colors"
-                              title="Aumentar quantidade"
-                            >
-                              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                            </button>
-                          </div>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          {parts.length > 1
+                            ? 'Você pode alterar o valor total do lote de peças (o sistema distribui proporcionalmente).'
+                            : parts.length === 1
+                            ? 'Altere o valor unitário acima ou ajuste o total aqui.'
+                            : 'Digite o valor total de peças para criar um lançamento consolidado.'}
+                        </p>
+                      </div>
 
-                          {/* Subtotal da Peça */}
-                          <span className="font-mono font-bold text-white text-xs sm:text-sm min-w-[70px] text-right">
-                            R$ {item.total.toFixed(2)}
-                          </span>
-
-                          {/* Botão de Exclusão */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 bg-slate-800 border-2 border-amber-500/70 rounded-lg px-2.5 py-1 focus-within:border-amber-400 shadow-sm">
+                          <span className="text-xs font-bold text-amber-400">R$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0,00"
+                            value={isEditingTotalParts ? totalPartsInput : (partsTotal > 0 ? partsTotal.toFixed(2) : '')}
+                            onFocus={() => {
+                              setIsEditingTotalParts(true);
+                              setTotalPartsInput(partsTotal > 0 ? partsTotal.toFixed(2) : '');
+                            }}
+                            onChange={(e) => setTotalPartsInput(e.target.value)}
+                            onBlur={() => {
+                              handleApplyTotalParts(totalPartsInput);
+                              setIsEditingTotalParts(false);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleApplyTotalParts(totalPartsInput);
+                                setIsEditingTotalParts(false);
+                              }
+                            }}
+                            className="w-28 sm:w-32 bg-transparent text-sm sm:text-base font-black text-white text-right font-mono focus:outline-none"
+                            title="Digite o valor total das peças & insumos"
+                          />
+                        </div>
+                        {isEditingTotalParts && (
                           <button
                             type="button"
-                            onClick={() => handleRemovePart(item.id)}
-                            className="p-1 text-slate-500 hover:text-red-400 transition-colors"
-                            title="Remover peça"
+                            onClick={() => {
+                              handleApplyTotalParts(totalPartsInput);
+                              setIsEditingTotalParts(false);
+                            }}
+                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1.5 rounded-lg text-xs shadow-sm"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            ✓ Ok
                           </button>
-                        </div>
+                        )}
                       </div>
-                    ))
-                  )}
-                </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Botões de Navegação Entre Abas */}
@@ -1543,9 +1946,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 {/* 4 Blocos Principais de Cobrança */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-4 border-b border-slate-800 text-xs">
                   <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">
-                    <span className="text-slate-400 block text-[11px] mb-1">Total Peças:</span>
+                    <span className="text-slate-400 block text-[11px] mb-1">
+                      Total Peças {partsSupplyMode === 'cliente_todas' ? '(Cliente)' : ''}:
+                    </span>
                     <span className="font-mono text-sm sm:text-base text-slate-200 font-bold">
-                      R$ {partsTotal.toFixed(2)}
+                      {partsSupplyMode === 'cliente_todas' ? 'R$ 0,00' : `R$ ${partsTotal.toFixed(2)}`}
                     </span>
                   </div>
                   <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">

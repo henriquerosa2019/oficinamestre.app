@@ -159,6 +159,18 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
             </table>
           </div>
 
+          {/* Notas de Fornecimento de Peças pelo Cliente */}
+          {order.partsSupplyMode === 'cliente_todas' && (
+            <div className="mb-4 p-2.5 bg-emerald-50 border border-emerald-300 rounded text-[11px] text-emerald-950">
+              <strong>Origem das Peças:</strong> Peças e insumos fornecidos integralmente pelo cliente {order.clientProvidedPartsNotes ? `(${order.clientProvidedPartsNotes})` : ''}. Sem custo de peças cobrado pela oficina (cobrança apenas de mão de obra). A garantia legal de 90 dias aplica-se exclusivamente aos serviços de instalação/mão de obra executados.
+            </div>
+          )}
+          {order.partsSupplyMode === 'cliente_parcial' && order.clientProvidedPartsNotes && (
+            <div className="mb-4 p-2.5 bg-sky-50 border border-sky-300 rounded text-[11px] text-sky-950">
+              <strong>Peças Trazidas pelo Cliente:</strong> {order.clientProvidedPartsNotes}. A oficina forneceu e garantiu apenas as peças faltantes discriminadas acima.
+            </div>
+          )}
+
           {/* Totais do Fechamento */}
           <div className="flex justify-between items-start border-t-2 border-slate-900 pt-3 mb-6">
             <div className="text-[11px] text-slate-600 space-y-1">
@@ -176,7 +188,7 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
             </div>
 
             <div className="text-right space-y-1 text-xs">
-              <div>Peças: R$ {order.partsTotal.toFixed(2)}</div>
+              <div>Peças: {order.partsSupplyMode === 'cliente_todas' ? 'R$ 0,00 (Cliente Forneceu)' : `R$ ${order.partsTotal.toFixed(2)}`}</div>
               <div>Mão de Obra: R$ {order.servicesTotal.toFixed(2)}</div>
               {order.discount > 0 && (
                 <div className="text-red-600 font-bold">Desconto: - R$ {order.discount.toFixed(2)}</div>
