@@ -185,6 +185,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
   const [totalServicesInput, setTotalServicesInput] = useState('');
   const [isEditingTotalServices, setIsEditingTotalServices] = useState(false);
+  const [customServicesTotal, setCustomServicesTotal] = useState<number | null>(
+    order?.servicesTotal !== undefined && order.servicesTotal > 0 && order.services.every((s) => s.price === 0)
+      ? order.servicesTotal
+      : null
+  );
 
   // Sincroniza veículos quando o cliente muda
   const clientVehicles = vehicles.filter((v) => v.clientId === clientId);
@@ -213,12 +218,22 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   // Cálculos Automáticos em Tempo Real
   const partsTotal = partsSupplyMode === 'cliente_todas' ? 0 : parts.reduce((acc, p) => acc + p.total, 0);
-  const servicesTotal = services.reduce((acc, s) => acc + s.price, 0);
+  const sumServices = services.reduce((acc, s) => acc + s.price, 0);
+  const servicesTotal =
+    customServicesTotal !== null && customServicesTotal > 0 && sumServices === 0
+      ? customServicesTotal
+      : sumServices;
   const grossTotal = partsTotal + servicesTotal;
   const netTotal = Math.max(0, grossTotal - discount);
 
+  const currentMechanic = mechanics.find((m) => m.id === mechanicId);
+  const mechanicCommRate = currentMechanic?.commissionRate || 15;
+  const mechanicsCommissionTotal =
+    sumServices === 0 && servicesTotal > 0
+      ? (servicesTotal * mechanicCommRate) / 100
+      : services.reduce((acc, s) => acc + s.commissionValue, 0);
+
   const partsCostTotal = partsSupplyMode === 'cliente_todas' ? 0 : parts.reduce((acc, p) => acc + p.unitCost * p.quantity, 0);
-  const mechanicsCommissionTotal = services.reduce((acc, s) => acc + s.commissionValue, 0);
   const netProfit = netTotal - partsCostTotal - mechanicsCommissionTotal;
   const profitMarginPercent = netTotal > 0 ? (netProfit / netTotal) * 100 : 0;
 
@@ -467,10 +482,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const handleUpdateServicePrice = (id: string, newPrice: number) => {
     const currentMechanic = mechanics.find((m) => m.id === mechanicId);
     const commRate = currentMechanic?.commissionRate || 15;
+    const p = Math.max(0, isNaN(newPrice) ? 0 : newPrice);
     setServices((prev) =>
       prev.map((s) => {
         if (s.id === id) {
-          const p = Math.max(0, isNaN(newPrice) ? 0 : newPrice);
           return {
             ...s,
             price: p,
@@ -480,6 +495,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         return s;
       })
     );
+    if (p > 0) {
+      setCustomServicesTotal(null);
+    }
   };
 
   const handleApplyTotalServices = (val: string) => {
@@ -501,7 +519,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           commissionValue: (newTotal * commRate) / 100,
         };
         setServices([newService]);
+        setCustomServicesTotal(null);
       }
+      return;
+    }
+
+    const currentSum = services.reduce((acc, s) => acc + s.price, 0);
+
+    // REGRA DE OPERAÇÃO:
+    // Se o mecânico NÃO entrou com o valor de mão de obra individual (soma dos serviços é 0),
+    // ao totalizar o valor, NÃO DILUIR o valor total para cada serviço!
+    // Mantém todos os serviços descritos e atribui o total global de mão de obra.
+    if (currentSum === 0) {
+      setCustomServicesTotal(newTotal);
       return;
     }
 
@@ -513,18 +543,18 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           commissionValue: (newTotal * (services[0].commissionRate || commRate)) / 100,
         },
       ]);
+      setCustomServicesTotal(null);
       return;
     }
 
-    // Distribuir proporcionalmente entre os serviços existentes (ou igualitariamente se a soma atual for zero)
-    const currentSum = services.reduce((acc, s) => acc + s.price, 0);
+    // Se já havia preços individuais maiores que zero, distribui proporcionalmente
     let allocated = 0;
     const updated = services.map((s, idx) => {
       let p: number;
       if (idx === services.length - 1) {
         p = Math.max(0, Math.round((newTotal - allocated) * 100) / 100);
       } else {
-        const ratio = currentSum > 0 ? s.price / currentSum : 1 / services.length;
+        const ratio = s.price / currentSum;
         p = Math.round(ratio * newTotal * 100) / 100;
         allocated += p;
       }
@@ -536,10 +566,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     });
 
     setServices(updated);
+    setCustomServicesTotal(null);
   };
 
   const handleRemoveService = (id: string) => {
-    setServices((prev) => prev.filter((s) => s.id !== id));
+    setServices((prev) => {
+      const remaining = prev.filter((s) => s.id !== id);
+      if (remaining.length === 0) {
+        setCustomServicesTotal(null);
+      }
+      return remaining;
+    });
   };
 
   // Marcar/Desmarcar Tudo no Checklist de Entrada em 1 Toque
@@ -1321,8 +1358,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       <div key={item.id} className="py-2.5 flex items-center justify-between text-xs gap-3">
                         <div className="flex-1 min-w-0 pr-2">
                           <div className="font-bold text-slate-100 truncate">{item.description}</div>
-                          <div className="text-slate-400 text-[11px]">
-                            Comissão ({item.commissionRate}%): R$ {item.commissionValue.toFixed(2)}
+                          <div className="text-slate-400 text-[11px] flex items-center gap-2">
+                            {item.price === 0 && servicesTotal > 0 ? (
+                              <span className="text-amber-400 font-medium bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px]">
+                                Incluso no Pacote Global
+                              </span>
+                            ) : (
+                              <span>Comissão ({item.commissionRate}%): R$ {item.commissionValue.toFixed(2)}</span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -1332,10 +1375,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               type="number"
                               step="0.01"
                               min="0"
-                              value={item.price}
+                              value={item.price > 0 ? item.price : ''}
+                              placeholder="0,00"
                               onChange={(e) => handleUpdateServicePrice(item.id, parseFloat(e.target.value) || 0)}
-                              className="w-20 sm:w-24 bg-transparent text-xs sm:text-sm font-mono font-bold text-white text-right focus:outline-none"
-                              title="Clique para alterar o valor individual deste serviço"
+                              className="w-20 sm:w-24 bg-transparent text-xs sm:text-sm font-mono font-bold text-white text-right focus:outline-none placeholder-slate-500"
+                              title="Valor individual deste serviço (ou deixe vazio para compor o pacote global)"
                             />
                           </div>
                           <button
@@ -1366,8 +1410,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       )}
                     </div>
                     <p className="text-[11px] text-slate-400">
-                      {services.length > 1
-                        ? 'Você pode alterar o valor total do pacote (o sistema distribui entre os serviços).'
+                      {sumServices === 0 && servicesTotal > 0
+                        ? 'Valor global de mão de obra definido. Os serviços são mantidos no pacote sem diluição individual.'
+                        : services.length > 1
+                        ? 'Você pode alterar o valor total do pacote (o sistema distribui entre os serviços com valor).'
                         : services.length === 1
                         ? 'Altere o valor individual acima ou ajuste o total aqui.'
                         : 'Digite o valor total de mão de obra para criar o pacote de serviços.'}

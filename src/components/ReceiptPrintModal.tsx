@@ -138,8 +138,12 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
                     <td className="py-1.5 px-3 font-semibold text-slate-900">{s.description}</td>
                     <td className="py-1.5 px-3 text-center text-slate-500">Mão de Obra</td>
                     <td className="py-1.5 px-3 text-center">1</td>
-                    <td className="py-1.5 px-3 text-right font-mono">R$ {s.price.toFixed(2)}</td>
-                    <td className="py-1.5 px-3 text-right font-mono font-bold">R$ {s.price.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right font-mono">
+                      {s.price > 0 ? `R$ ${s.price.toFixed(2)}` : 'Incluso'}
+                    </td>
+                    <td className="py-1.5 px-3 text-right font-mono font-bold">
+                      {s.price > 0 ? `R$ ${s.price.toFixed(2)}` : 'Incluso'}
+                    </td>
                   </tr>
                 ))}
 
