@@ -138,9 +138,11 @@ export const App: React.FC = () => {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
 
+    const isApprovedOrActive = newStatus === 'aprovado' || newStatus === 'em_andamento' || newStatus === 'pronto' || newStatus === 'finalizado';
     const updated: ServiceOrder = {
       ...order,
       status: newStatus,
+      serviceDate: (isApprovedOrActive && !order.serviceDate) ? new Date().toISOString().split('T')[0] : order.serviceDate,
       updatedAt: new Date().toISOString(),
       finishedAt: newStatus === 'finalizado' ? new Date().toISOString() : order.finishedAt,
     };
@@ -330,6 +332,11 @@ export const App: React.FC = () => {
       setVehicles(StorageService.getVehicles());
     }
     setClients(StorageService.getClients());
+  };
+
+  const handleSaveVehicle = (vehicle: Vehicle) => {
+    StorageService.saveVehicle(vehicle);
+    setVehicles(StorageService.getVehicles());
   };
 
   const handleDeleteClient = (id: string) => {
@@ -560,6 +567,8 @@ export const App: React.FC = () => {
         availableServices={services}
         onPrintReceipt={handlePrintReceipt}
         onQuickCheckout={handleQuickCheckout}
+        onSaveClient={handleSaveClient}
+        onSaveVehicle={handleSaveVehicle}
       />
 
       {/* Modal de Impressão de Recibo / OS */}

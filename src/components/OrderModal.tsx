@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ServiceOrder,
   Client,
@@ -42,7 +42,7 @@ import {
 import { CarDamageCanvas } from './CarDamageCanvas';
 import { WhatsAppService } from '../services/whatsapp';
 import { QuickOrderCheckoutModal } from './QuickOrderCheckoutModal';
-import { getOrderWarranty, toIsoDate } from '../utils/warranty';
+import { getOrderWarranty, toIsoDate, formatBrDate } from '../utils/warranty';
 import confetti from 'canvas-confetti';
 
 interface OrderModalProps {
@@ -57,6 +57,8 @@ interface OrderModalProps {
   availableServices: ServiceItem[];
   onPrintReceipt: (order: ServiceOrder) => void;
   onQuickCheckout?: (order: ServiceOrder, paymentMethod: PaymentMethod, isPaid: boolean) => void;
+  onSaveClient?: (client: Client, newVehicle?: Vehicle) => void;
+  onSaveVehicle?: (vehicle: Vehicle) => void;
 }
 
 export const OrderModal: React.FC<OrderModalProps> = ({
@@ -71,6 +73,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   availableServices,
   onPrintReceipt,
   onQuickCheckout,
+  onSaveClient,
+  onSaveVehicle,
 }) => {
   if (!isOpen) return null;
 
@@ -118,11 +122,40 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(order?.paymentMethod || 'pix');
   const [copiedMsg, setCopiedMsg] = useState(false);
 
-  // Datas e Garantia
+  // Datas: Data de Entrada e Data do Serviço (apenas com aprovação da OS)
+  const [entryDate, setEntryDate] = useState<string>(
+    order?.entryDate || (order?.createdAt ? toIsoDate(order.createdAt) : toIsoDate(new Date()))
+  );
   const [serviceDate, setServiceDate] = useState<string>(
-    order?.serviceDate || (order?.createdAt ? toIsoDate(order.createdAt) : toIsoDate(new Date()))
+    order?.serviceDate ||
+      (order?.status === 'aprovado' ||
+      order?.status === 'em_andamento' ||
+      order?.status === 'pronto' ||
+      order?.status === 'finalizado'
+        ? toIsoDate(order?.finishedAt || new Date())
+        : '')
   );
   const [warrantyDays, setWarrantyDays] = useState<number>(order?.warrantyDays ?? 90);
+
+  // Modais de Cadastro Rápido de Cliente e Veículo
+  const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
+  const [newClientDocument, setNewClientDocument] = useState('');
+  const [newClientAddress, setNewClientAddress] = useState('');
+  const [newClientHasVehicle, setNewClientHasVehicle] = useState(true);
+  const [newClientPlate, setNewClientPlate] = useState('');
+  const [newClientBrand, setNewClientBrand] = useState('');
+  const [newClientModel, setNewClientModel] = useState('');
+  const [newClientYear, setNewClientYear] = useState<number>(new Date().getFullYear());
+  const [newClientMileage, setNewClientMileage] = useState<number>(50000);
+
+  const [isNewVehicleModalOpen, setIsNewVehicleModalOpen] = useState(false);
+  const [newVehPlate, setNewVehPlate] = useState('');
+  const [newVehBrand, setNewVehBrand] = useState('');
+  const [newVehModel, setNewVehModel] = useState('');
+  const [newVehYear, setNewVehYear] = useState<number>(new Date().getFullYear());
+  const [newVehMileage, setNewVehMileage] = useState<number>(50000);
 
   // Seletores com Busca Digitável - Peças
   const [partSearch, setPartSearch] = useState('');
@@ -139,10 +172,26 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const clientVehicles = vehicles.filter((v) => v.clientId === clientId);
 
   useEffect(() => {
-    if (!order && clientVehicles.length > 0 && !clientVehicles.find((v) => v.id === vehicleId)) {
+    if (clientVehicles.length > 0 && !clientVehicles.find((v) => v.id === vehicleId)) {
       setVehicleId(clientVehicles[0].id);
+      if (clientVehicles[0].mileage) {
+        setMileage(clientVehicles[0].mileage);
+      }
     }
-  }, [clientId]);
+  }, [clientId, vehicles]);
+
+  // Se o status da OS mudar para aprovado/em andamento/finalizado, define automaticamente a data de serviço se vazia
+  const handleStatusChange = (newStatus: OrderStatus) => {
+    setStatus(newStatus);
+    const isApprovedOrActive =
+      newStatus === 'aprovado' ||
+      newStatus === 'em_andamento' ||
+      newStatus === 'pronto' ||
+      newStatus === 'finalizado';
+    if (isApprovedOrActive && !serviceDate) {
+      setServiceDate(toIsoDate(new Date()));
+    }
+  };
 
   // Cálculos Automáticos em Tempo Real
   const partsTotal = parts.reduce((acc, p) => acc + p.total, 0);
@@ -157,7 +206,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   // Informações de Garantia Calculadas (90 dias padrão CDC)
   const warrantyInfo = getOrderWarranty({
-    serviceDate,
+    entryDate,
+    serviceDate: serviceDate || undefined,
     warrantyDays,
     createdAt: order?.createdAt || new Date().toISOString(),
     finishedAt: status === 'finalizado' ? order?.finishedAt || new Date().toISOString() : undefined,
@@ -288,8 +338,97 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     setHasTriangle(!allChecked);
   };
 
+  // Salvar Novo Cliente & Veículo diretamente no Modal da OS
+  const handleSaveNewClientQuick = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClientName.trim() || !newClientPhone.trim()) return;
+
+    const newClient: Client = {
+      id: 'cli-' + Date.now(),
+      name: newClientName.trim(),
+      phone: newClientPhone.trim(),
+      document: newClientDocument.trim(),
+      address: newClientAddress.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    let newVeh: Vehicle | undefined = undefined;
+    if (newClientHasVehicle && newClientPlate.trim() && newClientModel.trim()) {
+      newVeh = {
+        id: 'veh-' + Date.now(),
+        clientId: newClient.id,
+        plate: newClientPlate.toUpperCase().trim(),
+        brand: newClientBrand.trim() || 'Genérica',
+        model: newClientModel.trim(),
+        year: Number(newClientYear) || new Date().getFullYear(),
+        mileage: Number(newClientMileage) || 50000,
+        fuelType: 'flex',
+      };
+    }
+
+    if (onSaveClient) {
+      onSaveClient(newClient, newVeh);
+    }
+
+    // Seleciona o novo cliente e veículo na OS imediatamente
+    setClientId(newClient.id);
+    if (newVeh) {
+      setVehicleId(newVeh.id);
+      setMileage(newVeh.mileage);
+    }
+
+    // Limpa formulário e fecha modal
+    setNewClientName('');
+    setNewClientPhone('');
+    setNewClientDocument('');
+    setNewClientAddress('');
+    setNewClientPlate('');
+    setNewClientBrand('');
+    setNewClientModel('');
+    setIsNewClientModalOpen(false);
+  };
+
+  // Salvar Novo Veículo diretamente no Modal da OS
+  const handleSaveNewVehicleQuick = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVehPlate.trim() || !newVehModel.trim() || !clientId) return;
+
+    const newVeh: Vehicle = {
+      id: 'veh-' + Date.now(),
+      clientId: clientId,
+      plate: newVehPlate.toUpperCase().trim(),
+      brand: newVehBrand.trim() || 'Genérica',
+      model: newVehModel.trim(),
+      year: Number(newVehYear) || new Date().getFullYear(),
+      mileage: Number(newVehMileage) || 50000,
+      fuelType: 'flex',
+    };
+
+    if (onSaveVehicle) {
+      onSaveVehicle(newVeh);
+    }
+
+    // Seleciona o novo veículo imediatamente
+    setVehicleId(newVeh.id);
+    setMileage(newVeh.mileage);
+
+    // Limpa formulário e fecha modal
+    setNewVehPlate('');
+    setNewVehBrand('');
+    setNewVehModel('');
+    setIsNewVehicleModalOpen(false);
+  };
+
   // Salvar Ordem de Serviço
   const handleSave = () => {
+    const isApprovedOrActive =
+      status === 'aprovado' ||
+      status === 'em_andamento' ||
+      status === 'pronto' ||
+      status === 'finalizado';
+
+    const calculatedServiceDate = serviceDate || (isApprovedOrActive ? toIsoDate(new Date()) : undefined);
+
     const currentOrder: ServiceOrder = {
       id: order?.id || 'ord-' + Date.now(),
       orderNumber,
@@ -327,7 +466,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       paymentMethod,
       isPaid,
       paidAt: isPaid ? order?.paidAt || new Date().toISOString() : undefined,
-      serviceDate,
+      entryDate,
+      serviceDate: calculatedServiceDate,
       warrantyDays,
       warrantyExpiresAt: warrantyInfo.expiryDateStr,
       createdAt: order?.createdAt || new Date().toISOString(),
@@ -375,20 +515,26 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Bloco de Data do Serviço e Vencimento da Garantia */}
+            {/* Bloco de Data de Entrada e Vencimento da Garantia */}
             <div className="hidden md:flex flex-col text-right px-3 py-1 bg-slate-900 border border-slate-800 rounded-lg">
               <span className="text-[10px] text-slate-400">
-                Data: <span className="text-slate-200">{warrantyInfo.formattedServiceDate}</span>
+                Data Entrada: <span className="text-slate-200 font-mono font-bold">{warrantyInfo.formattedEntryDate}</span>
               </span>
-              <span className="text-xs text-white">
-                Venc. Garantia: <strong className="text-amber-400 font-bold">{warrantyInfo.formattedExpiryDate}</strong>
-              </span>
+              {warrantyInfo.hasServiceDate ? (
+                <span className="text-xs text-white">
+                  Venc. Garantia: <strong className="text-amber-400 font-bold">{warrantyInfo.formattedExpiryDate}</strong>
+                </span>
+              ) : (
+                <span className="text-[10px] text-amber-400/90 font-medium">
+                  Garantia: 90 dias após aprovação
+                </span>
+              )}
             </div>
 
             {/* Seletor de Status da OS */}
             <select
               value={status}
-              onChange={(e) => setStatus(e.target.value as OrderStatus)}
+              onChange={(e) => handleStatusChange(e.target.value as OrderStatus)}
               className="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 font-bold text-amber-400 focus:outline-none focus:border-amber-500"
             >
               <option value="orcamento">1. Orçamento</option>
@@ -501,8 +647,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           {/* ========================================================================= */}
           {activeTab === 'diagnostico' && (
             <div className="space-y-5 animate-in fade-in duration-150">
-              {/* Seção 1: Cliente, Veículo, Mecânico e Data/Garantia */}
+              {/* Seção 1: Cliente, Veículo, Mecânico e Data de Entrada / Data do Serviço */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+                {/* Campo Cliente com Botão Novo (+) Embaixo */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase mb-1 flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-amber-400" />
@@ -519,8 +666,22 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       </option>
                     ))}
                   </select>
+
+                  {/* Botão Novo (+) Embaixo de Cliente */}
+                  <div className="mt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsNewClientModalOpen(true)}
+                      className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-1 rounded-lg border border-amber-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      title="Cadastrar Novo Cliente & Veículo diretamente pela OS"
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>Novo (+)</span>
+                    </button>
+                  </div>
                 </div>
 
+                {/* Campo Veículo do Cliente com Botão Novo (+) Embaixo */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase mb-1 flex items-center gap-1.5">
                     <Car className="w-3.5 h-3.5 text-amber-400" />
@@ -531,14 +692,33 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     onChange={(e) => setVehicleId(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500"
                   >
-                    {clientVehicles.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.brand} {v.model} ({v.plate})
-                      </option>
-                    ))}
+                    {clientVehicles.length === 0 ? (
+                      <option value="">Nenhum veículo cadastrado para este cliente</option>
+                    ) : (
+                      clientVehicles.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.brand} {v.model} ({v.plate})
+                        </option>
+                      ))
+                    )}
                   </select>
+
+                  {/* Botão Novo (+) Embaixo de Veículo */}
+                  <div className="mt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsNewVehicleModalOpen(true)}
+                      disabled={!clientId}
+                      className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-40 px-2 py-1 rounded-lg border border-amber-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      title="Cadastrar Novo Veículo para este cliente"
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>Novo (+)</span>
+                    </button>
+                  </div>
                 </div>
 
+                {/* Mecânico Responsável */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase mb-1 flex items-center gap-1.5">
                     <Wrench className="w-3.5 h-3.5 text-amber-400" />
@@ -557,22 +737,47 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </select>
                 </div>
 
+                {/* Data de Entrada & Data do Serviço */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase mb-1 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                    Data do Serviço
+                    Data de Entrada
                   </label>
                   <input
                     type="date"
-                    value={serviceDate}
-                    onChange={(e) => setServiceDate(e.target.value)}
+                    value={entryDate}
+                    onChange={(e) => setEntryDate(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500 font-mono font-medium"
                   />
-                  <div className="mt-1.5 text-xs text-slate-300">
-                    <span className="text-[11px] text-slate-400">Venc. Garantia: </span>
-                    <strong className="text-amber-400 font-bold">{warrantyInfo.formattedExpiryDate}</strong>
-                    <span className="text-[10px] text-slate-500 ml-1">({warrantyDays}d)</span>
-                  </div>
+
+                  {/* Data do Serviço: Apenas com aprovação da OS */}
+                  {status === 'aprovado' ||
+                  status === 'em_andamento' ||
+                  status === 'pronto' ||
+                  status === 'finalizado' ||
+                  serviceDate ? (
+                    <div className="mt-2 pt-2 border-t border-slate-800">
+                      <label className="block text-[11px] font-semibold text-emerald-400 uppercase mb-1 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        Data do Serviço (Aprovada)
+                      </label>
+                      <input
+                        type="date"
+                        value={serviceDate || toIsoDate(new Date())}
+                        onChange={(e) => setServiceDate(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono font-medium"
+                      />
+                      <div className="mt-1 text-xs text-slate-300">
+                        <span className="text-[11px] text-slate-400">Venc. Garantia: </span>
+                        <strong className="text-amber-400 font-bold">{warrantyInfo.formattedExpiryDate}</strong>
+                        <span className="text-[10px] text-slate-500 ml-1">({warrantyDays}d)</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 py-1 px-2 bg-slate-900/80 rounded border border-slate-800 text-[10px] sm:text-[11px] text-slate-400">
+                      <span className="text-amber-400/90 font-medium">⏳ Data do Serviço:</span> Definida automaticamente após a aprovação da O.S.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -980,6 +1185,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
                                 <span className="font-mono text-amber-400/90 font-bold">Cód: {p.code}</span>
                                 {p.brand && <span>• {p.brand}</span>}
+                                {p.location && (
+                                  <span className="text-amber-300 font-medium bg-amber-500/10 px-1 rounded">
+                                    Loc: {p.location}
+                                  </span>
+                                )}
                                 <span
                                   className={
                                     p.currentStock <= p.minStock
@@ -1250,6 +1460,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               isPaid,
                               technicalDiagnostic,
                               complaintDescription,
+                              entryDate,
                               serviceDate,
                               warrantyDays,
                               warrantyExpiresAt: warrantyInfo.expiryDateStr,
@@ -1298,6 +1509,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               isPaid,
                               technicalDiagnostic,
                               complaintDescription,
+                              entryDate,
                               serviceDate,
                               warrantyDays,
                               warrantyExpiresAt: warrantyInfo.expiryDateStr,
@@ -1340,6 +1552,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                             grossTotal,
                             discount,
                             netTotal,
+                            entryDate,
                             serviceDate,
                             warrantyDays,
                             warrantyExpiresAt: warrantyInfo.expiryDateStr,
@@ -1463,6 +1676,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           paymentMethod,
           isPaid,
           paidAt: isPaid ? order?.paidAt || new Date().toISOString() : undefined,
+          entryDate,
           serviceDate,
           warrantyDays,
           warrantyExpiresAt: warrantyInfo.expiryDateStr,
@@ -1488,6 +1702,277 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         vehicle={currentVehicle}
         mechanic={mechanics.find((m) => m.id === mechanicId)}
       />
+
+      {/* ========================================================================= */}
+      {/* MODAL: CADASTRAR NOVO CLIENTE & VEÍCULO (DIRETO PELA O.S.) */}
+      {/* ========================================================================= */}
+      {isNewClientModalOpen && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <form onSubmit={handleSaveNewClientQuick}>
+              <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                  <User className="w-4 h-4 text-amber-400" />
+                  Cadastrar Novo Cliente & Veículo
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsNewClientModalOpen(false)}
+                  className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Nome Completo do Cliente *</label>
+                  <input
+                    required
+                    type="text"
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    placeholder="Ex: João da Silva"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">WhatsApp / Telefone *</label>
+                    <input
+                      required
+                      type="text"
+                      value={newClientPhone}
+                      onChange={(e) => setNewClientPhone(e.target.value)}
+                      placeholder="(11) 98765-4321"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">CPF ou CNPJ</label>
+                    <input
+                      type="text"
+                      value={newClientDocument}
+                      onChange={(e) => setNewClientDocument(e.target.value)}
+                      placeholder="000.000.000-00"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Endereço (opcional)</label>
+                  <input
+                    type="text"
+                    value={newClientAddress}
+                    onChange={(e) => setNewClientAddress(e.target.value)}
+                    placeholder="Rua, número, bairro e cidade"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                {/* Bloco de Veículo Inicial */}
+                <div className="pt-3 border-t border-slate-800 space-y-3">
+                  <label className="flex items-center gap-2 font-bold text-amber-400 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={newClientHasVehicle}
+                      onChange={(e) => setNewClientHasVehicle(e.target.checked)}
+                      className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4"
+                    />
+                    Cadastrar Veículo Inicial Agora
+                  </label>
+
+                  {newClientHasVehicle && (
+                    <div className="space-y-3 pl-4 border-l-2 border-amber-500/40 animate-in fade-in duration-150">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-slate-300 font-semibold mb-1">Placa do Veículo *</label>
+                          <input
+                            type="text"
+                            required={newClientHasVehicle}
+                            value={newClientPlate}
+                            onChange={(e) => setNewClientPlate(e.target.value)}
+                            placeholder="ABC1D23"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 font-mono font-bold text-white uppercase placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-300 font-semibold mb-1">Marca</label>
+                          <input
+                            type="text"
+                            value={newClientBrand}
+                            onChange={(e) => setNewClientBrand(e.target.value)}
+                            placeholder="Ex: Fiat, VW, GM"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2">
+                          <label className="block text-slate-300 font-semibold mb-1">Modelo *</label>
+                          <input
+                            type="text"
+                            required={newClientHasVehicle}
+                            value={newClientModel}
+                            onChange={(e) => setNewClientModel(e.target.value)}
+                            placeholder="Ex: Palio 1.0 Fire"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-300 font-semibold mb-1">Ano</label>
+                          <input
+                            type="number"
+                            value={newClientYear}
+                            onChange={(e) => setNewClientYear(Number(e.target.value))}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-semibold mb-1">Quilometragem Atual (KM)</label>
+                        <input
+                          type="number"
+                          value={newClientMileage}
+                          onChange={(e) => setNewClientMileage(Number(e.target.value))}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="px-6 py-3.5 bg-slate-950 border-t border-slate-800 flex justify-end items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsNewClientModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Salvar Cliente
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: CADASTRAR NOVO VEÍCULO PARA O CLIENTE SELECIONADO */}
+      {/* ========================================================================= */}
+      {isNewVehicleModalOpen && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <form onSubmit={handleSaveNewVehicleQuick}>
+              <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                    <Car className="w-4 h-4 text-amber-400" />
+                    Cadastrar Veículo para Cliente
+                  </h3>
+                  {currentClient && (
+                    <span className="text-xs text-amber-400/90 font-medium">
+                      Cliente: {currentClient.name}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsNewVehicleModalOpen(false)}
+                  className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Placa do Veículo *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newVehPlate}
+                      onChange={(e) => setNewVehPlate(e.target.value)}
+                      placeholder="ABC1D23"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 font-mono font-bold text-white uppercase placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Marca</label>
+                    <input
+                      type="text"
+                      value={newVehBrand}
+                      onChange={(e) => setNewVehBrand(e.target.value)}
+                      placeholder="Ex: Fiat, VW, GM"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <label className="block text-slate-300 font-semibold mb-1">Modelo *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newVehModel}
+                      onChange={(e) => setNewVehModel(e.target.value)}
+                      placeholder="Ex: Palio 1.0 Fire"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Ano</label>
+                    <input
+                      type="number"
+                      value={newVehYear}
+                      onChange={(e) => setNewVehYear(Number(e.target.value))}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Quilometragem Atual (KM)</label>
+                  <input
+                    type="number"
+                    value={newVehMileage}
+                    onChange={(e) => setNewVehMileage(Number(e.target.value))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-3.5 bg-slate-950 border-t border-slate-800 flex justify-end items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsNewVehicleModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Salvar Veículo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

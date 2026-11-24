@@ -117,10 +117,10 @@ export const QuickOrderCheckoutModal: React.FC<QuickOrderCheckoutModalProps> = (
                   <div>
                     <span className="text-slate-400 flex items-center gap-1 text-[11px]">
                       <Calendar className="w-3 h-3 text-slate-400" />
-                      Data do Serviço:
+                      {warranty.hasServiceDate ? 'Data do Serviço:' : 'Data de Entrada:'}
                     </span>
                     <span className="font-medium text-slate-200 text-xs mt-0.5 block font-mono">
-                      {warranty.formattedServiceDate}
+                      {warranty.hasServiceDate ? warranty.formattedServiceDate : warranty.formattedEntryDate}
                     </span>
                   </div>
                   <div>

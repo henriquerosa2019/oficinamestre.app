@@ -336,8 +336,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             const warranty = getOrderWarranty(order);
                             return (
                               <div className="text-[10px] text-slate-400 mb-2 py-1 px-2 bg-slate-950/60 rounded border border-slate-800/80 flex items-center justify-between">
-                                <span>Data: <span className="text-slate-300 font-medium">{warranty.formattedServiceDate}</span></span>
-                                <span>Venc. Garantia: <strong className="text-amber-400 font-bold">{warranty.formattedExpiryDate}</strong></span>
+                                <span>
+                                  {warranty.hasServiceDate ? 'Serviço: ' : 'Entrada: '}
+                                  <span className="text-slate-300 font-medium">
+                                    {warranty.hasServiceDate ? warranty.formattedServiceDate : warranty.formattedEntryDate}
+                                  </span>
+                                </span>
+                                <span>
+                                  {warranty.hasServiceDate ? (
+                                    <>Venc. Garantia: <strong className="text-amber-400 font-bold">{warranty.formattedExpiryDate}</strong></>
+                                  ) : (
+                                    <span className="text-slate-500 font-medium">Garantia após aprov.</span>
+                                  )}
+                                </span>
                               </div>
                             );
                           })()}
@@ -503,10 +514,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                   {order.orderNumber}
                                 </span>
                                 <div className="text-[10px] text-slate-400 mt-0.5">
-                                  Data: <span className="text-slate-300">{warranty.formattedServiceDate}</span>
+                                  {warranty.hasServiceDate ? 'Serviço: ' : 'Entrada: '}
+                                  <span className="text-slate-300">
+                                    {warranty.hasServiceDate ? warranty.formattedServiceDate : warranty.formattedEntryDate}
+                                  </span>
                                 </div>
                                 <div className="text-[10px] text-slate-200 mt-0.5 font-bold">
-                                  Venc. Garantia: <strong className="text-amber-400 font-bold">{warranty.formattedExpiryDate}</strong>
+                                  {warranty.hasServiceDate ? (
+                                    <>Venc. Garantia: <strong className="text-amber-400 font-bold">{warranty.formattedExpiryDate}</strong></>
+                                  ) : (
+                                    <span className="text-slate-500 font-normal">Garantia após aprov.</span>
+                                  )}
                                 </div>
                               </>
                             );

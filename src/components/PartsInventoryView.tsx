@@ -325,6 +325,7 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                     currentStock: 1,
                     minStock: 2,
                     unit: 'UN',
+                    location: 'Prateleira A1',
                   });
                   setIsEditModalOpen(true);
                 }}
@@ -983,6 +984,29 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                         setEditingPart({ ...editingPart, minStock: parseInt(e.target.value) || 0 })
                       }
                       className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-400 mb-1">Localização (Loc. Prateleira)</label>
+                    <input
+                      type="text"
+                      value={editingPart.location || ''}
+                      onChange={(e) => setEditingPart({ ...editingPart, location: e.target.value })}
+                      placeholder="Ex: Prateleira A1, Gaveta B2..."
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Unidade</label>
+                    <input
+                      type="text"
+                      value={editingPart.unit || 'UN'}
+                      onChange={(e) => setEditingPart({ ...editingPart, unit: e.target.value })}
+                      placeholder="UN, L, Jogo, Par..."
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
                     />
                   </div>
                 </div>

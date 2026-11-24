@@ -201,7 +201,8 @@ export interface ServiceOrder {
   paidAt?: string;
 
   // Datas e Garantia
-  serviceDate?: string; // Data da realização do serviço (YYYY-MM-DD ou ISO)
+  entryDate?: string; // Data de Entrada do veículo no pátio da oficina (YYYY-MM-DD ou ISO)
+  serviceDate?: string; // Data da realização/aprovação do serviço (definida com a aprovação da O.S.)
   warrantyDays?: number; // Prazo de garantia em dias (padrão: 90 dias - Art. 26 CDC)
   warrantyExpiresAt?: string; // Data exata em que vence a garantia (YYYY-MM-DD ou ISO)
 

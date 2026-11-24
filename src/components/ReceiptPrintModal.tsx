@@ -73,8 +73,13 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
               <span className="text-xs uppercase text-slate-500 block font-semibold">Ordem de Serviço</span>
               <span className="text-xl font-mono font-black text-slate-950">{order.orderNumber}</span>
               <span className="text-[10px] text-slate-500 block mt-0.5">
-                Data: {warranty.formattedServiceDate}
+                Data Entrada: {warranty.formattedEntryDate}
               </span>
+              {warranty.hasServiceDate && (
+                <span className="text-[10px] text-slate-700 block font-medium">
+                  Data Serviço: {warranty.formattedServiceDate}
+                </span>
+              )}
               <span className="text-[11px] text-slate-950 block mt-0.5 font-black tracking-tight">
                 Venc. Garantia: <strong>{warranty.formattedExpiryDate}</strong>
               </span>

@@ -2,12 +2,15 @@ import { ServiceOrder } from '../types';
 
 export interface WarrantyCalculation {
   warrantyDays: number;
+  entryDateStr: string; // YYYY-MM-DD
   serviceDateStr: string; // YYYY-MM-DD
   expiryDateStr: string; // YYYY-MM-DD
+  formattedEntryDate: string; // DD/MM/AAAA
   formattedServiceDate: string; // DD/MM/AAAA
   formattedExpiryDate: string; // DD/MM/AAAA
   isExpired: boolean;
   daysRemaining: number;
+  hasServiceDate: boolean;
 }
 
 /**
@@ -59,9 +62,15 @@ export function formatBrDate(dateInput?: string | Date | null): string {
  */
 export function getOrderWarranty(order?: Partial<ServiceOrder> | null): WarrantyCalculation {
   const warrantyDays = order?.warrantyDays ?? 90;
+  const hasServiceDate = Boolean(order?.serviceDate || order?.finishedAt);
 
-  // Data base de referência: serviceDate > finishedAt > createdAt > hoje
-  const rawBase = order?.serviceDate || order?.finishedAt || order?.createdAt;
+  // Data de Entrada: entryDate > createdAt > hoje
+  const rawEntry = order?.entryDate || order?.createdAt || new Date();
+  const entryDateIso = toIsoDate(rawEntry);
+
+  // Data base de referência para a garantia CDC (90 dias a partir da aprovação / realização do serviço):
+  // serviceDate > finishedAt > entryDate > createdAt > hoje
+  const rawBase = order?.serviceDate || order?.finishedAt || order?.entryDate || order?.createdAt;
   let baseDate = rawBase ? new Date(rawBase) : new Date();
   if (isNaN(baseDate.getTime())) {
     baseDate = new Date();
@@ -95,11 +104,14 @@ export function getOrderWarranty(order?: Partial<ServiceOrder> | null): Warranty
 
   return {
     warrantyDays,
+    entryDateStr: entryDateIso,
     serviceDateStr: toIsoDate(baseMidnight),
     expiryDateStr: toIsoDate(expiryMidnight),
+    formattedEntryDate: formatBrDate(entryDateIso),
     formattedServiceDate: formatBrDate(baseMidnight),
     formattedExpiryDate: formatBrDate(expiryMidnight),
     isExpired,
     daysRemaining,
+    hasServiceDate,
   };
 }

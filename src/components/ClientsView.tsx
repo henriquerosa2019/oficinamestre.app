@@ -304,7 +304,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                                   {ord.status.replace('_', ' ')}
                                 </span>
                                 <span className="text-slate-400 text-[11px]">
-                                  Data: {warranty.formattedServiceDate}
+                                  {warranty.hasServiceDate ? `Serviço: ${warranty.formattedServiceDate}` : `Entrada: ${warranty.formattedEntryDate}`}
                                 </span>
                                 <span className="text-slate-300 text-[11px]">
                                   • Venc. Garantia: <strong className="text-amber-400 font-bold">{warranty.formattedExpiryDate}</strong>
