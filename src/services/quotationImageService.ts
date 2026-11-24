@@ -1,4 +1,4 @@
-import html2canvas from 'html2canvas';
+import { toPng, toBlob } from 'html-to-image';
 import { WhatsAppService } from './whatsapp';
 
 export interface QuotationSendResult {
@@ -9,25 +9,48 @@ export interface QuotationSendResult {
 }
 
 export const QuotationImageService = {
-  // Gera o canvas da proposta com resolução de alta definição (2x / Retina)
+  // Gera o canvas/PNG da proposta com resolução de alta definição (2x / Retina)
   async generateImage(element: HTMLElement): Promise<{ blob: Blob; dataUrl: string }> {
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-    });
+    try {
+      const dataUrl = await toPng(element, {
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+        style: {
+          opacity: '1',
+          visibility: 'visible',
+          transform: 'none',
+          margin: '0',
+        },
+      });
 
-    const dataUrl = canvas.toDataURL('image/png');
+      let blob: Blob | null = null;
+      try {
+        blob = await toBlob(element, {
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+          cacheBust: true,
+          style: {
+            opacity: '1',
+            visibility: 'visible',
+            transform: 'none',
+            margin: '0',
+          },
+        });
+      } catch (err) {
+        console.warn('Fallback toBlob via fetch(dataUrl):', err);
+      }
 
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((b) => {
-        if (b) resolve(b);
-        else reject(new Error('Falha ao converter canvas para Blob PNG'));
-      }, 'image/png');
-    });
+      if (!blob) {
+        const res = await fetch(dataUrl);
+        blob = await res.blob();
+      }
 
-    return { blob, dataUrl };
+      return { blob, dataUrl };
+    } catch (err) {
+      console.error('Erro em QuotationImageService.generateImage:', err);
+      throw err;
+    }
   },
 
   // Copia a imagem PNG diretamente para a área de transferência do sistema
@@ -47,12 +70,16 @@ export const QuotationImageService = {
 
   // Baixa o arquivo PNG no computador/dispositivo do usuário
   downloadImage(dataUrl: string, filename: string): void {
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.warn('Falha ao baixar imagem:', err);
+    }
   },
 
   // Fluxo completo de envio de orçamento via WhatsApp em PNG
@@ -75,17 +102,17 @@ export const QuotationImageService = {
     let sharedNatively = false;
 
     // 1. Tenta compartilhamento nativo com arquivo (ex: mobile/tablets modernos)
-    const file = new File([blob], filename, { type: 'image/png' });
-    if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
+    try {
+      const file = new File([blob], filename, { type: 'image/png' });
+      if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           text: customText,
         });
         sharedNatively = true;
-      } catch (e) {
-        // Usuário cancelou ou navegador não completou o compartilhamento
       }
+    } catch (e) {
+      // Usuário cancelou ou navegador não completou o compartilhamento
     }
 
     // 2. Copia o PNG diretamente para a área de transferência (para colar com Ctrl+V)
@@ -107,3 +134,4 @@ export const QuotationImageService = {
     };
   },
 };
+

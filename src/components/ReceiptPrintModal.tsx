@@ -90,10 +90,10 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col h-[94vh] max-h-[94vh]">
         {/* Barra superior (não sai na impressão) */}
-        <div className="px-6 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between print:hidden gap-3 flex-wrap">
+        <div className="px-6 py-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between print:hidden gap-3 flex-wrap flex-shrink-0">
           <div className="flex items-center gap-2">
             <Printer className="w-4 h-4 text-amber-400" />
             <span className="text-sm font-bold text-white">
@@ -150,7 +150,7 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
 
         {/* Banner de Feedback ao Enviar no WhatsApp */}
         {feedbackInfo && (
-          <div className="p-4 bg-emerald-950/70 border-b border-emerald-800/80 text-emerald-100 flex items-start justify-between gap-3 print:hidden">
+          <div className="p-3.5 bg-emerald-950/70 border-b border-emerald-800/80 text-emerald-100 flex items-start justify-between gap-3 print:hidden flex-shrink-0">
             <div className="space-y-1">
               <div className="flex items-center gap-2 font-bold text-sm text-emerald-300">
                 <Check className="w-4 h-4 text-emerald-400" />
@@ -201,9 +201,9 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
           </div>
         )}
 
-        {/* Folha de Recibo / OS (Estilo Impressão) */}
-        <div className="p-8 overflow-y-auto bg-slate-100/50 print:p-0 print:m-0 flex justify-center">
-          <div className="bg-white shadow-lg print:shadow-none rounded-xl print:rounded-none overflow-hidden">
+        {/* Folha de Recibo / OS (Estilo Impressão) com rolagem fluida de ponta a ponta */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto p-4 sm:p-6 bg-slate-950/70 print:p-0 print:m-0 print:overflow-visible flex justify-center items-start">
+          <div className="bg-white shadow-2xl print:shadow-none rounded-xl print:rounded-none overflow-hidden my-auto sm:my-2 border border-slate-300">
             <ReceiptDocument
               ref={documentRef}
               order={order}
@@ -212,6 +212,43 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
               mechanic={mechanic}
               isQuotation={isQuotation}
             />
+          </div>
+        </div>
+
+        {/* Barra inferior auxiliar de navegação e atalhos rápidos */}
+        <div className="px-6 py-2.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 print:hidden flex-wrap gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Visualização completa do orçamento com laudo de lataria. Role para baixo para inspecionar todas as seções.</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {client?.phone && isQuotation && (
+              <button
+                type="button"
+                onClick={handleSendWhatsAppPng}
+                disabled={isGeneratingPng}
+                className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors"
+              >
+                <MessageCircle className="w-3 h-3" />
+                <span>{isGeneratingPng ? 'Gerando...' : 'Enviar WhatsApp (PNG)'}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition-colors"
+            >
+              <Printer className="w-3 h-3" />
+              <span>Imprimir</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg text-xs transition-colors border border-slate-700"
+            >
+              Fechar
+            </button>
           </div>
         </div>
       </div>

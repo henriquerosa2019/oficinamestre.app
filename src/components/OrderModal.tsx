@@ -2911,15 +2911,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         </div>
       )}
 
-      {/* Container off-screen para captura da imagem PNG idêntica ao Imprimir Orçamento */}
+      {/* Container isolado para captura de imagem PNG idêntica ao Imprimir Orçamento */}
       <div
+        aria-hidden="true"
         style={{
           position: 'fixed',
-          left: '-9999px',
           top: 0,
+          left: 0,
           width: '780px',
           pointerEvents: 'none',
-          zIndex: -100,
+          zIndex: -9999,
+          opacity: 0,
         }}
       >
         <ReceiptDocument

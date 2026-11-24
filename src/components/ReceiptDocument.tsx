@@ -19,11 +19,14 @@ export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
     return (
       <div
         ref={ref}
-        className="p-8 bg-white text-slate-900 font-sans text-xs w-[780px] max-w-[780px] mx-auto box-border"
+        className="p-8 bg-white text-slate-900 font-sans text-xs w-[780px] max-w-full mx-auto box-border"
         style={{
           fontFamily: 'Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif',
           color: '#0f172a',
           backgroundColor: '#ffffff',
+          width: '780px',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
         }}
       >
         {/* Cabeçalho da Oficina */}
