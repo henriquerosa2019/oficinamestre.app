@@ -148,7 +148,7 @@
       { key: 's2', title: 'Etapa 2 · Orçamento Inteligente & Peças no Estoque', sub: 'da seleção de serviços e prateleira de peças (Loc. A1) até a cotação com margem', rows: 6 },
       { key: 's3', title: 'Etapa 3 · Aprovação do Cliente & Execução no Pátio', sub: 'da aprovação no WhatsApp à contagem oficial da garantia legal (90 dias CDC) e baixa de peças', rows: 7 },
       { key: 's4', title: 'Etapa 4 · Fechamento Rápido, Pagamento & Recibo com QR Code', sub: 'do checkout simplificado em 1 clique ao cálculo automático de comissão e recibo CDC', rows: 6 },
-      { key: 's5', title: 'Etapa 5 · Retenção, Pós-Venda & Gestão de Fornecedores', sub: 'das contas a pagar parceladas ao retorno preventivo do cliente para nova revisão', rows: 7 }
+      { key: 's5', title: 'Etapa 5 · Retenção, Pós-Venda & Gestão de Fornecedores', sub: 'das contas a pagar parceladas ao retorno preventivo do cliente para nova revisão', rows: 8 }
     ];
     var y = TITLE_H, out = {};
     defs.forEach(function (d) {
@@ -169,13 +169,13 @@
   // ---------- NÓS (ELEMENTOS DO FLUXO) ----------
   var nodes = {
     // ===== Etapa 1 · Entrada do Veículo & Abertura da O.S. =====
-    start: { x: 150, y: R1[0], type: 'start', actor: 'C', label: 'Chegada do veículo na oficina',
+    start: { x: 150, y: R1[0], type: 'start', actor: 'C', label: 'Chegada do veículo na oficina', labelPos: 'right',
       tip: 'O cliente traz o veículo à oficina para reparo corretivo ou revisão preventiva agendada.' },
-    catchA: { x: 50, y: R1[0], type: 'link', dir: 'catch', letter: 'A', actor: 'C', label: 'Retorno pelo pós-venda (Etapa 5)',
+    catchA: { x: 50, y: R1[1], type: 'link', dir: 'catch', letter: 'A', actor: 'C', label: 'Retorno pelo pós-venda (Etapa 5)', labelPos: 'top',
       tip: 'Conector de retenção: cliente que retornou após receber lembrete preventivo na Etapa 5.' },
     mRecebe: { x: 390, y: R1[1], type: 'task', actor: 'M', label: 'Recepcionar e abrir Nova O.S.',
       tip: 'O mecânico ou recepcionista clica em "Nova O.S." no celular, tablet ou balcão.' },
-    gwCli: { x: 390, y: R1[2], type: 'gateway', actor: 'M', label: 'Cliente e veículo cadastrados?',
+    gwCli: { x: 390, y: R1[2], type: 'gateway', actor: 'M', label: 'Cliente e veículo cadastrados?', labelPos: 'top',
       tip: 'Verifica se o proprietário e a placa já estão no banco de dados da oficina.' },
     mNovo: { x: 390, y: R1[3], type: 'task', actor: 'M', label: 'Cadastrar direto na O.S. com Novo (+)',
       tip: 'Utiliza os botões Novo (+) abaixo dos seletores para cadastrar cliente e veículo sem sair da O.S.' },
@@ -190,10 +190,10 @@
 
     // ===== Etapa 2 · Orçamento Inteligente & Peças no Estoque =====
     mServicos: { x: 390, y: R2[0], type: 'task', actor: 'M', label: 'Lançar serviços e mecânico executor',
-      tip: 'Adiciona itens de mão de obra (tempo estimado, valor e mecânico responsável: Carlos, Marcos ou Rico).' },
+      tip: 'Adiciona itens de mão de obra (tempo estimado, valor individual ou total e mecânico: Carlos, Marcos ou Rico).' },
     mBuscaPeca: { x: 390, y: R2[1], type: 'task', actor: 'M', label: 'Buscar peças com saldo e prateleira',
       tip: 'Busca inteligente exibe estoque disponível, preço sugerido e localização (ex: Loc: Prateleira A1, B3).' },
-    gwEstoque: { x: 630, y: R2[2], type: 'gateway', actor: 'S', label: 'Peça disponível na oficina?',
+    gwEstoque: { x: 630, y: R2[2], type: 'gateway', actor: 'S', label: 'Peça disponível na oficina?', labelPos: 'top',
       tip: 'Verifica se a quantidade requerida está disponível no estoque local.' },
     gCompraPeca: { x: 1110, y: R2[2], type: 'task', actor: 'G', label: 'Comprar de fornecedor com NF parcelada',
       tip: 'Registra compra faturada com fornecedor, nota fiscal e parcelamento (1/3, 2/3) com alertas de vencimento.' },
@@ -207,11 +207,11 @@
     // ===== Etapa 3 · Aprovação do Cliente & Execução no Pátio =====
     cAprova: { x: 150, y: R3[0], type: 'task', actor: 'C', label: 'Analisar proposta no WhatsApp',
       tip: 'O cliente examina itens, valores, formas de pagamento e prazos propostos.' },
-    gwAprovado: { x: 150, y: R3[1], type: 'gateway', actor: 'C', label: 'Cliente aprova o orçamento?',
-      tip: 'Decisão do proprietário em autorizar ou declinar a execução dos serviços.' },
+    gwAprovado: { x: 150, y: R3[1], type: 'gateway', actor: 'C', label: 'Cliente aprova o orçamento?', labelPos: 'top',
+      tip: 'Decisão do proprietário: autoriza ou declina a realização dos serviços.' },
     mCancela: { x: 390, y: R3[1], type: 'task', actor: 'M', label: 'Marcar O.S. Recusada e liberar veículo',
-      tip: 'Se recusado, a O.S. é arquivada, histórico salvo e veículo liberado sem custos adicionais.' },
-    endCancela: { x: 390, y: R3[2], type: 'end', actor: 'M', label: 'O.S. Recusada / Liberado',
+      tip: 'Se o cliente não aprovar, a O.S. é encerrada, histórico salvo no prontuário e veículo liberado sem custos.' },
+    endCancela: { x: 555, y: R3[1], type: 'end', actor: 'M', label: 'O.S. Recusada / Liberado', labelPos: 'right',
       tip: 'Atendimento encerrado sem execução de serviços.' },
     sAprovacao: { x: 630, y: R3[2], type: 'task', actor: 'S', label: 'Aprovar O.S. e carimbar Data do Serviço',
       tip: 'Registra Data do Serviço oficial (serviceDate) e inicia a contagem da Garantia Legal de 90 dias (CDC Art. 26).' },
@@ -239,11 +239,11 @@
       tip: 'Envia o recibo, dados do veículo e termo de garantia direto no WhatsApp do cliente com 1 toque.' },
     mEntrega: { x: 390, y: R4[5], type: 'task', actor: 'M', label: 'Entregar veículo e chaves ao cliente',
       tip: 'Mecânico ou atendente entrega o veículo pronto com apresentação das peças trocadas.' },
-    endOS: { x: 150, y: R4[5], type: 'end', actor: 'C', label: 'Veículo entregue & O.S. Concluída',
+    endOS: { x: 150, y: R4[5], type: 'end', actor: 'C', label: 'Veículo entregue & O.S. Concluída', labelPos: 'left',
       tip: 'O.S. finalizada no sistema, cliente satisfeito e histórico gravado no prontuário do veículo.' },
 
     // ===== Etapa 5 · Retenção, Pós-Venda & Gestão de Fornecedores =====
-    tTimer: { x: 1110, y: R5[0], type: 'timer', actor: 'G', label: 'Rotina diária de gestão e DRE',
+    tTimer: { x: 1110, y: R5[0], type: 'timer', actor: 'G', label: 'Rotina diária de gestão e DRE', labelPos: 'left',
       tip: 'Evento de tempo: acompanhamento de faturamento, fluxo de caixa e compromissos financeiros.' },
     gAlertasNF: { x: 1110, y: R5[1], type: 'task', actor: 'G', label: 'Alertas de NFs a vencer e vencidas',
       tip: 'Painel destaca notas: amarelo piscante (Vence Hoje), vermelho (Vencidas) e filtros de 1 a 5 dias.' },
@@ -251,13 +251,13 @@
       tip: 'Na tabela Contas a Pagar, 1 toque no selo Pendente registra quitação (ex: parcela 1/3) com data automática.' },
     sDRE: { x: 630, y: R5[3], type: 'task', actor: 'S', label: 'Consolidar DRE e comissões da equipe',
       tip: 'Visão executiva em tempo real: receita bruta, custo de peças, margem líquida e comissões a pagar.' },
-    tRevisao: { x: 630, y: R5[4], type: 'timer', actor: 'S', label: 'Vencimento de 90 dias / KM de revisão',
+    tRevisao: { x: 630, y: R5[4], type: 'timer', actor: 'S', label: 'Vencimento de 90 dias / KM de revisão', labelPos: 'right',
       tip: 'Evento de tempo: sistema detecta veículos que atingiram o período ideal para troca de óleo ou revisão periódica.' },
     wPosVenda: { x: 870, y: R5[5], type: 'task', actor: 'W', label: 'Disparar lembrete de revisão no WhatsApp',
       tip: 'Mensagem de pós-venda lembrando o cliente de trocar óleo, verificar freios ou revisar a suspensão.' },
     cRetorno: { x: 150, y: R5[6], type: 'task', actor: 'C', label: 'Cliente agenda retorno preventivo',
       tip: 'Proprietário recebe o lembrete, percebe o cuidado profissional da oficina e traz o carro novamente.' },
-    throwA: { x: 50, y: R5[6], type: 'link', dir: 'throw', letter: 'A', actor: 'C', label: 'Volta para Etapa 1 (Conector A)',
+    throwA: { x: 150, y: R5[7], type: 'link', dir: 'throw', letter: 'A', actor: 'C', label: 'Volta para Etapa 1 (Conector A)', labelPos: 'right',
       tip: 'Conector de Retenção A: fecha o ciclo virtuoso do cliente fidelizado, iniciando uma nova O.S.' }
   };
 
@@ -265,15 +265,16 @@
   var edges = [
     // Etapa 1
     { from: 'start', to: 'mRecebe' },
-    { from: 'catchA', to: 'mRecebe', dashed: true, label: 'Cliente retorna' },
+    { from: 'catchA', to: 'mRecebe', dashed: true, label: 'Cliente retorna',
+      points: [[75, R1[1]], [287, R1[1]]] },
     { from: 'mRecebe', to: 'gwCli' },
     { from: 'gwCli', to: 'mNovo', label: 'Novo cliente/veículo' },
     { from: 'gwCli', to: 'mBuscaCli', label: 'Já cadastrado',
-      points: [[390, R1[2]], [390, R1[2] + 34], [150, R1[2] + 34], [150, R1[3]]],
-      labelAt: [270, R1[2] + 34] },
+      points: [[390 - 31, R1[2]], [150, R1[2]], [150, R1[3] - 37]],
+      labelAt: [240, R1[2]] },
     { from: 'mNovo', to: 'sEntrada' },
     { from: 'mBuscaCli', to: 'sEntrada',
-      points: [[150, R1[3]], [150, R1[3] + 46], [630, R1[3] + 46], [630, R1[4]]] },
+      points: [[150, R1[3] + 37], [150, R1[3] + 56], [630, R1[3] + 56], [630, R1[4] - 37]] },
     { from: 'sEntrada', to: 'mChecklist' },
     { from: 'mChecklist', to: 'mSintoma' },
 
@@ -283,26 +284,33 @@
     { from: 'mBuscaPeca', to: 'gwEstoque' },
     { from: 'gwEstoque', to: 'sMargem', label: 'Em estoque' },
     { from: 'gwEstoque', to: 'gCompraPeca', label: 'Falta peça',
-      points: [[630, R2[2]], [630, R2[2] - 34], [1110, R2[2] - 34], [1110, R2[2]]],
-      labelAt: [870, R2[2] - 34] },
+      points: [[630 + 31, R2[2]], [1007, R2[2]]],
+      labelAt: [820, R2[2]] },
     { from: 'gCompraPeca', to: 'sMargem', dashed: true, label: 'NF faturada 1/3, 2/3',
-      points: [[1110, R2[2]], [1110, R2[2] + 46], [630, R2[2] + 46], [630, R2[3]]],
-      labelAt: [870, R2[2] + 46] },
+      points: [[1110, R2[2] + 37], [1110, R2[2] + 58], [630, R2[2] + 58], [630, R2[3] - 37]],
+      labelAt: [870, R2[2] + 58] },
     { from: 'sMargem', to: 'sMsgOrc' },
     { from: 'sMsgOrc', to: 'wEnvioOrc' },
 
-    // Etapa 3
+    // Etapa 3 (CORREÇÃO TOTAL DE INVERSÃO E SOBREPOSIÇÃO)
     { from: 'wEnvioOrc', to: 'cAprova',
-      points: [[870, R2[5]], [870, R2[5] + 36], [150, R2[5] + 36], [150, R3[0]]] },
+      points: [[870, R2[5] + 37], [870, R2[5] + 58], [150, R2[5] + 58], [150, R3[0] - 37]] },
     { from: 'cAprova', to: 'gwAprovado' },
-    { from: 'gwAprovado', to: 'mCancela', label: 'Recusou',
-      points: [[150, R3[1]], [270, R3[1]], [270, R3[1]], [285, R3[1]]],
-      labelAt: [215, R3[1]] },
-    { from: 'mCancela', to: 'endCancela' },
-    { from: 'gwAprovado', to: 'sAprovacao', label: 'Aprovou',
-      points: [[150, R3[1]], [150, R3[1] + 46], [630, R3[1] + 46], [630, R3[2]]],
-      labelAt: [390, R3[1] + 46] },
-    { from: 'sAprovacao', to: 'mRetiraPeca' },
+
+    // Ramo NÃO (Recusou) -> Segue horizontalmente para mCancela e endCancela
+    { from: 'gwAprovado', to: 'mCancela', label: 'Não (Recusou)',
+      points: [[150 + 31, R3[1]], [390 - 103, R3[1]]],
+      labelAt: [234, R3[1]] },
+    { from: 'mCancela', to: 'endCancela',
+      points: [[390 + 103, R3[1]], [555 - 27, R3[1]]] },
+
+    // Ramo SIM (Aprovou) -> Desce para R3[2] e entra diretamente em sAprovacao
+    { from: 'gwAprovado', to: 'sAprovacao', label: 'Sim (Aprovou)',
+      points: [[150, R3[1] + 31], [150, R3[2]], [630 - 103, R3[2]]],
+      labelAt: [234, R3[2]] },
+
+    { from: 'sAprovacao', to: 'mRetiraPeca',
+      points: [[630, R3[2] + 37], [630, (R3[2] + R3[3]) / 2], [390, (R3[2] + R3[3]) / 2], [390, R3[3] - 37]] },
     { from: 'mRetiraPeca', to: 'sBaixaEstoque' },
     { from: 'sBaixaEstoque', to: 'mExecuta' },
     { from: 'mExecuta', to: 'sPronto' },
@@ -310,23 +318,27 @@
 
     // Etapa 4
     { from: 'wAvisaPronto', to: 'mCheckout',
-      points: [[870, R3[6]], [870, R3[6] + 36], [390, R3[6] + 36], [390, R4[0]]] },
+      points: [[870, R3[6] + 37], [870, R3[6] + 58], [390, R3[6] + 58], [390, R4[0] - 37]] },
     { from: 'mCheckout', to: 'cPagto' },
     { from: 'cPagto', to: 'sFinanceiro' },
     { from: 'sFinanceiro', to: 'sRecibo' },
     { from: 'sRecibo', to: 'wEnvioRecibo' },
     { from: 'wEnvioRecibo', to: 'mEntrega' },
-    { from: 'mEntrega', to: 'endOS' },
+    { from: 'mEntrega', to: 'endOS',
+      points: [[390 - 103, R4[5]], [150 + 27, R4[5]]] },
 
-    // Etapa 5
+    // Etapa 5 (CORREÇÃO DE SOBREPOSIÇÃO tRevisao e throwA)
     { from: 'tTimer', to: 'gAlertasNF' },
     { from: 'gAlertasNF', to: 'gBaixaNF' },
     { from: 'gBaixaNF', to: 'sDRE' },
     { from: 'sRecibo', to: 'tRevisao', dashed: true, label: 'Gera ciclo preventivo 90d',
-      points: [[630, R4[3]], [630, R5[4]]] },
+      points: [[630, R4[3] + 37], [630, R5[4] - 27]],
+      labelAt: [630, R5[4] - 44] },
     { from: 'tRevisao', to: 'wPosVenda' },
-    { from: 'wPosVenda', to: 'cRetorno' },
-    { from: 'cRetorno', to: 'throwA' }
+    { from: 'wPosVenda', to: 'cRetorno',
+      points: [[870, R5[5] + 37], [870, (R5[5] + R5[6]) / 2], [150, (R5[5] + R5[6]) / 2], [150, R5[6] - 37]] },
+    { from: 'cRetorno', to: 'throwA',
+      points: [[150, R5[6] + 37], [150, R5[7] - 25]] }
   ];
 
   // ---------- MONTAGEM DO SVG ----------
@@ -449,11 +461,34 @@
   function sideLabel(g, n, offsetX, font, fontSize) {
     var lines = wrapLines(n.label, font, 175);
     var w = Math.max.apply(null, lines.map(function (l) { return textWidth(l, font); })) + 16;
-    var x0 = n.x + offsetX;
-    var y0 = n.y - (lines.length * 15) / 2 + 10;
-    g.appendChild(el('rect', { x: x0 - 5, y: y0 - 12, width: w, height: lines.length * 15 + 6, rx: 6, fill: '#ffffff', 'fill-opacity': 0.94, stroke: '#cbd5e1', 'stroke-width': 1 }));
+    var h = lines.length * 15 + 6;
+    var x0, y0;
+
+    if (n.labelPos === 'top') {
+      x0 = n.x - w / 2;
+      var offset = n.labelOffset || (n.type === 'gateway' ? 44 : 36);
+      y0 = n.y - offset - h;
+    } else if (n.labelPos === 'bottom') {
+      x0 = n.x - w / 2;
+      var offset = n.labelOffset || (n.type === 'gateway' ? 44 : 36);
+      y0 = n.y + offset;
+    } else if (n.labelPos === 'left') {
+      x0 = n.x - Math.abs(offsetX) - w;
+      y0 = n.y - (lines.length * 15) / 2;
+    } else {
+      x0 = n.x + Math.abs(offsetX);
+      y0 = n.y - (lines.length * 15) / 2;
+    }
+
+    g.appendChild(el('rect', {
+      x: x0 - 5, y: y0, width: w, height: h, rx: 6,
+      fill: '#ffffff', 'fill-opacity': 0.95, stroke: '#cbd5e1', 'stroke-width': 1
+    }));
     lines.forEach(function (line, i) {
-      g.appendChild(el('text', { x: x0, y: y0 + i * 15, 'font-size': fontSize, 'font-weight': 700, fill: '#0f172a' }, [line]));
+      var textX = (n.labelPos === 'top' || n.labelPos === 'bottom') ? n.x : x0;
+      var attrs = { x: textX, y: y0 + i * 15 + 13, 'font-size': fontSize, 'font-weight': 700, fill: '#0f172a' };
+      if (n.labelPos === 'top' || n.labelPos === 'bottom') attrs['text-anchor'] = 'middle';
+      g.appendChild(el('text', attrs, [line]));
     });
   }
 

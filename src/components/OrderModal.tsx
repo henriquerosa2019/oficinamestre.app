@@ -166,7 +166,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   // Seletores com Busca Digitável - Serviços
   const [serviceSearch, setServiceSearch] = useState('');
   const [selectedServiceId, setSelectedServiceId] = useState('');
+  const [servicePriceInput, setServicePriceInput] = useState('');
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
+  const [totalServicesInput, setTotalServicesInput] = useState('');
+  const [isEditingTotalServices, setIsEditingTotalServices] = useState(false);
 
   // Sincroniza veículos quando o cliente muda
   const clientVehicles = vehicles.filter((v) => v.clientId === clientId);
@@ -294,39 +297,125 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   };
 
   // Handlers para Serviços
-  const handleAddService = (targetServiceId?: string) => {
+  const handleAddService = (targetServiceId?: string, customName?: string, customPrice?: number) => {
     const sId = targetServiceId || selectedServiceId;
-    if (!sId) {
-      if (filteredServices.length === 1) {
-        return handleAddService(filteredServices[0].id);
-      }
-      return;
-    }
     const serviceFound = availableServices.find((s) => s.id === sId);
-    if (!serviceFound) return;
+
+    let description = '';
+    let serviceId: string | undefined = undefined;
+    let price = 0;
+
+    const parsedInputPrice = parseFloat(servicePriceInput.replace(',', '.'));
+    const hasValidInputPrice = !isNaN(parsedInputPrice) && parsedInputPrice >= 0;
+
+    if (serviceFound) {
+      serviceId = serviceFound.id;
+      description = serviceFound.name;
+      price = customPrice !== undefined ? customPrice : (hasValidInputPrice ? parsedInputPrice : serviceFound.standardPrice);
+    } else {
+      const typedText = (customName || serviceSearch).trim();
+      if (!typedText) return;
+      description = typedText;
+      price = customPrice !== undefined ? customPrice : (hasValidInputPrice ? parsedInputPrice : 0);
+    }
 
     const currentMechanic = mechanics.find((m) => m.id === mechanicId);
     const commRate = currentMechanic?.commissionRate || 15;
-    const commVal = (serviceFound.standardPrice * commRate) / 100;
+    const commVal = (price * commRate) / 100;
 
     const newService: OrderServiceItem = {
-      id: 'soi-' + Date.now(),
-      serviceId: serviceFound.id,
-      description: serviceFound.name,
-      mechanicId: mechanicId,
-      price: serviceFound.standardPrice,
+      id: 'soi-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      serviceId,
+      description,
+      mechanicId,
+      price,
       commissionRate: commRate,
       commissionValue: commVal,
     };
 
-    setServices([...services, newService]);
+    setServices((prev) => [...prev, newService]);
     setSelectedServiceId('');
     setServiceSearch('');
+    setServicePriceInput('');
     setIsServiceDropdownOpen(false);
   };
 
+  const handleUpdateServicePrice = (id: string, newPrice: number) => {
+    const currentMechanic = mechanics.find((m) => m.id === mechanicId);
+    const commRate = currentMechanic?.commissionRate || 15;
+    setServices((prev) =>
+      prev.map((s) => {
+        if (s.id === id) {
+          const p = Math.max(0, isNaN(newPrice) ? 0 : newPrice);
+          return {
+            ...s,
+            price: p,
+            commissionValue: (p * (s.commissionRate || commRate)) / 100,
+          };
+        }
+        return s;
+      })
+    );
+  };
+
+  const handleApplyTotalServices = (val: string) => {
+    const newTotal = parseFloat(val.replace(',', '.'));
+    if (isNaN(newTotal) || newTotal < 0) return;
+
+    const currentMechanic = mechanics.find((m) => m.id === mechanicId);
+    const commRate = currentMechanic?.commissionRate || 15;
+
+    if (services.length === 0) {
+      if (newTotal > 0) {
+        const newService: OrderServiceItem = {
+          id: 'soi-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          serviceId: undefined,
+          description: 'Mão de Obra Geral / Serviços',
+          mechanicId,
+          price: newTotal,
+          commissionRate: commRate,
+          commissionValue: (newTotal * commRate) / 100,
+        };
+        setServices([newService]);
+      }
+      return;
+    }
+
+    if (services.length === 1) {
+      setServices([
+        {
+          ...services[0],
+          price: newTotal,
+          commissionValue: (newTotal * (services[0].commissionRate || commRate)) / 100,
+        },
+      ]);
+      return;
+    }
+
+    // Distribuir proporcionalmente entre os serviços existentes (ou igualitariamente se a soma atual for zero)
+    const currentSum = services.reduce((acc, s) => acc + s.price, 0);
+    let allocated = 0;
+    const updated = services.map((s, idx) => {
+      let p: number;
+      if (idx === services.length - 1) {
+        p = Math.max(0, Math.round((newTotal - allocated) * 100) / 100);
+      } else {
+        const ratio = currentSum > 0 ? s.price / currentSum : 1 / services.length;
+        p = Math.round(ratio * newTotal * 100) / 100;
+        allocated += p;
+      }
+      return {
+        ...s,
+        price: p,
+        commissionValue: (p * (s.commissionRate || commRate)) / 100,
+      };
+    });
+
+    setServices(updated);
+  };
+
   const handleRemoveService = (id: string) => {
-    setServices(services.filter((s) => s.id !== id));
+    setServices((prev) => prev.filter((s) => s.id !== id));
   };
 
   // Marcar/Desmarcar Tudo no Checklist de Entrada em 1 Toque
@@ -968,9 +1057,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </span>
                 </div>
 
-                {/* Campo de Busca Digitável para Serviços */}
+                {/* Campo de Busca Digitável para Serviços + Valor Individual */}
                 <div className="relative">
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex-1">
                       <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
@@ -986,11 +1075,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
-                            if (selectedServiceId) {
-                              handleAddService(selectedServiceId);
-                            } else if (filteredServices.length > 0) {
-                              handleAddService(filteredServices[0].id);
-                            }
+                            handleAddService();
                           }
                         }}
                         className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
@@ -1001,6 +1086,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           onClick={() => {
                             setServiceSearch('');
                             setSelectedServiceId('');
+                            setServicePriceInput('');
                           }}
                           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                         >
@@ -1008,22 +1094,67 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         </button>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleAddService()}
-                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 py-2 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 shrink-0 transition-colors shadow-sm"
-                    >
-                      <Plus className="w-4 h-4 stroke-[2.5]" />
-                      Adicionar
-                    </button>
+
+                    {/* Campo de Valor Individual do Serviço */}
+                    <div className="flex gap-2">
+                      <div className="relative w-28 sm:w-32 shrink-0">
+                        <span className="text-slate-400 text-xs absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none font-bold">
+                          R$
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Valor"
+                          value={servicePriceInput}
+                          onChange={(e) => setServicePriceInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddService();
+                            }
+                          }}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-2 py-2 text-xs sm:text-sm text-white font-mono font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500 text-right"
+                          title="Valor individual deste serviço (ou deixe vazio para o padrão)"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAddService()}
+                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 py-2 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 shrink-0 transition-colors shadow-sm"
+                        title="Adicionar serviço com o valor individual informado"
+                      >
+                        <Plus className="w-4 h-4 stroke-[2.5]" />
+                        Adicionar
+                      </button>
+                    </div>
                   </div>
 
                   {/* Dropdown de Sugestões de Serviços */}
                   {isServiceDropdownOpen && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-52 overflow-y-auto z-40 divide-y divide-slate-800">
-                      {filteredServices.length === 0 ? (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto z-40 divide-y divide-slate-800">
+                      {serviceSearch.trim() && (
+                        <div
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleAddService(undefined, serviceSearch.trim());
+                          }}
+                          className="p-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 cursor-pointer flex items-center justify-between text-xs font-bold border-b border-slate-800 transition-colors"
+                        >
+                          <span className="flex items-center gap-1.5 truncate pr-2">
+                            <Plus className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">Adicionar como serviço avulso: "{serviceSearch.trim()}"</span>
+                          </span>
+                          <span className="font-mono text-xs shrink-0">
+                            {servicePriceInput ? `R$ ${parseFloat(servicePriceInput.replace(',', '.')).toFixed(2)}` : '(definir valor)'}
+                          </span>
+                        </div>
+                      )}
+
+                      {filteredServices.length === 0 && !serviceSearch.trim() ? (
                         <div className="p-3 text-xs text-slate-400 text-center">
-                          Nenhum serviço encontrado com "{serviceSearch}".
+                          Nenhum serviço cadastrado.
                         </div>
                       ) : (
                         filteredServices.map((s) => (
@@ -1033,14 +1164,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               e.preventDefault();
                               setSelectedServiceId(s.id);
                               setServiceSearch(s.name);
+                              setServicePriceInput(s.standardPrice.toString());
                               setIsServiceDropdownOpen(false);
                             }}
                             className={`p-2.5 hover:bg-slate-800 cursor-pointer flex items-center justify-between text-xs transition-colors ${
                               selectedServiceId === s.id ? 'bg-amber-500/20 border-l-4 border-amber-500' : ''
                             }`}
                           >
-                            <span className="font-semibold text-white">{s.name}</span>
-                            <span className="font-mono font-bold text-amber-400">
+                            <span className="font-semibold text-white truncate pr-2">{s.name}</span>
+                            <span className="font-mono font-bold text-amber-400 shrink-0">
                               R$ {s.standardPrice.toFixed(2)}
                             </span>
                           </div>
@@ -1051,7 +1183,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
 
                 {/* Lista de Serviços Adicionados */}
-                <div className="divide-y divide-slate-800/80 max-h-48 overflow-y-auto bg-slate-900/40 rounded-lg p-2 border border-slate-800/60">
+                <div className="divide-y divide-slate-800/80 max-h-52 overflow-y-auto bg-slate-900/40 rounded-lg p-2 border border-slate-800/60">
                   {services.length === 0 ? (
                     <div className="py-4 text-center text-xs text-slate-500 italic">
                       Nenhum serviço mecânico adicionado ainda.
@@ -1059,20 +1191,29 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   ) : (
                     services.map((item) => (
                       <div key={item.id} className="py-2.5 flex items-center justify-between text-xs gap-3">
-                        <div className="truncate pr-2">
-                          <span className="font-bold text-slate-100">{item.description}</span>
-                          <span className="text-slate-400 ml-2 text-[11px]">
-                            (Comissão: R$ {item.commissionValue.toFixed(2)})
-                          </span>
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="font-bold text-slate-100 truncate">{item.description}</div>
+                          <div className="text-slate-400 text-[11px]">
+                            Comissão ({item.commissionRate}%): R$ {item.commissionValue.toFixed(2)}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="font-mono font-bold text-white text-xs sm:text-sm">
-                            R$ {item.price.toFixed(2)}
-                          </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 focus-within:border-amber-500">
+                            <span className="text-slate-400 text-xs font-bold">R$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={item.price}
+                              onChange={(e) => handleUpdateServicePrice(item.id, parseFloat(e.target.value) || 0)}
+                              className="w-20 sm:w-24 bg-transparent text-xs sm:text-sm font-mono font-bold text-white text-right focus:outline-none"
+                              title="Clique para alterar o valor individual deste serviço"
+                            />
+                          </div>
                           <button
                             type="button"
                             onClick={() => handleRemoveService(item.id)}
-                            className="p-1 text-slate-500 hover:text-red-400 transition-colors"
+                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded transition-colors"
                             title="Remover serviço"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1081,6 +1222,72 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       </div>
                     ))
                   )}
+                </div>
+
+                {/* Ajuste do Total dos Serviços (Mão de Obra) */}
+                <div className="bg-slate-900/90 border border-amber-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-inner">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                        Total da Mão de Obra (Serviços):
+                      </span>
+                      {services.length > 0 && (
+                        <span className="text-[10px] text-slate-300 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700 font-bold">
+                          {services.length} {services.length === 1 ? 'serviço' : 'serviços'}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      {services.length > 1
+                        ? 'Você pode alterar o valor total do pacote (o sistema distribui entre os serviços).'
+                        : services.length === 1
+                        ? 'Altere o valor individual acima ou ajuste o total aqui.'
+                        : 'Digite o valor total de mão de obra para criar o pacote de serviços.'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-slate-800 border-2 border-amber-500/70 rounded-lg px-2.5 py-1 focus-within:border-amber-400 shadow-sm">
+                      <span className="text-xs font-bold text-amber-400">R$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0,00"
+                        value={isEditingTotalServices ? totalServicesInput : (servicesTotal > 0 ? servicesTotal.toFixed(2) : '')}
+                        onFocus={() => {
+                          setIsEditingTotalServices(true);
+                          setTotalServicesInput(servicesTotal > 0 ? servicesTotal.toFixed(2) : '');
+                        }}
+                        onChange={(e) => setTotalServicesInput(e.target.value)}
+                        onBlur={() => {
+                          handleApplyTotalServices(totalServicesInput);
+                          setIsEditingTotalServices(false);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleApplyTotalServices(totalServicesInput);
+                            setIsEditingTotalServices(false);
+                          }
+                        }}
+                        className="w-28 sm:w-32 bg-transparent text-sm sm:text-base font-black text-white text-right font-mono focus:outline-none"
+                        title="Digite o valor total da mão de obra"
+                      />
+                    </div>
+                    {isEditingTotalServices && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleApplyTotalServices(totalServicesInput);
+                          setIsEditingTotalServices(false);
+                        }}
+                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1.5 rounded-lg text-xs shadow-sm"
+                      >
+                        ✓ Ok
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
