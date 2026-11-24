@@ -1,5 +1,5 @@
 import { ServiceOrder, Client, Vehicle } from '../types';
-import { getOrderWarranty } from '../utils/warranty';
+import { getOrderWarranty, formatBrDate } from '../utils/warranty';
 
 export const WhatsAppService = {
   // Formata o telefone apenas com dígitos (ex: 5511987654321)
@@ -14,6 +14,7 @@ export const WhatsAppService = {
   // Gera o texto formatado para envio do Orçamento ao Cliente (Tom consultivo e transparente)
   generateBudgetMessage(order: ServiceOrder, client: Client, vehicle: Vehicle): string {
     const clientFirstName = client.name.split(' ')[0];
+    const orderDate = formatBrDate(order.entryDate || order.createdAt) || new Date().toLocaleDateString('pt-BR');
     
     let partsSection = '';
     if (order.partsSupplyMode === 'cliente_todas') {
@@ -44,9 +45,10 @@ ${partsList}
 -----------------------------------
 Olá *${clientFirstName}*, tudo bem? Aqui é o *Rico da Oficina Rico*!
 
-Concluímos a avaliação técnica do seu *${vehicle.brand} ${vehicle.model}* (Placa: *${vehicle.plate}*). Segue o demonstrativo transparente dos itens necessários:
+Concluímos a avaliação técnica do seu *${vehicle.brand} ${vehicle.model}* (Placa: *${vehicle.plate}*).
 
 📋 *Ordem de Serviço:* #${order.orderNumber}
+📅 *Data:* ${orderDate} | *Validade:* 48h
 🔍 *Diagnóstico / Avaliação:*
 ${order.technicalDiagnostic || order.complaintDescription || 'Revisão técnica de rotina.'}
 
@@ -58,10 +60,9 @@ ${servicesList}
 
 ${order.discount > 0 ? `💰 *Desconto Aplicado:* - R$ ${order.discount.toFixed(2)}\n` : ''}⭐ *VALOR TOTAL FINAL:* *R$ ${order.netTotal.toFixed(2)}*
 -----------------------------------
-Podemos dar início aos serviços e à separação das peças?
-👉 Responda com *"AUTORIZADO"* ou nos mande uma mensagem se tiver qualquer dúvida!
+👉 Responda com *"AUTORIZADO"* (ou nos envie uma mensagem se tiver alguma dúvida, ok?)
 
-📲 *Dica:* Salve o WhatsApp da Oficina Rico (Rico) na sua agenda para acompanhar o andamento da sua O.S. e a garantia dos serviços.`;
+*Atenção:* 👉 Salve nosso WhatsApp (Oficina Rico) na sua Agenda pra acompanhar o andamento da sua OS no:         e para a Garantia dos Serviços, e Avisos sobre Retornos.`;
 
     return message;
   },
