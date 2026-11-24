@@ -27,6 +27,8 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
   const mechanic = mechanics.find((m) => m.id === order.mechanicId);
   const warranty = getOrderWarranty(order);
 
+  const isQuotation = order.status === 'orcamento' || order.status === 'aguardando_aprovacao';
+
   const handlePrint = () => {
     window.print();
   };
@@ -38,7 +40,7 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
         <div className="px-6 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between print:hidden">
           <div className="flex items-center gap-2">
             <Printer className="w-4 h-4 text-amber-400" />
-            <span className="text-sm font-bold text-white">Comprovante de Ordem de Serviço</span>
+            <span className="text-sm font-bold text-white">{isQuotation ? "Proposta de Orçamento Técnico" : "Comprovante de Ordem de Serviço"}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -46,7 +48,7 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition-colors"
             >
               <Printer className="w-3.5 h-3.5" />
-              Imprimir Recibo
+              {isQuotation ? "Imprimir Orçamento" : "Imprimir Recibo"}
             </button>
             <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-white rounded-lg">
               <X className="w-5 h-5" />
@@ -70,7 +72,7 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
               </p>
             </div>
             <div className="text-right border-l-2 border-slate-200 pl-4">
-              <span className="text-xs uppercase text-slate-500 block font-semibold">Ordem de Serviço</span>
+              <span className="text-xs uppercase text-slate-500 block font-semibold">{isQuotation ? "Orçamento Técnico" : "Ordem de Serviço"}</span>
               <span className="text-xl font-mono font-black text-slate-950">{order.orderNumber}</span>
               <span className="text-[10px] text-slate-500 block mt-0.5">
                 Data Entrada: {warranty.formattedEntryDate}
@@ -184,7 +186,9 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
               <div>
                 Pagamento:{' '}
                 <strong>
-                  {order.isPaid
+                  {isQuotation
+                    ? 'PROPOSTA (AGUARDANDO APROVAÇÃO)'
+                    : order.isPaid
                     ? `PAGO (${order.paymentMethod?.toUpperCase() || 'À VISTA'})`
                     : 'PENDENTE NO BALCÃO'}
                 </strong>
@@ -225,7 +229,7 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
             <div className="grid grid-cols-2 gap-8 pt-4">
               <div className="border-t border-slate-400 pt-1 text-center">
                 <span className="block font-bold text-slate-800">Assinatura do Cliente</span>
-                <span className="text-[9px] text-slate-500">Autorização e recebimento do veículo</span>
+                <span className="text-[9px] text-slate-500">{isQuotation ? "Aprovação e autorização dos serviços" : "Autorização e recebimento do veículo"}</span>
               </div>
               <div className="border-t border-slate-400 pt-1 text-center">
                 <span className="block font-bold text-slate-800">Oficina Rico</span>

@@ -26,6 +26,8 @@ import {
   User,
   CheckCircle2,
   MessageCircle,
+  FileText,
+  ThumbsUp,
   Printer,
   DollarSign,
   Fuel,
@@ -35,6 +37,7 @@ import {
   Copy,
   Check,
   Calendar,
+  Clock,
   Eye,
   EyeOff,
   Search,
@@ -64,6 +67,11 @@ interface OrderModalProps {
   onSaveClient?: (client: Client, newVehicle?: Vehicle) => void;
   onSaveVehicle?: (vehicle: Vehicle) => void;
 }
+
+// Helper para formatação de moeda no padrão brasileiro (R$ 300,00)
+export const formatCurrency = (val: number): string => {
+  return (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 export const OrderModal: React.FC<OrderModalProps> = ({
   order,
@@ -236,6 +244,71 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const partsCostTotal = partsSupplyMode === 'cliente_todas' ? 0 : parts.reduce((acc, p) => acc + p.unitCost * p.quantity, 0);
   const netProfit = netTotal - partsCostTotal - mechanicsCommissionTotal;
   const profitMarginPercent = netTotal > 0 ? (netProfit / netTotal) * 100 : 0;
+
+  // Etapa Atual da OS: Orçamento/Proposta vs. Fechamento/Execução
+  const isQuotationStage = status === 'orcamento' || status === 'aguardando_aprovacao';
+  const zeroPriceParts = parts.filter((p) => p.unitPrice === 0);
+
+  // Helper para Snapshot dos Dados da OS para WhatsApp e Impressão
+  const getOrderDataSnapshot = (): ServiceOrder => ({
+    ...order!,
+    id: order?.id || 'ord-' + Date.now(),
+    orderNumber,
+    clientId,
+    vehicleId,
+    mechanicId,
+    status,
+    complaintDescription,
+    technicalDiagnostic,
+    checklist: {
+      mileage: Number(mileage),
+      fuelLevel: Number(fuelLevel),
+      hasSpareWheel,
+      hasJack,
+      hasLugWrench,
+      hasTriangle,
+      hasManual: true,
+      hasKeyChain: true,
+      lightsWorking: true,
+      hornWorking: true,
+      wipersWorking: true,
+      damagePoints,
+    },
+    parts,
+    services,
+    partsSupplyMode,
+    clientProvidedPartsNotes,
+    partsTotal,
+    servicesTotal,
+    grossTotal,
+    discount: Number(discount),
+    netTotal,
+    partsCostTotal,
+    mechanicsCommissionTotal,
+    netProfit,
+    profitMarginPercent,
+    paymentMethod,
+    isPaid,
+    entryDate,
+    serviceDate,
+    warrantyDays,
+    warrantyExpiresAt: warrantyInfo.expiryDateStr,
+    createdAt: order?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  const handleCopyOrderMessage = async () => {
+    const orderData = getOrderDataSnapshot();
+    const msg =
+      status === 'pronto'
+        ? WhatsAppService.generateCarReadyMessage(orderData, currentClient!, currentVehicle!)
+        : WhatsAppService.generateBudgetMessage(orderData, currentClient!, currentVehicle!);
+    const success = await WhatsAppService.copyToClipboard(msg);
+    if (success) {
+      setCopiedMsg(true);
+      setTimeout(() => setCopiedMsg(false), 2000);
+    }
+  };
 
   // Informações de Garantia Calculadas (90 dias padrão CDC)
   const warrantyInfo = getOrderWarranty({
@@ -855,41 +928,23 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40'
               }`}
             >
-              <DollarSign className="w-4 h-4 text-emerald-400" />
-              <span>3. Fechamento & Pagamento</span>
+              {isQuotationStage ? (
+                <FileText className="w-4 h-4 text-sky-400" />
+              ) : (
+                <DollarSign className="w-4 h-4 text-emerald-400" />
+              )}
+              <span>{isQuotationStage ? '3. Proposta & Orçamento' : '3. Fechamento & Pagamento'}</span>
               <span
                 className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold ${
                   activeTab === 'fechamento'
-                    ? 'bg-emerald-500/20 text-emerald-300'
+                    ? (isQuotationStage ? 'bg-sky-500/20 text-sky-300' : 'bg-emerald-500/20 text-emerald-300')
                     : 'bg-slate-800/80 text-slate-300'
                 }`}
               >
-                R$ {netTotal.toFixed(2)}
+                R$ {formatCurrency(netTotal)}
               </span>
             </button>
           </div>
-
-          {/* Atalho de Modo Dono quando estiver na aba de fechamento */}
-          {activeTab === 'fechamento' && (
-            <button
-              type="button"
-              onClick={() => setShowProfitDetails(!showProfitDetails)}
-              className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1.5 transition-colors font-medium shrink-0"
-              title="Alternar visibilidade do lucro real e custo de peças (Modo Dono)"
-            >
-              {showProfitDetails ? (
-                <>
-                  <EyeOff className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">Ocultar DRE</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="hidden sm:inline">DRE Oficina</span>
-                </>
-              )}
-            </button>
-          )}
         </div>
 
         {/* Corpo do Modal - Conteúdo Dinâmico por Aba */}
@@ -1191,7 +1246,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 <div>
                   <span className="text-[11px] text-slate-400 block">Mão de Obra ({services.length})</span>
                   <span className="font-mono text-xs sm:text-sm font-bold text-white">
-                    R$ {servicesTotal.toFixed(2)}
+                    R$ {formatCurrency(servicesTotal)}
                   </span>
                 </div>
                 <div>
@@ -1205,7 +1260,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 <div className="border-l border-slate-800 pl-2">
                   <span className="text-[11px] text-amber-400/90 font-bold block">Subtotal Parcial</span>
                   <span className="font-mono text-sm sm:text-base font-black text-amber-400">
-                    R$ {(servicesTotal + partsTotal).toFixed(2)}
+                    R$ {formatCurrency(servicesTotal + partsTotal)}
                   </span>
                 </div>
               </div>
@@ -1218,7 +1273,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     Mão de Obra & Serviços Mecânicos
                   </h4>
                   <span className="text-xs font-bold text-amber-400">
-                    Subtotal: R$ {servicesTotal.toFixed(2)}
+                    Subtotal: R$ {formatCurrency(servicesTotal)}
                   </span>
                 </div>
 
@@ -1338,7 +1393,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           >
                             <span className="font-semibold text-white truncate pr-2">{s.name}</span>
                             <span className="font-mono font-bold text-amber-400 shrink-0">
-                              R$ {s.standardPrice.toFixed(2)}
+                              R$ {formatCurrency(s.standardPrice)}
                             </span>
                           </div>
                         ))
@@ -1364,7 +1419,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                                 Incluso no Pacote Global
                               </span>
                             ) : (
-                              <span>Comissão ({item.commissionRate}%): R$ {item.commissionValue.toFixed(2)}</span>
+                              <span>Comissão ({item.commissionRate}%): R$ {formatCurrency(item.commissionValue)}</span>
                             )}
                           </div>
                         </div>
@@ -1465,6 +1520,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
               </div>
 
+              {/* Alerta de Itens sem Valor de Venda Definido */}
+              {partsSupplyMode !== 'cliente_todas' && zeroPriceParts.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-300 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-amber-200">Atenção aos itens com valor R$ 0,00:</span>
+                    <p className="text-[11px] text-amber-300/80 mt-0.5">
+                      Há {zeroPriceParts.length} peça(s) adicionada(s) sem preço de venda. Preencha o valor unitário de cada item ou ajuste o Total de Peças para evitar enviar orçamento zerado por engano.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Bloco 2: Peças & Insumos Utilizados */}
               <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-3.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1489,7 +1557,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       {partsSupplyMode === 'cliente_todas' ? (
                         <span className="text-emerald-400 font-mono">Total Peças: R$ 0,00</span>
                       ) : (
-                        <span>Subtotal: R$ {partsTotal.toFixed(2)}</span>
+                        <span>Subtotal: R$ {formatCurrency(partsTotal)}</span>
                       )}
                     </span>
                   </div>
@@ -1775,7 +1843,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                                 </div>
                                 <div className="text-right ml-2 shrink-0">
                                   <span className="font-mono font-bold text-amber-400 text-xs sm:text-sm">
-                                    R$ {p.sellPrice.toFixed(2)}
+                                    R$ {formatCurrency(p.sellPrice)}
                                   </span>
                                 </div>
                               </div>
@@ -1800,7 +1868,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               <div className="font-bold text-slate-100 truncate">{item.description}</div>
                               <div className="text-slate-400 text-[11px] flex items-center gap-2">
                                 <span className="font-mono text-slate-500">Cód: {item.code}</span>
-                                <span>• Subtotal: R$ {item.total.toFixed(2)}</span>
+                                <span>• Subtotal: R$ {formatCurrency(item.total)}</span>
                               </div>
                             </div>
 
@@ -1845,7 +1913,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
                               {/* Subtotal da Peça */}
                               <span className="font-mono font-bold text-white text-xs sm:text-sm min-w-[70px] text-right">
-                                R$ {item.total.toFixed(2)}
+                                R$ {formatCurrency(item.total)}
                               </span>
 
                               {/* Botão de Exclusão */}
@@ -1948,7 +2016,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   onClick={() => setActiveTab('fechamento')}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm rounded-xl flex items-center gap-1.5 transition-colors shadow-sm"
                 >
-                  <span>Avançar para Fechamento & Pagamento</span>
+                  <span>{isQuotationStage ? 'Avançar para Proposta & Envio' : 'Avançar para Fechamento & Pagamento'}</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -1956,23 +2024,36 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* ABA 3: FECHAMENTO & PAGAMENTO */}
+          {/* ABA 3: PROPOSTA & ORÇAMENTO (se orcamento/aguardando) OU FECHAMENTO & PAGAMENTO */}
           {/* ========================================================================= */}
           {activeTab === 'fechamento' && (
             <div className="space-y-5 animate-in fade-in duration-150">
+              {/* Alerta de Itens Sem Preço no Orçamento */}
+              {isQuotationStage && partsSupplyMode !== 'cliente_todas' && zeroPriceParts.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/40 rounded-xl p-3.5 flex items-start gap-3 text-xs text-amber-300 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-amber-200">Existem peças lançadas sem valor de venda:</span>
+                    <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                      Há {zeroPriceParts.length} peça(s) com valor <strong>R$ 0,00</strong>. Se a oficina fornecerá esses itens, volte à aba 2 e defina os valores para não enviar proposta incompleta ao cliente.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Card de Resumo Financeiro da OS */}
               <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/20 p-5 rounded-2xl border border-amber-500/30 shadow-lg space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                     <DollarSign className="w-4 h-4" />
-                    Resumo do Valor a Cobrar
+                    {isQuotationStage ? 'Resumo da Proposta de Orçamento' : 'Resumo do Valor a Cobrar'}
                   </h4>
 
-                  {/* Botão Discreto de Alternância: Modo Dono */}
+                  {/* Botão Único Unificado: Modo Dono / DRE */}
                   <button
                     type="button"
                     onClick={() => setShowProfitDetails(!showProfitDetails)}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1.5 transition-colors font-medium"
+                    className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1.5 transition-colors font-medium shadow-sm"
                     title="Alternar proteção de margem de lucro e custo de peças"
                   >
                     {showProfitDetails ? (
@@ -1989,20 +2070,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </button>
                 </div>
 
-                {/* 4 Blocos Principais de Cobrança */}
+                {/* 4 Blocos Principais de Cobrança com Formatação Monetária Brasileira */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-4 border-b border-slate-800 text-xs">
                   <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">
                     <span className="text-slate-400 block text-[11px] mb-1">
                       Total Peças {partsSupplyMode === 'cliente_todas' ? '(Cliente)' : ''}:
                     </span>
                     <span className="font-mono text-sm sm:text-base text-slate-200 font-bold">
-                      {partsSupplyMode === 'cliente_todas' ? 'R$ 0,00' : `R$ ${partsTotal.toFixed(2)}`}
+                      {partsSupplyMode === 'cliente_todas' ? 'R$ 0,00' : `R$ ${formatCurrency(partsTotal)}`}
                     </span>
                   </div>
                   <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">
                     <span className="text-slate-400 block text-[11px] mb-1">Mão de Obra:</span>
                     <span className="font-mono text-sm sm:text-base text-slate-200 font-bold">
-                      R$ {servicesTotal.toFixed(2)}
+                      R$ {formatCurrency(servicesTotal)}
                     </span>
                   </div>
                   <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">
@@ -2017,10 +2098,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </div>
                   <div className="bg-amber-500/10 p-3 rounded-xl border border-amber-500/40">
                     <span className="text-amber-400 block text-[11px] font-bold mb-0.5 uppercase tracking-wide">
-                      Total a Cobrar:
+                      {isQuotationStage ? 'Total da Proposta:' : 'Total a Cobrar:'}
                     </span>
                     <span className="font-mono text-lg sm:text-xl font-black text-amber-400">
-                      R$ {netTotal.toFixed(2)}
+                      R$ {formatCurrency(netTotal)}
                     </span>
                   </div>
                 </div>
@@ -2040,13 +2121,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
                         <span className="text-slate-400 block text-[11px]">Custo Real das Peças:</span>
                         <span className="font-mono text-sm text-red-400 font-bold">
-                          - R$ {partsCostTotal.toFixed(2)}
+                          - R$ {formatCurrency(partsCostTotal)}
                         </span>
                       </div>
                       <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
                         <span className="text-slate-400 block text-[11px]">Comissão do Mecânico:</span>
                         <span className="font-mono text-sm text-red-400 font-bold">
-                          - R$ {mechanicsCommissionTotal.toFixed(2)}
+                          - R$ {formatCurrency(mechanicsCommissionTotal)}
                         </span>
                       </div>
                       <div className="bg-emerald-500/10 p-3 rounded-lg border border-emerald-500/30">
@@ -2055,7 +2136,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         </span>
                         <div className="flex items-center justify-between mt-0.5">
                           <span className="font-mono text-base font-black text-white">
-                            R$ {netProfit.toFixed(2)}
+                            R$ {formatCurrency(netProfit)}
                           </span>
                           <span className="text-xs font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">
                             {profitMarginPercent.toFixed(1)}% margem
@@ -2070,188 +2151,222 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       <Lock className="w-3.5 h-3.5 text-slate-500" />
                       <span>Dados de custo de peças e lucro da oficina protegidos nesta tela.</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowProfitDetails(true)}
-                      className="text-amber-400 hover:text-amber-300 font-semibold underline underline-offset-2 ml-2"
-                    >
-                      Exibir DRE
-                    </button>
                   </div>
                 )}
-
-                {/* Status de Pagamento / Ações Rápidas */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                  <div>
-                    {isPaid ? (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/30 rounded-lg text-emerald-300 text-xs font-bold">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>O.S. Quitada ({paymentMethod.toUpperCase()})</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-xs text-amber-400 font-medium">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>Aguardando recebimento ou finalização</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Ações de WhatsApp e Impressão de Recibo */}
-                  <div className="flex items-center gap-2">
-                    {currentClient?.phone && currentVehicle && (
-                      <div className="flex items-center gap-1.5">
-                        {/* Botão Copiar Texto */}
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const orderData = {
-                              ...order!,
-                              orderNumber,
-                              parts,
-                              services,
-                              partsTotal,
-                              servicesTotal,
-                              grossTotal,
-                              discount,
-                              netTotal,
-                              netProfit,
-                              isPaid,
-                              technicalDiagnostic,
-                              complaintDescription,
-                              entryDate,
-                              serviceDate,
-                              warrantyDays,
-                              warrantyExpiresAt: warrantyInfo.expiryDateStr,
-                            };
-                            const msg =
-                              status === 'pronto'
-                                ? WhatsAppService.generateCarReadyMessage(orderData, currentClient, currentVehicle)
-                                : WhatsAppService.generateBudgetMessage(orderData, currentClient, currentVehicle);
-                            const success = await WhatsAppService.copyToClipboard(msg);
-                            if (success) {
-                              setCopiedMsg(true);
-                              setTimeout(() => setCopiedMsg(false), 2000);
-                            }
-                          }}
-                          className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs border border-slate-700 transition-colors flex items-center gap-1"
-                          title="Copiar texto da mensagem para a área de transferência"
-                        >
-                          {copiedMsg ? (
-                            <>
-                              <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
-                              <span className="text-[11px] text-emerald-400 font-bold">Copiado!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-4 h-4 text-slate-400" />
-                              <span className="text-[11px] text-slate-300 hidden sm:inline">Copiar</span>
-                            </>
-                          )}
-                        </button>
-
-                        {/* Botão Abrir WhatsApp */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const orderData = {
-                              ...order!,
-                              orderNumber,
-                              parts,
-                              services,
-                              partsTotal,
-                              servicesTotal,
-                              grossTotal,
-                              discount,
-                              netTotal,
-                              netProfit,
-                              isPaid,
-                              technicalDiagnostic,
-                              complaintDescription,
-                              entryDate,
-                              serviceDate,
-                              warrantyDays,
-                              warrantyExpiresAt: warrantyInfo.expiryDateStr,
-                            };
-                            if (status === 'pronto') {
-                              const msg = WhatsAppService.generateCarReadyMessage(
-                                orderData,
-                                currentClient,
-                                currentVehicle
-                              );
-                              WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
-                            } else {
-                              const msg = WhatsAppService.generateBudgetMessage(
-                                orderData,
-                                currentClient,
-                                currentVehicle
-                              );
-                              WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
-                            }
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow transition-colors"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                          {status === 'pronto' ? 'Avisar Carro Pronto no WhatsApp' : 'Enviar no WhatsApp'}
-                        </button>
-                      </div>
-                    )}
-
-                    {isEditing && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onPrintReceipt({
-                            ...order!,
-                            orderNumber,
-                            parts,
-                            services,
-                            partsTotal,
-                            servicesTotal,
-                            grossTotal,
-                            discount,
-                            netTotal,
-                            entryDate,
-                            serviceDate,
-                            warrantyDays,
-                            warrantyExpiresAt: warrantyInfo.expiryDateStr,
-                          })
-                        }
-                        className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-colors"
-                      >
-                        <Printer className="w-4 h-4" />
-                        Imprimir Recibo
-                      </button>
-                    )}
-                  </div>
-                </div>
               </div>
 
-              {/* Botão de Finalização em Destaque na Aba 3 */}
-              {status !== 'finalizado' && (
-                <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div>
-                    <span className="font-bold text-white text-sm block">Pronto para entregar o veículo?</span>
-                    <span className="text-xs text-slate-400">
-                      Finalize a O.S. e receba em 1 toque (Pix, Cartão, Dinheiro ou Fiado).
-                    </span>
+              {/* ============================================================= */}
+              {/* CARD DE AÇÃO DINÂMICO 1: ETAPA DE ORÇAMENTO (STATUS 1 OU 2) */}
+              {/* ============================================================= */}
+              {isQuotationStage ? (
+                <div className="bg-slate-950/70 p-5 rounded-2xl border border-sky-500/30 space-y-4 shadow-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div>
+                      <span className="text-xs font-bold text-sky-400 uppercase tracking-wider block">
+                        Etapa Comercial • Proposta
+                      </span>
+                      <h4 className="text-base font-black text-white flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-sky-400" />
+                        Pronto para enviar ao cliente?
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Envie a proposta técnica pelo WhatsApp ou autorize o serviço caso já tenha sido combinada no balcão/telefone.
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                        status === 'aguardando_aprovacao'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                      }`}>
+                        <Clock className="w-3.5 h-3.5" />
+                        {status === 'aguardando_aprovacao' ? '2. Aguardando Aprovação' : '1. Orçamento'}
+                      </span>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsCheckoutOpen(true)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm rounded-xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  >
-                    <DollarSign className="w-4 h-4 stroke-[3]" />
-                    Finalizar e Receber Agora
-                  </button>
+
+                  {/* Grid de Ações Principais da Proposta */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* Botão 1: Enviar Orçamento no WhatsApp */}
+                    {currentClient?.phone && currentVehicle ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (status === 'orcamento') {
+                            handleStatusChange('aguardando_aprovacao');
+                          }
+                          const orderData = getOrderDataSnapshot();
+                          const msg = WhatsAppService.generateBudgetMessage(orderData, currentClient, currentVehicle);
+                          WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
+                        }}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        title="Abre o WhatsApp com a proposta e atualiza status para 2. Aguardando Aprovação"
+                      >
+                        <MessageCircle className="w-4 h-4 stroke-[2.5]" />
+                        <span>Enviar Orçamento no WhatsApp</span>
+                      </button>
+                    ) : (
+                      <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-center text-xs text-slate-500 italic">
+                        Cadastre telefone para envio via WhatsApp
+                      </div>
+                    )}
+
+                    {/* Botão 2: Aprovação Manual pelo Mecânico */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleStatusChange('aprovado');
+                        confetti({
+                          particleCount: 70,
+                          spread: 60,
+                          origin: { y: 0.6 },
+                        });
+                      }}
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      title="Cliente aprovou presencialmente ou por telefone. Avança o status direto para 3. Aprovado / Peças"
+                    >
+                      <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                      <span>Aprovar Orçamento</span>
+                    </button>
+
+                    {/* Botão 3: Imprimir Orçamento */}
+                    <button
+                      type="button"
+                      onClick={() => onPrintReceipt(getOrderDataSnapshot())}
+                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                      title="Imprime a proposta de orçamento em formato oficial"
+                    >
+                      <Printer className="w-4 h-4 text-slate-400" />
+                      <span>Imprimir Orçamento</span>
+                    </button>
+
+                    {/* Botão 4: Copiar Texto */}
+                    <button
+                      type="button"
+                      onClick={handleCopyOrderMessage}
+                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                      title="Copiar texto do orçamento técnico"
+                    >
+                      {copiedMsg ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
+                          <span className="text-emerald-400 font-bold">Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 text-slate-400" />
+                          <span>Copiar Texto</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* ============================================================= */
+                /* CARD DE AÇÃO DINÂMICO 2: ETAPA DE FECHAMENTO & PAGAMENTO */
+                /* ============================================================= */
+                <div className="bg-slate-950/70 p-5 rounded-2xl border border-emerald-500/30 space-y-4 shadow-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div>
+                      <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block">
+                        Etapa de Entrega & Quitação
+                      </span>
+                      <h4 className="text-base font-black text-white flex items-center gap-2">
+                        <DollarSign className="w-5 h-5 text-emerald-400" />
+                        Pronto para entregar o veículo?
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {isPaid
+                          ? `O.S. quitada via ${paymentMethod.toUpperCase()}. Imprima o recibo oficial ou envie o comprovante ao cliente.`
+                          : 'Finalize a O.S. e receba em 1 toque (Pix, Cartão, Dinheiro ou Fiado).'}
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      {isPaid ? (
+                        <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Quitada ({paymentMethod.toUpperCase()})
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-xs font-bold flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          Aguardando Recebimento
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Grid de Ações Principais de Fechamento */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* Botão 1: Finalizar e Receber Agora (se não estiver paga) */}
+                    {!isPaid && (
+                      <button
+                        type="button"
+                        onClick={() => setIsCheckoutOpen(true)}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      >
+                        <DollarSign className="w-4 h-4 stroke-[3]" />
+                        <span>Finalizar e Receber Agora</span>
+                      </button>
+                    )}
+
+                    {/* Botão 2: WhatsApp (Avisar Pronto ou Enviar Comprovante) */}
+                    {currentClient?.phone && currentVehicle && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const orderData = getOrderDataSnapshot();
+                          const msg = status === 'pronto'
+                            ? WhatsAppService.generateCarReadyMessage(orderData, currentClient, currentVehicle)
+                            : WhatsAppService.generateBudgetMessage(orderData, currentClient, currentVehicle);
+                          WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
+                        }}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-colors"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>{status === 'pronto' ? 'Avisar Carro Pronto' : 'Enviar no WhatsApp'}</span>
+                      </button>
+                    )}
+
+                    {/* Botão 3: Imprimir Recibo Oficial */}
+                    <button
+                      type="button"
+                      onClick={() => onPrintReceipt(getOrderDataSnapshot())}
+                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                      title="Imprime o Recibo com termo de garantia legal de 90 dias"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>Imprimir Recibo</span>
+                    </button>
+
+                    {/* Botão 4: Copiar Dados */}
+                    <button
+                      type="button"
+                      onClick={handleCopyOrderMessage}
+                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                    >
+                      {copiedMsg ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
+                          <span className="text-emerald-400 font-bold">Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 text-slate-400" />
+                          <span>Copiar Dados</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {/* Botão Voltar */}
+              {/* Botão Voltar para a Aba 2 */}
               <div className="flex justify-start pt-2">
                 <button
                   type="button"
                   onClick={() => setActiveTab('itens')}
-                  className="px-3 py-2 text-slate-400 hover:text-slate-200 text-xs font-semibold flex items-center gap-1 transition-colors"
+                  className="px-3.5 py-2 text-slate-400 hover:text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors bg-slate-800/40 hover:bg-slate-800 rounded-lg border border-slate-700/50"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   <span>Voltar para Serviços & Peças</span>
@@ -2261,17 +2376,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           )}
         </div>
 
-        {/* Rodapé Global Fixo do Modal */}
+        {/* Rodapé Global Fixo do Modal (Sem Botão Verde Duplicado) */}
         <div className="px-5 py-3.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3">
           <div>
-            {status !== 'finalizado' && (
+            {activeTab !== 'diagnostico' && (
               <button
                 type="button"
-                onClick={() => setIsCheckoutOpen(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm rounded-lg shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                onClick={() => {
+                  if (activeTab === 'fechamento') setActiveTab('itens');
+                  else if (activeTab === 'itens') setActiveTab('diagnostico');
+                }}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-slate-700"
               >
-                <DollarSign className="w-4 h-4 stroke-[2.5]" />
-                Finalizar e Receber
+                <ChevronLeft className="w-4 h-4" />
+                <span>Voltar</span>
               </button>
             )}
           </div>
@@ -2295,7 +2413,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         </div>
       </div>
 
-      {/* Modal de Finalização / Checkout Rápido */}
+{/* Modal de Finalização / Checkout Rápido */}
       <QuickOrderCheckoutModal
         order={{
           id: order?.id || 'ord-' + Date.now(),
