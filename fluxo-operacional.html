@@ -84,7 +84,7 @@
       </div>
     </div>
     <div id="hint">
-      As colunas coloridas indicam <b>quem executa</b> cada atividade (Cliente, Mec&acirc;nico, Sistema, WhatsApp e Gest&atilde;o). As etapas se sucedem de cima para baixo. Os c&iacute;rculos com letra (<b>A</b>) s&atilde;o <b>conectores de reten&ccedil;&atilde;o</b>: o fluxo sai de um e retorna no outro, completando o ciclo de fideliza&ccedil;&atilde;o e revis&otilde;es peri&oacute;dicas. Setas tracejadas indicam fluxos condicionais, alimenta&ccedil;&atilde;o de dados ou compras externas. Em conformidade com a <b>Garantia Legal de 90 dias (CDC Art. 26)</b>.
+      As colunas coloridas indicam <b>quem executa</b> cada atividade (Cliente, Mec&acirc;nico, Sistema, WhatsApp e Gest&atilde;o). As etapas se sucedem de cima para baixo. Os c&iacute;rculos com letra (<b>A</b>) s&atilde;o <b>conectores de reten&ccedil;&atilde;o</b>: o fluxo sai de um e retorna no outro, completando o ciclo de fideliza&ccedil;&atilde;o e revis&otilde;es peri&oacute;dicas. <b>Regra de Estoque:</b> a oficina s&oacute; compra pe&ccedil;as ap&oacute;s a aprova&ccedil;&atilde;o expressa do cliente e apenas se o item n&atilde;o estiver no estoque local. Setas tracejadas indicam fluxos condicionais, entregas de pe&ccedil;as ou ciclos preventivos. Em conformidade com a <b>Garantia Legal de 90 dias (CDC Art. 26)</b>.
     </div>
   </div>
 </div>
@@ -145,8 +145,8 @@
   function buildSections() {
     var defs = [
       { key: 's1', title: 'Etapa 1 · Entrada do Veículo & Abertura da O.S.', sub: 'da chegada do veículo no pátio até o diagnóstico inicial e checklist de segurança', rows: 7 },
-      { key: 's2', title: 'Etapa 2 · Orçamento Inteligente & Peças no Estoque', sub: 'da seleção de serviços e prateleira de peças (Loc. A1) até a cotação com margem', rows: 6 },
-      { key: 's3', title: 'Etapa 3 · Aprovação do Cliente & Execução no Pátio', sub: 'da aprovação no WhatsApp à contagem oficial da garantia legal (90 dias CDC) e baixa de peças', rows: 7 },
+      { key: 's2', title: 'Etapa 2 · Orçamento Inteligente & Cotação de Peças', sub: 'da seleção de serviços e consulta de estoque/cotação até o cálculo de margem e proposta', rows: 5 },
+      { key: 's3', title: 'Etapa 3 · Aprovação do Cliente, Compra de Peças & Execução', sub: 'da aprovação no WhatsApp e compra sob demanda à execução e aviso de carro pronto', rows: 8 },
       { key: 's4', title: 'Etapa 4 · Fechamento Rápido, Pagamento & Recibo com QR Code', sub: 'do checkout simplificado em 1 clique ao cálculo automático de comissão e recibo CDC', rows: 6 },
       { key: 's5', title: 'Etapa 5 · Retenção, Pós-Venda & Gestão de Fornecedores', sub: 'das contas a pagar parceladas ao retorno preventivo do cliente para nova revisão', rows: 8 }
     ];
@@ -188,23 +188,19 @@
     mSintoma: { x: 390, y: R1[6], type: 'task', actor: 'M', label: 'Registrar sintoma e diagnóstico inicial',
       tip: 'Anotação técnica das queixas do cliente e pré-diagnóstico no chão de oficina.' },
 
-    // ===== Etapa 2 · Orçamento Inteligente & Peças no Estoque =====
+    // ===== Etapa 2 · Orçamento Inteligente & Cotação de Peças =====
     mServicos: { x: 390, y: R2[0], type: 'task', actor: 'M', label: 'Lançar serviços e mecânico executor',
       tip: 'Adiciona itens de mão de obra (tempo estimado, valor individual ou total e mecânico: Carlos, Marcos ou Rico).' },
-    mBuscaPeca: { x: 390, y: R2[1], type: 'task', actor: 'M', label: 'Buscar peças com saldo e prateleira',
-      tip: 'Busca inteligente exibe estoque disponível, preço sugerido e localização (ex: Loc: Prateleira A1, B3).' },
-    gwEstoque: { x: 630, y: R2[2], type: 'gateway', actor: 'S', label: 'Peça disponível na oficina?', labelPos: 'top',
-      tip: 'Verifica se a quantidade requerida está disponível no estoque local.' },
-    gCompraPeca: { x: 1110, y: R2[2], type: 'task', actor: 'G', label: 'Comprar de fornecedor com NF parcelada',
-      tip: 'Registra compra faturada com fornecedor, nota fiscal e parcelamento (1/3, 2/3) com alertas de vencimento.' },
-    sMargem: { x: 630, y: R2[3], type: 'task', actor: 'S', label: 'Calcular custos, margem e total da O.S.',
-      tip: 'Calcula custo real de peças, margem de contribuição da oficina e total de serviços e produtos.' },
-    sMsgOrc: { x: 630, y: R2[4], type: 'task', actor: 'S', label: 'Gerar mensagem formatada de orçamento',
-      tip: 'Monta a proposta clara e detalhada para envio direto ao cliente.' },
-    wEnvioOrc: { x: 870, y: R2[5], type: 'task', actor: 'W', label: 'Enviar orçamento via WhatsApp',
+    mBuscaPeca: { x: 390, y: R2[1], type: 'task', actor: 'M', label: 'Consultar peças no estoque ou cotar',
+      tip: 'Busca inteligente exibe estoque disponível, preço sugerido e localização (ex: Loc: Prateleira A1, B3) ou opção de cotação com distribuidora.' },
+    sMargem: { x: 630, y: R2[2], type: 'task', actor: 'S', label: 'Calcular custos, margem e total da O.S.',
+      tip: 'Calcula custo estimado de peças, margem de contribuição da oficina e total de serviços para compor a proposta.' },
+    sMsgOrc: { x: 630, y: R2[3], type: 'task', actor: 'S', label: 'Gerar mensagem formatada de orçamento',
+      tip: 'Monta a proposta comercial clara, detalhada e transparente para envio direto ao cliente.' },
+    wEnvioOrc: { x: 870, y: R2[4], type: 'task', actor: 'W', label: 'Enviar orçamento via WhatsApp',
       tip: 'Abre o WhatsApp com mensagem completa e botões de ação para o cliente aprovar.' },
 
-    // ===== Etapa 3 · Aprovação do Cliente & Execução no Pátio =====
+    // ===== Etapa 3 · Aprovação do Cliente, Compra de Peças & Execução =====
     cAprova: { x: 150, y: R3[0], type: 'task', actor: 'C', label: 'Analisar proposta no WhatsApp',
       tip: 'O cliente examina itens, valores, formas de pagamento e prazos propostos.' },
     gwAprovado: { x: 150, y: R3[1], type: 'gateway', actor: 'C', label: 'Cliente aprova o orçamento?', labelPos: 'top',
@@ -215,15 +211,19 @@
       tip: 'Atendimento encerrado sem execução de serviços.' },
     sAprovacao: { x: 630, y: R3[2], type: 'task', actor: 'S', label: 'Aprovar O.S. e carimbar Data do Serviço',
       tip: 'Registra Data do Serviço oficial (serviceDate) e inicia a contagem da Garantia Legal de 90 dias (CDC Art. 26).' },
-    mRetiraPeca: { x: 390, y: R3[3], type: 'task', actor: 'M', label: 'Pegar peças na prateleira (Loc: A1/B3)',
-      tip: 'Localiza com agilidade as peças no almoxarifado pela posição gravada na O.S. e inicia o reparo no elevador.' },
-    sBaixaEstoque: { x: 630, y: R3[4], type: 'task', actor: 'S', label: 'Dar baixa de estoque e checar mínimo',
-      tip: 'Desconta o saldo de peças do almoxarifado e gera alerta visual se atingir o estoque mínimo.' },
-    mExecuta: { x: 390, y: R3[5], type: 'task', actor: 'M', label: 'Executar serviços e teste de rodagem',
+    gwEstoque: { x: 630, y: R3[3], type: 'gateway', actor: 'S', label: 'Peça disponível no estoque local?', labelPos: 'bottom', labelOffset: 38,
+      tip: 'Após o cliente aprovar o orçamento, o sistema verifica se as peças já estão na oficina ou se precisam ser compradas de distribuidora.' },
+    gCompraPeca: { x: 1110, y: R3[3], type: 'task', actor: 'G', label: 'Comprar de fornecedor com NF parcelada',
+      tip: 'Somente após o cliente aprovar o orçamento, a oficina compra as peças faltantes com NF faturada (1/3, 2/3), alimentando o Contas a Pagar.' },
+    mRetiraPeca: { x: 390, y: R3[4], type: 'task', actor: 'M', label: 'Pegar peças na prateleira ou entrega',
+      tip: 'Mecânico localiza com agilidade as peças na prateleira (Loc: A1/B3) ou recebe a entrega da distribuidora no elevador para iniciar a montagem.' },
+    sBaixaEstoque: { x: 630, y: R3[5], type: 'task', actor: 'S', label: 'Dar baixa de estoque e apurar custo real',
+      tip: 'Desconta o saldo de peças do almoxarifado, consolida o custo real na O.S. e checa estoque mínimo.' },
+    mExecuta: { x: 390, y: R3[6], type: 'task', actor: 'M', label: 'Executar serviços e teste de rodagem',
       tip: 'Trabalho mecânico no veículo (suspensão, freios, motor, elétrica) e checagem de qualidade.' },
-    sPronto: { x: 630, y: R3[6], type: 'task', actor: 'S', label: 'Mudar status no Kanban para Pronto',
+    sPronto: { x: 630, y: R3[7], type: 'task', actor: 'S', label: 'Mudar status no Kanban para Pronto',
       tip: 'Veículo movido para a coluna Pronto para Entrega no pátio virtual.' },
-    wAvisaPronto: { x: 870, y: R3[6], type: 'task', actor: 'W', label: 'Avisar cliente via WhatsApp: "Carro Pronto!"',
+    wAvisaPronto: { x: 870, y: R3[7], type: 'task', actor: 'W', label: 'Avisar cliente via WhatsApp: "Carro Pronto!"',
       tip: 'Notificação automática ao cliente com mensagem amigável avisando que o carro já pode ser retirado.' },
 
     // ===== Etapa 4 · Fechamento Rápido, Pagamento & Recibo com QR Code =====
@@ -280,22 +280,20 @@
 
     // Etapa 2
     { from: 'mSintoma', to: 'mServicos' },
-    { from: 'mServicos', to: 'mBuscaPeca' },
-    { from: 'mBuscaPeca', to: 'gwEstoque' },
-    { from: 'gwEstoque', to: 'sMargem', label: 'Em estoque' },
-    { from: 'gwEstoque', to: 'gCompraPeca', label: 'Falta peça',
-      points: [[630 + 31, R2[2]], [1007, R2[2]]],
-      labelAt: [820, R2[2]] },
-    { from: 'gCompraPeca', to: 'sMargem', dashed: true, label: 'NF faturada 1/3, 2/3',
-      points: [[1110, R2[2] + 37], [1110, R2[2] + 58], [630, R2[2] + 58], [630, R2[3] - 37]],
-      labelAt: [870, R2[2] + 58] },
-    { from: 'sMargem', to: 'sMsgOrc' },
-    { from: 'sMsgOrc', to: 'wEnvioOrc' },
+    { from: 'mServicos', to: 'mBuscaPeca',
+      points: [[390, R2[0] + 37], [390, R2[1] - 37]] },
+    { from: 'mBuscaPeca', to: 'sMargem',
+      points: [[390, R2[1] + 37], [390, (R2[1] + R2[2]) / 2], [630, (R2[1] + R2[2]) / 2], [630, R2[2] - 37]] },
+    { from: 'sMargem', to: 'sMsgOrc',
+      points: [[630, R2[2] + 37], [630, R2[3] - 37]] },
+    { from: 'sMsgOrc', to: 'wEnvioOrc',
+      points: [[630, R2[3] + 37], [630, (R2[3] + R2[4]) / 2], [870, (R2[3] + R2[4]) / 2], [870, R2[4] - 37]] },
 
-    // Etapa 3 (CORREÇÃO TOTAL DE INVERSÃO E SOBREPOSIÇÃO)
+    // Etapa 3 (A oficina só compra se o cliente aprovar E a peça não existir no estoque)
     { from: 'wEnvioOrc', to: 'cAprova',
-      points: [[870, R2[5] + 37], [870, R2[5] + 58], [150, R2[5] + 58], [150, R3[0] - 37]] },
-    { from: 'cAprova', to: 'gwAprovado' },
+      points: [[870, R2[4] + 37], [870, (R2[4] + R3[0]) / 2], [150, (R2[4] + R3[0]) / 2], [150, R3[0] - 37]] },
+    { from: 'cAprova', to: 'gwAprovado',
+      points: [[150, R3[0] + 37], [150, R3[1] - 31]] },
 
     // Ramo NÃO (Recusou) -> Segue horizontalmente para mCancela e endCancela
     { from: 'gwAprovado', to: 'mCancela', label: 'Não (Recusou)',
@@ -309,16 +307,38 @@
       points: [[150, R3[1] + 31], [150, R3[2]], [630 - 103, R3[2]]],
       labelAt: [234, R3[2]] },
 
-    { from: 'sAprovacao', to: 'mRetiraPeca',
-      points: [[630, R3[2] + 37], [630, (R3[2] + R3[3]) / 2], [390, (R3[2] + R3[3]) / 2], [390, R3[3] - 37]] },
-    { from: 'mRetiraPeca', to: 'sBaixaEstoque' },
-    { from: 'sBaixaEstoque', to: 'mExecuta' },
-    { from: 'mExecuta', to: 'sPronto' },
-    { from: 'sPronto', to: 'wAvisaPronto' },
+    // Da aprovação para a verificação de estoque
+    { from: 'sAprovacao', to: 'gwEstoque',
+      points: [[630, R3[2] + 37], [630, R3[3] - 31]] },
+
+    // Ramo SIM (Em estoque) -> Pega na prateleira
+    { from: 'gwEstoque', to: 'mRetiraPeca', label: 'Sim (Em estoque)',
+      points: [[630 - 31, R3[3]], [390, R3[3]], [390, R3[4] - 37]],
+      labelAt: [495, R3[3]] },
+
+    // Ramo NÃO (Falta peça) -> Só compra após aprovação e falta no estoque
+    { from: 'gwEstoque', to: 'gCompraPeca', label: 'Não (Falta peça)',
+      points: [[630 + 31, R3[3]], [1110 - 103, R3[3]]],
+      labelAt: [840, R3[3]] },
+
+    // Chegada da peça comprada para a montagem pelo mecânico
+    { from: 'gCompraPeca', to: 'mRetiraPeca', dashed: true, label: 'Peça entregue na oficina',
+      points: [[1110, R3[3] + 37], [1110, R3[4]], [390 + 103, R3[4]]],
+      labelAt: [800, R3[4]] },
+
+    // Mecânico pega peças e sistema dá baixa
+    { from: 'mRetiraPeca', to: 'sBaixaEstoque',
+      points: [[390, R3[4] + 37], [390, (R3[4] + R3[5]) / 2], [630, (R3[4] + R3[5]) / 2], [630, R3[5] - 37]] },
+    { from: 'sBaixaEstoque', to: 'mExecuta',
+      points: [[630, R3[5] + 37], [630, (R3[5] + R3[6]) / 2], [390, (R3[5] + R3[6]) / 2], [390, R3[6] - 37]] },
+    { from: 'mExecuta', to: 'sPronto',
+      points: [[390, R3[6] + 37], [390, (R3[6] + R3[7]) / 2], [630, (R3[6] + R3[7]) / 2], [630, R3[7] - 37]] },
+    { from: 'sPronto', to: 'wAvisaPronto',
+      points: [[630 + 103, R3[7]], [870 - 103, R3[7]]] },
 
     // Etapa 4
     { from: 'wAvisaPronto', to: 'mCheckout',
-      points: [[870, R3[6] + 37], [870, R3[6] + 58], [390, R3[6] + 58], [390, R4[0] - 37]] },
+      points: [[870, R3[7] + 37], [870, (R3[7] + R4[0]) / 2], [390, (R3[7] + R4[0]) / 2], [390, R4[0] - 37]] },
     { from: 'mCheckout', to: 'cPagto' },
     { from: 'cPagto', to: 'sFinanceiro' },
     { from: 'sFinanceiro', to: 'sRecibo' },
