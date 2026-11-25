@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Part, ParsedXMLInvoice, SupplierPurchase } from '../types';
+import { Part, ParsedXMLInvoice, SupplierPurchase, SupplierPaymentTerm, PurchaseInstallment } from '../types';
 import {
   Package,
   Plus,
@@ -21,6 +21,9 @@ import {
   CheckCircle,
   Filter,
   FileText,
+  Truck,
+  Phone,
+  MapPin,
 } from 'lucide-react';
 import { XMLParserService } from '../services/xmlParser';
 import { ExcelParserService, ParsedExcelRow } from '../services/excelParser';
@@ -72,6 +75,7 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
   const [isXmlModalOpen, setIsXmlModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingPart, setEditingPart] = useState<Part | null>(null);
+  const [createPurchaseRecord, setCreatePurchaseRecord] = useState(true);
 
   // Estados do Importador XML
   const [parsedInvoice, setParsedInvoice] = useState<ParsedXMLInvoice | null>(null);
@@ -248,6 +252,9 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
       minStock: 2,
       unit: 'UN',
       location: 'Estoque Central',
+      supplierName: parsedInvoice.supplierName,
+      lastInvoiceNumber: parsedInvoice.nfeNumber ? `NF-e ${parsedInvoice.nfeNumber}` : undefined,
+      supplierPaymentTerms: '30_60d',
     }));
 
     onBulkImportParts(newParts, parsedInvoice);
@@ -292,6 +299,78 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
   const handleSaveManualPart = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPart) return;
+
+    // Se informou fornecedor, custo e marcou para registrar conta a pagar
+    if (
+      createPurchaseRecord &&
+      editingPart.supplierName?.trim() &&
+      editingPart.costPrice > 0 &&
+      onSavePurchase
+    ) {
+      const purchaseId = 'pur-' + Date.now();
+      const totalVal = Number(
+        (editingPart.costPrice * (editingPart.currentStock || 1)).toFixed(2)
+      );
+      const term: SupplierPaymentTerm = editingPart.supplierPaymentTerms || '30d';
+
+      let instCount = 1;
+      let offsets = [30];
+      if (term === 'a_vista') {
+        instCount = 1;
+        offsets = [0];
+      } else if (term === '30d') {
+        instCount = 1;
+        offsets = [30];
+      } else if (term === '30_60d') {
+        instCount = 2;
+        offsets = [30, 60];
+      } else if (term === '30_60_90d') {
+        instCount = 3;
+        offsets = [30, 60, 90];
+      }
+
+      const instAmount = Number((totalVal / instCount).toFixed(2));
+      const now = Date.now();
+      const installments: PurchaseInstallment[] = offsets.map((off, idx) => {
+        const due = new Date(now + off * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        return {
+          id: `inst-${purchaseId}-${idx + 1}`,
+          installmentNumber: idx + 1,
+          totalInstallments: instCount,
+          amount:
+            idx === instCount - 1
+              ? Number((totalVal - instAmount * (instCount - 1)).toFixed(2))
+              : instAmount,
+          dueDate: due,
+          status: term === 'a_vista' ? 'pago' : 'pendente',
+          paidAt: term === 'a_vista' ? new Date().toISOString() : undefined,
+        };
+      });
+
+      const purchase: SupplierPurchase = {
+        id: purchaseId,
+        nfeNumber: editingPart.lastInvoiceNumber || `PED-${Math.floor(1000 + Math.random() * 9000)}`,
+        supplierName: editingPart.supplierName.trim(),
+        issueDate: new Date().toISOString().split('T')[0],
+        totalValue: totalVal,
+        itemsCount: 1,
+        paymentMethod: term === 'a_vista' ? 'pix' : 'a_prazo',
+        paidInstallmentsCount: term === 'a_vista' ? 1 : 0,
+        totalInstallmentsCount: instCount,
+        paidAmount: term === 'a_vista' ? totalVal : 0,
+        remainingAmount: term === 'a_vista' ? 0 : totalVal,
+        firstDueDate: installments[0].dueDate,
+        lastDueDate: installments[installments.length - 1].dueDate,
+        status: term === 'a_vista' ? 'quitado' : 'pendente',
+        partCodes: [editingPart.code],
+        installments,
+        notes: `Entrada de ${editingPart.currentStock || 1} un de ${editingPart.description}. Tel: ${editingPart.supplierPhone || 'N/A'}. End: ${editingPart.supplierAddress || 'N/A'}. Condição: ${term}`,
+        createdAt: new Date().toISOString(),
+      };
+
+      onSavePurchase(purchase);
+      editingPart.purchaseId = purchaseId;
+    }
 
     onSavePart(editingPart);
     setIsEditModalOpen(false);
@@ -536,7 +615,12 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                       minStock: 2,
                       unit: 'UN',
                       location: 'Prateleira A1',
+                      supplierName: '',
+                      supplierPhone: '',
+                      supplierAddress: '',
+                      supplierPaymentTerms: '30d',
                     });
+                    setCreatePurchaseRecord(true);
                     setIsEditModalOpen(true);
                   }}
                   className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-3 py-1.5 rounded-lg text-xs border border-slate-700 transition-colors"
@@ -670,11 +754,26 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => setSupplierFilter(part.lastInvoiceNumber || part.supplierName || '')}
-                                  className="text-[10px] text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/25 px-1.5 py-0.5 rounded font-mono font-medium transition-colors"
-                                  title={`Filtrar apenas itens da ${part.lastInvoiceNumber || part.supplierName}`}
+                                  className="text-[10px] text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/25 px-1.5 py-0.5 rounded font-mono font-medium transition-colors flex items-center gap-1"
+                                  title={`Fornecedor: ${part.supplierName}${part.supplierAddress ? ` | End: ${part.supplierAddress}` : ''}${part.supplierPhone ? ` | Tel: ${part.supplierPhone}` : ''}`}
                                 >
-                                  {part.supplierName} {part.lastInvoiceNumber ? `• ${part.lastInvoiceNumber}` : ''}
+                                  <Truck className="w-3 h-3 text-purple-400" />
+                                  <span>{part.supplierName} {part.lastInvoiceNumber ? `• ${part.lastInvoiceNumber}` : ''}</span>
+                                  {part.supplierPhone && (
+                                    <span className="text-slate-400">({part.supplierPhone})</span>
+                                  )}
                                 </button>
+                              )}
+                              {part.supplierPaymentTerms && (
+                                <span className="text-[10px] text-amber-300 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono font-bold">
+                                  {part.supplierPaymentTerms === 'a_vista'
+                                    ? 'À Vista'
+                                    : part.supplierPaymentTerms === '30d'
+                                    ? '30 d'
+                                    : part.supplierPaymentTerms === '30_60d'
+                                    ? '30/60d'
+                                    : '30/60/90d'}
+                                </span>
                               )}
                               {part.location && (
                                 <span className="text-[10px] text-slate-400 bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700/60">
@@ -1323,7 +1422,7 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
       {/* MODAL DE CRIAÇÃO/EDIÇÃO MANUAL DE PEÇA */}
       {isEditModalOpen && editingPart && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <form onSubmit={handleSaveManualPart}>
               <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
                 <h3 className="text-sm font-bold text-white">Cadastro de Peça</h3>
@@ -1342,9 +1441,10 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                   <input
                     required
                     type="text"
+                    placeholder="Ex: Pastilha de Freio Dianteira..."
                     value={editingPart.description}
                     onChange={(e) => setEditingPart({ ...editingPart, description: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -1353,18 +1453,20 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                     <input
                       required
                       type="text"
+                      placeholder="Ex: N-1238, FCI-1200..."
                       value={editingPart.code}
                       onChange={(e) => setEditingPart({ ...editingPart, code: e.target.value })}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500"
                     />
                   </div>
                   <div>
                     <label className="block text-slate-400 mb-1">Marca</label>
                     <input
                       type="text"
+                      placeholder="Ex: Cobreq, Fram, Bosch..."
                       value={editingPart.brand}
                       onChange={(e) => setEditingPart({ ...editingPart, brand: e.target.value })}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500"
                     />
                   </div>
                 </div>
@@ -1442,6 +1544,105 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                       className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
                     />
                   </div>
+                </div>
+
+                {/* Seção Fornecedor & Condições de Pagamento */}
+                <div className="pt-3 border-t border-slate-800 space-y-3">
+                  <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs">
+                    <Truck className="w-4 h-4" />
+                    <span>Dados do Fornecedor & Condição de Pagamento</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Nome do Fornecedor / Distribuidora</label>
+                      <input
+                        type="text"
+                        list="parts-suppliers-datalist"
+                        value={editingPart.supplierName || ''}
+                        onChange={(e) => setEditingPart({ ...editingPart, supplierName: e.target.value })}
+                        placeholder="Ex: DPaschoal, Caninana Autopeças..."
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                      />
+                      <datalist id="parts-suppliers-datalist">
+                        {Array.from(new Set(parts.map((p) => p.supplierName).filter(Boolean))).map((s) => (
+                          <option key={s} value={s!} />
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 mb-1">Telefone / WhatsApp do Fornecedor</label>
+                      <input
+                        type="text"
+                        value={editingPart.supplierPhone || ''}
+                        onChange={(e) => setEditingPart({ ...editingPart, supplierPhone: e.target.value })}
+                        placeholder="(11) 98765-4321"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-400 mb-1">Endereço do Fornecedor</label>
+                    <input
+                      type="text"
+                      value={editingPart.supplierAddress || ''}
+                      onChange={(e) => setEditingPart({ ...editingPart, supplierAddress: e.target.value })}
+                      placeholder="Rua, Número, Bairro, Cidade - UF"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-400 mb-1.5 font-semibold">
+                      Forma de Pagamento ao Fornecedor
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: 'a_vista', label: 'À Vista', desc: 'Hoje (1x)' },
+                        { id: '30d', label: '30 d', desc: 'Boleto 30 dias' },
+                        { id: '30_60d', label: '30/60d', desc: '2x (30 e 60d)' },
+                        { id: '30_60_90d', label: '30/60/90d', desc: '3x (30, 60 e 90d)' },
+                      ].map((term) => {
+                        const isSelected = (editingPart.supplierPaymentTerms || '30d') === term.id;
+                        return (
+                          <button
+                            key={term.id}
+                            type="button"
+                            onClick={() =>
+                              setEditingPart({
+                                ...editingPart,
+                                supplierPaymentTerms: term.id as any,
+                              })
+                            }
+                            className={`p-2 rounded-xl text-left border transition-all ${
+                              isSelected
+                                ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold shadow-sm'
+                                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+                            }`}
+                          >
+                            <div className="text-xs font-bold">{term.label}</div>
+                            <div className="text-[10px] text-slate-400">{term.desc}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {editingPart.supplierName && editingPart.costPrice > 0 && (
+                    <label className="flex items-center gap-2 p-2.5 bg-slate-800/60 border border-slate-700/60 rounded-xl cursor-pointer hover:bg-slate-800 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={createPurchaseRecord}
+                        onChange={(e) => setCreatePurchaseRecord(e.target.checked)}
+                        className="rounded text-amber-500 focus:ring-amber-500 bg-slate-900 border-slate-700 w-4 h-4"
+                      />
+                      <span className="text-slate-300 text-xs">
+                        Lançar conta a pagar de <strong>R$ {((editingPart.costPrice || 0) * (editingPart.currentStock || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> no Contas a Pagar / Financeiro
+                      </span>
+                    </label>
+                  )}
                 </div>
               </div>
 

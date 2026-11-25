@@ -95,6 +95,8 @@ export interface Mechanic {
   active: boolean;
 }
 
+export type SupplierPaymentTerm = 'a_vista' | '30d' | '30_60d' | '30_60_90d';
+
 export interface Part {
   id: string;
   sku: string;
@@ -109,6 +111,9 @@ export interface Part {
   unit: string; // UN, L, Jogo, etc.
   location?: string; // Prateleira/Gaveta
   supplierName?: string; // Nome do fornecedor (ex: "DPaschoal Distribuidora")
+  supplierPhone?: string; // Telefone do fornecedor
+  supplierAddress?: string; // Endereço do fornecedor
+  supplierPaymentTerms?: SupplierPaymentTerm; // Forma de pagamento: A vista, 30 d, 30/60d, 30/60/90d
   lastInvoiceNumber?: string; // Ex: "NF-e 45892"
   purchaseId?: string; // ID da compra vinculada
 }

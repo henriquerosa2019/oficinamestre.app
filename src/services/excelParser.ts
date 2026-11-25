@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { Part } from '../types';
+import { Part, SupplierPaymentTerm } from '../types';
 
 export interface ParsedExcelRow {
   code: string;
@@ -11,6 +11,10 @@ export interface ParsedExcelRow {
   currentStock: number;
   minStock: number;
   unit: string;
+  supplierName?: string;
+  supplierPhone?: string;
+  supplierAddress?: string;
+  supplierPaymentTerms?: SupplierPaymentTerm;
 }
 
 export const ExcelParserService = {
@@ -119,6 +123,37 @@ export const ExcelParserService = {
         normalizedKeys['unidade'] ||
         'UN';
 
+      const supplierName =
+        normalizedKeys['fornecedor'] ||
+        normalizedKeys['distribuidora'] ||
+        normalizedKeys['fornecedor nome'] ||
+        '';
+
+      const supplierPhone =
+        normalizedKeys['telefone'] ||
+        normalizedKeys['tel'] ||
+        normalizedKeys['whatsapp'] ||
+        '';
+
+      const supplierAddress =
+        normalizedKeys['endereco'] ||
+        normalizedKeys['endereco fornecedor'] ||
+        '';
+
+      const paymentTermsRaw = String(
+        normalizedKeys['pagamento'] ||
+        normalizedKeys['forma de pagamento'] ||
+        normalizedKeys['condicao'] ||
+        normalizedKeys['prazo'] ||
+        ''
+      ).toLowerCase().trim();
+
+      let supplierPaymentTerms: SupplierPaymentTerm | undefined = undefined;
+      if (paymentTermsRaw.includes('90')) supplierPaymentTerms = '30_60_90d';
+      else if (paymentTermsRaw.includes('60')) supplierPaymentTerms = '30_60d';
+      else if (paymentTermsRaw.includes('30')) supplierPaymentTerms = '30d';
+      else if (paymentTermsRaw.includes('vista') || paymentTermsRaw.includes('avista')) supplierPaymentTerms = 'a_vista';
+
       if (description !== 'Peça sem descrição' || code !== 'SEM-COD') {
         normalizedRows.push({
           code: String(code).trim(),
@@ -130,6 +165,10 @@ export const ExcelParserService = {
           currentStock,
           minStock,
           unit: String(unit).trim(),
+          supplierName: supplierName ? String(supplierName).trim() : undefined,
+          supplierPhone: supplierPhone ? String(supplierPhone).trim() : undefined,
+          supplierAddress: supplierAddress ? String(supplierAddress).trim() : undefined,
+          supplierPaymentTerms,
         });
       }
     });
@@ -152,6 +191,10 @@ export const ExcelParserService = {
       minStock: r.minStock,
       unit: r.unit,
       location: 'Estoque Central',
+      supplierName: r.supplierName,
+      supplierPhone: r.supplierPhone,
+      supplierAddress: r.supplierAddress,
+      supplierPaymentTerms: r.supplierPaymentTerms,
     }));
   },
 
@@ -224,6 +267,10 @@ export const ExcelParserService = {
         currentStock: 4,
         minStock: 2,
         unit: 'UN',
+        supplierName: 'Pellegrino Distribuidora',
+        supplierPhone: '(11) 98765-4321',
+        supplierAddress: 'Av. das Nações Unidas, 1200 - SP',
+        supplierPaymentTerms: '30_60d',
       },
       {
         code: 'KIT-EMBR-620310000',
@@ -235,6 +282,9 @@ export const ExcelParserService = {
         currentStock: 2,
         minStock: 1,
         unit: 'Kit',
+        supplierName: 'DPaschoal Autopeças',
+        supplierPhone: '(21) 99888-7777',
+        supplierPaymentTerms: '30_60_90d',
       },
       {
         code: 'DISCO-FREIO-HF25A',
@@ -246,6 +296,9 @@ export const ExcelParserService = {
         currentStock: 6,
         minStock: 2,
         unit: 'Par',
+        supplierName: 'Pellegrino Distribuidora',
+        supplierPhone: '(11) 98765-4321',
+        supplierPaymentTerms: '30d',
       },
       {
         code: 'CABO-VELA-SC-G73',
@@ -257,6 +310,9 @@ export const ExcelParserService = {
         currentStock: 5,
         minStock: 2,
         unit: 'Jogo',
+        supplierName: 'DPaschoal Autopeças',
+        supplierPhone: '(21) 99888-7777',
+        supplierPaymentTerms: 'a_vista',
       },
     ];
   },
