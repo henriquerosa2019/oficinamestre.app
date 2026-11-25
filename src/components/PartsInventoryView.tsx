@@ -1706,7 +1706,7 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                       Selecione ou arraste sua planilha Excel (.xlsx, .xls ou .csv)
                     </h4>
                     <p className="text-xs text-slate-400 mb-4 max-w-md mx-auto">
-                      Identifica automaticamente colunas como: Código, Descrição, Marca, Categoria, Preço de Custo, Preço de Venda e Estoque.
+                      Identifica automaticamente colunas como: Código, Descrição, Marca, Categoria, Preço de Custo, Preço de Venda, Estoque, Fornecedor, Telefone, Endereço e Forma de Pagamento (À vista, 30 d, 30/60d, 30/60/90d).
                     </p>
                     <label className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer shadow-md transition-all">
                       <span>Procurar Arquivo Excel</span>
@@ -1777,6 +1777,8 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                           <th className="py-2.5 px-3 text-right">Custo</th>
                           <th className="py-2.5 px-3 text-right">Venda</th>
                           <th className="py-2.5 px-3 text-center">Qtd Estoque</th>
+                          <th className="py-2.5 px-3">Fornecedor</th>
+                          <th className="py-2.5 px-3 text-center">Cond. Pagto</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800">
@@ -1795,6 +1797,33 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                             </td>
                             <td className="py-2 px-3 text-center font-mono font-bold text-white">
                               {row.currentStock} {row.unit}
+                            </td>
+                            <td className="py-2 px-3">
+                              {row.supplierName ? (
+                                <div>
+                                  <div className="font-semibold text-slate-200">{row.supplierName}</div>
+                                  {row.supplierPhone && (
+                                    <div className="text-[10px] text-slate-500 font-mono">{row.supplierPhone}</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-slate-600 text-[11px]">-</span>
+                              )}
+                            </td>
+                            <td className="py-2 px-3 text-center">
+                              {row.supplierPaymentTerms ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                                  {row.supplierPaymentTerms === 'a_vista'
+                                    ? 'À vista'
+                                    : row.supplierPaymentTerms === '30d'
+                                    ? '30 d'
+                                    : row.supplierPaymentTerms === '30_60d'
+                                    ? '30/60d'
+                                    : '30/60/90d'}
+                                </span>
+                              ) : (
+                                <span className="text-slate-600 text-[11px]">-</span>
+                              )}
                             </td>
                           </tr>
                         ))}

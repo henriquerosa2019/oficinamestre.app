@@ -211,6 +211,10 @@ export const ExcelParserService = {
         'Estoque': 16,
         'Estoque Mínimo': 4,
         'Unidade': 'UN',
+        'Fornecedor': 'Pellegrino Distribuidora',
+        'Telefone': '(11) 98765-4321',
+        'Endereço': 'Av. das Nações Unidas, 1200 - SP',
+        'Forma de Pagamento': '30/60d',
       },
       {
         'Código': 'FILT-AR-FAP2219',
@@ -222,6 +226,10 @@ export const ExcelParserService = {
         'Estoque': 8,
         'Estoque Mínimo': 3,
         'Unidade': 'UN',
+        'Fornecedor': 'DPaschoal Autopeças',
+        'Telefone': '(11) 97123-4567',
+        'Endereço': 'Rua do Bosque, 450 - SP',
+        'Forma de Pagamento': '30 d',
       },
       {
         'Código': 'ADIT-RAD-PARAFLU',
@@ -233,6 +241,10 @@ export const ExcelParserService = {
         'Estoque': 20,
         'Estoque Mínimo': 5,
         'Unidade': 'L',
+        'Fornecedor': 'Caninana Autopeças',
+        'Telefone': '(21) 99888-7766',
+        'Endereço': 'Av. Brasil, 4500 - RJ',
+        'Forma de Pagamento': 'À vista',
       },
       {
         'Código': 'BOMBA-DAGUA-VKPC884',
@@ -244,12 +256,125 @@ export const ExcelParserService = {
         'Estoque': 3,
         'Estoque Mínimo': 2,
         'Unidade': 'UN',
+        'Fornecedor': 'Distribuidora Automotiva do Brasil',
+        'Telefone': '(11) 96543-2109',
+        'Endereço': 'Rodovia Anhanguera, km 18 - SP',
+        'Forma de Pagamento': '30/60/90d',
       },
     ];
 
     const worksheet = XLSX.utils.json_to_sheet(templateData);
+
+    // Largura otimizada para legibilidade imediata no Excel
+    worksheet['!cols'] = [
+      { wch: 22 }, // Código
+      { wch: 42 }, // Descrição
+      { wch: 14 }, // Marca
+      { wch: 16 }, // Categoria
+      { wch: 12 }, // Custo
+      { wch: 12 }, // Venda
+      { wch: 12 }, // Estoque
+      { wch: 16 }, // Estoque Mínimo
+      { wch: 10 }, // Unidade
+      { wch: 32 }, // Fornecedor
+      { wch: 18 }, // Telefone
+      { wch: 38 }, // Endereço
+      { wch: 22 }, // Forma de Pagamento
+    ];
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Peças Oficina');
+
+    // Aba explicativa de instruções e formas de pagamento aceitas
+    const instructionsData = [
+      {
+        'Coluna': 'Código',
+        'Obrigatório': 'Sim',
+        'Exemplo': 'VEL-BKR6E',
+        'Descrição e Regras': 'Código SKU, de fábrica ou referência do produto.',
+      },
+      {
+        'Coluna': 'Descrição',
+        'Obrigatório': 'Sim',
+        'Exemplo': 'Vela de Ignição Green Plug',
+        'Descrição e Regras': 'Nome completo e aplicação da peça.',
+      },
+      {
+        'Coluna': 'Marca',
+        'Obrigatório': 'Não',
+        'Exemplo': 'NGK',
+        'Descrição e Regras': 'Fabricante do produto (ex: NGK, Bosch, Cofap, Wega).',
+      },
+      {
+        'Coluna': 'Categoria',
+        'Obrigatório': 'Não',
+        'Exemplo': 'Ignição',
+        'Descrição e Regras': 'Grupo da peça (ex: Freios, Filtros, Suspensão, Motor).',
+      },
+      {
+        'Coluna': 'Custo',
+        'Obrigatório': 'Sim',
+        'Exemplo': 12.50,
+        'Descrição e Regras': 'Preço de custo unitário de compra (R$).',
+      },
+      {
+        'Coluna': 'Venda',
+        'Obrigatório': 'Sim',
+        'Exemplo': 28.00,
+        'Descrição e Regras': 'Preço de venda unitário para o cliente (R$).',
+      },
+      {
+        'Coluna': 'Estoque',
+        'Obrigatório': 'Sim',
+        'Exemplo': 16,
+        'Descrição e Regras': 'Quantidade física atual em estoque.',
+      },
+      {
+        'Coluna': 'Estoque Mínimo',
+        'Obrigatório': 'Não',
+        'Exemplo': 4,
+        'Descrição e Regras': 'Quantidade mínima para alerta de reposição.',
+      },
+      {
+        'Coluna': 'Unidade',
+        'Obrigatório': 'Não',
+        'Exemplo': 'UN',
+        'Descrição e Regras': 'UN, L, Jogo, Par, Kit, etc.',
+      },
+      {
+        'Coluna': 'Fornecedor',
+        'Obrigatório': 'Recomendado',
+        'Exemplo': 'Pellegrino Distribuidora',
+        'Descrição e Regras': 'Nome da distribuidora ou fornecedor da peça.',
+      },
+      {
+        'Coluna': 'Telefone',
+        'Obrigatório': 'Recomendado',
+        'Exemplo': '(11) 98765-4321',
+        'Descrição e Regras': 'Telefone ou WhatsApp do fornecedor.',
+      },
+      {
+        'Coluna': 'Endereço',
+        'Obrigatório': 'Não',
+        'Exemplo': 'Av. das Nações Unidas, 1200 - SP',
+        'Descrição e Regras': 'Endereço ou cidade da distribuidora.',
+      },
+      {
+        'Coluna': 'Forma de Pagamento',
+        'Obrigatório': 'Recomendado',
+        'Exemplo': '30/60d',
+        'Descrição e Regras': 'Opções aceitas: À vista | 30 d | 30/60d | 30/60/90d',
+      },
+    ];
+
+    const instructionsSheet = XLSX.utils.json_to_sheet(instructionsData);
+    instructionsSheet['!cols'] = [
+      { wch: 22 },
+      { wch: 14 },
+      { wch: 32 },
+      { wch: 65 },
+    ];
+    XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instruções e Formas Pagto');
 
     XLSX.writeFile(workbook, 'modelo-cadastro-pecas-oficinamestre.xlsx');
   },
@@ -284,6 +409,7 @@ export const ExcelParserService = {
         unit: 'Kit',
         supplierName: 'DPaschoal Autopeças',
         supplierPhone: '(21) 99888-7777',
+        supplierAddress: 'Rua do Bosque, 450 - SP',
         supplierPaymentTerms: '30_60_90d',
       },
       {
@@ -296,8 +422,9 @@ export const ExcelParserService = {
         currentStock: 6,
         minStock: 2,
         unit: 'Par',
-        supplierName: 'Pellegrino Distribuidora',
-        supplierPhone: '(11) 98765-4321',
+        supplierName: 'Caninana Autopeças',
+        supplierPhone: '(21) 99888-7766',
+        supplierAddress: 'Av. Brasil, 4500 - RJ',
         supplierPaymentTerms: '30d',
       },
       {
@@ -310,8 +437,9 @@ export const ExcelParserService = {
         currentStock: 5,
         minStock: 2,
         unit: 'Jogo',
-        supplierName: 'DPaschoal Autopeças',
-        supplierPhone: '(21) 99888-7777',
+        supplierName: 'Distribuidora Automotiva do Brasil',
+        supplierPhone: '(11) 96543-2109',
+        supplierAddress: 'Rodovia Anhanguera, km 18 - SP',
         supplierPaymentTerms: 'a_vista',
       },
     ];
