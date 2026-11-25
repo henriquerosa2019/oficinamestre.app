@@ -1,0 +1,12 @@
+﻿
+  rewrites: [
+    {
+      source: /fluxo-operacional.html,
+      destination: /fluxo-operacional.html
+    },
+    {
+      source: /(.*),
+      destination: /index.html
+    }
+  ]
+
