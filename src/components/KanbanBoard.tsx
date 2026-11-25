@@ -781,22 +781,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
                             {/* Ações Rápidas no Card */}
                             <div className="flex items-center gap-1">
-                              {/* WhatsApp rápido */}
+                              {/* WhatsApp rápido de acordo com a etapa/status da O.S. */}
                               {client?.phone && vehicle && (
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (order.status === 'pronto') {
-                                      const text = WhatsAppService.generateCarReadyMessage(order, client, vehicle);
-                                      WhatsAppService.openWhatsAppChat(client.phone, text);
-                                    } else {
-                                      const text = WhatsAppService.generateBudgetMessage(order, client, vehicle);
-                                      WhatsAppService.openWhatsAppChat(client.phone, text);
-                                    }
+                                    const text = WhatsAppService.getMessageForOrder(order, client, vehicle, mechanic?.name);
+                                    WhatsAppService.openWhatsAppChat(client.phone, text);
                                   }}
                                   className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/30 transition-colors"
-                                  title="Enviar no WhatsApp"
+                                  title={WhatsAppService.getWhatsAppActionTitle(order.status)}
                                 >
                                   <MessageCircle className="w-3.5 h-3.5" />
                                 </button>
@@ -1020,11 +1015,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const text = WhatsAppService.generateBudgetMessage(order, client, vehicle);
+                                  const text = WhatsAppService.getMessageForOrder(order, client, vehicle, mechanic?.name);
                                   WhatsAppService.openWhatsAppChat(client.phone, text);
                                 }}
-                                className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/30"
-                                title="WhatsApp"
+                                className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/30 transition-colors"
+                                title={WhatsAppService.getWhatsAppActionTitle(order.status)}
                               >
                                 <MessageCircle className="w-3.5 h-3.5" />
                               </button>

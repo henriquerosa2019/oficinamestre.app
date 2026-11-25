@@ -373,10 +373,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   const handleCopyOrderMessage = async () => {
     const orderData = getOrderDataSnapshot();
-    const msg =
-      status === 'pronto'
-        ? WhatsAppService.generateCarReadyMessage(orderData, currentClient!, currentVehicle!)
-        : WhatsAppService.generateBudgetMessage(orderData, currentClient!, currentVehicle!);
+    const currentMechanicName = mechanics.find((m) => m.id === mechanicId)?.name;
+    const msg = WhatsAppService.getMessageForOrder(orderData, currentClient!, currentVehicle!, currentMechanicName);
     const success = await WhatsAppService.copyToClipboard(msg);
     if (success) {
       setCopiedMsg(true);
@@ -1011,7 +1009,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const handleSendWhatsAppReceipt = () => {
     if (!currentClient?.phone) return;
     const orderData = order || getOrderDataSnapshot();
-    const msg = WhatsAppService.generateCarReadyMessage(orderData, currentClient, currentVehicle!);
+    const msg = WhatsAppService.generateFinalizedMessage(orderData, currentClient, currentVehicle!);
     WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
   };
 
@@ -2837,21 +2835,21 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       </button>
                     )}
 
-                    {/* Botão 2: WhatsApp (Avisar Pronto ou Enviar Comprovante) */}
+                    {/* Botão 2: WhatsApp (Conforme o Status da O.S.) */}
                     {currentClient?.phone && currentVehicle && (
                       <button
                         type="button"
                         onClick={() => {
                           const orderData = getOrderDataSnapshot();
-                          const msg = status === 'pronto'
-                            ? WhatsAppService.generateCarReadyMessage(orderData, currentClient, currentVehicle)
-                            : WhatsAppService.generateBudgetMessage(orderData, currentClient, currentVehicle);
+                          const currentMechanicName = mechanics.find((m) => m.id === mechanicId)?.name;
+                          const msg = WhatsAppService.getMessageForOrder(orderData, currentClient, currentVehicle, currentMechanicName);
                           WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
                         }}
                         className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-colors"
+                        title={WhatsAppService.getWhatsAppActionTitle(status)}
                       >
                         <MessageCircle className="w-4 h-4" />
-                        <span>{status === 'pronto' ? 'Avisar Carro Pronto' : 'Enviar no WhatsApp'}</span>
+                        <span>{WhatsAppService.getWhatsAppActionTitle(status)}</span>
                       </button>
                     )}
 

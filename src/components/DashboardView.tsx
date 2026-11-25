@@ -386,22 +386,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Botão rápido WhatsApp */}
+                      {/* Botão rápido WhatsApp de acordo com o status da O.S. */}
                       {client?.phone && vehicle && (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (order.status === 'pronto') {
-                              const text = WhatsAppService.generateCarReadyMessage(order, client, vehicle);
-                              WhatsAppService.openWhatsAppChat(client.phone, text);
-                            } else {
-                              const text = WhatsAppService.generateBudgetMessage(order, client, vehicle);
-                              WhatsAppService.openWhatsAppChat(client.phone, text);
-                            }
+                            const text = WhatsAppService.getMessageForOrder(order, client, vehicle);
+                            WhatsAppService.openWhatsAppChat(client.phone, text);
                           }}
                           className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg transition-colors"
-                          title="Enviar Mensagem WhatsApp ao Cliente"
+                          title={WhatsAppService.getWhatsAppActionTitle(order.status)}
                         >
                           <MessageCircle className="w-4 h-4" />
                         </button>
