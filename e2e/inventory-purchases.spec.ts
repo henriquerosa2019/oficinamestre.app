@@ -20,7 +20,7 @@ test.describe('Módulo de Estoque de Peças e Compras de Fornecedores (NF-e)', (
     await searchInput.fill('WO-205');
 
     // 4. Conferir que a peça aparece na tabela
-    await expect(page.getByText('WO-205')).toBeVisible();
+    await expect(page.locator('table').getByText('WO-205')).toBeVisible();
   });
 
   test('Deve acessar Compras & Notas de Fornecedores, alternar abas de vencimento e abrir Gerar Relatório', async ({ page }) => {
@@ -138,7 +138,7 @@ test.describe('Módulo de Estoque de Peças e Compras de Fornecedores (NF-e)', (
     await confirmBtn.click();
 
     // 6. Verificar que a peça importada aparece no catálogo
-    await expect(page.getByText('AMORT-GP32982')).toBeVisible();
+    await expect(page.locator('table').getByText('AMORT-GP32982')).toBeVisible();
   });
 
   test('Deve importar catálogo de peças via Planilha Excel (.xlsx)', async ({ page }) => {
@@ -164,6 +164,6 @@ test.describe('Módulo de Estoque de Peças e Compras de Fornecedores (NF-e)', (
     await confirmBtn.click();
 
     // 6. Verificar que a peça da planilha aparece no catálogo
-    await expect(page.getByText('KIT-EMBR-620310000')).toBeVisible();
+    await expect(page.locator('table').getByText('KIT-EMBR-620310000')).toBeVisible();
   });
 });

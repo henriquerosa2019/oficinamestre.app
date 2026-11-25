@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { XMLParserService } from '../services/xmlParser';
 import { ExcelParserService, ParsedExcelRow } from '../services/excelParser';
+import { WhatsAppService } from '../services/whatsapp';
 import {
   getPurchaseDueAnalysis,
   filterPurchasesByDue,
@@ -691,8 +692,8 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
             </div>
           </div>
 
-          {/* Tabela de Peças */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+          {/* Tabela de Peças (Desktop) */}
+          <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-300">
                 <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
@@ -928,6 +929,153 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
               </table>
             </div>
           </div>
+
+          {/* Cards de Peças no Mobile */}
+          <div className="md:hidden space-y-3">
+            {filteredParts.length === 0 ? (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-xs text-slate-500">
+                Nenhuma peça encontrada com os filtros selecionados.
+              </div>
+            ) : (
+              filteredParts.map((part) => {
+                const isLow = part.currentStock <= part.minStock;
+                const isZero = part.currentStock === 0;
+                const markupVal =
+                  part.costPrice > 0 ? ((part.sellPrice - part.costPrice) / part.costPrice) * 100 : 0;
+
+                return (
+                  <div
+                    key={part.id}
+                    className={`bg-slate-900 border rounded-xl p-3.5 shadow-sm space-y-2.5 transition-all ${
+                      isZero
+                        ? 'border-red-500/50 bg-red-950/10'
+                        : isLow
+                        ? 'border-amber-500/40 bg-amber-950/10'
+                        : 'border-slate-800'
+                    }`}
+                  >
+                    {/* Linha 1: Código, Marca e Ações */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-amber-400 text-xs">
+                            {part.code}
+                          </span>
+                          <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-medium">
+                            {part.brand}
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            {part.category}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-white text-xs mt-1 leading-snug">
+                          {part.description}
+                        </h4>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingPart({ ...part });
+                            setIsEditModalOpen(true);
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors"
+                          title="Editar Peça"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeletePart(part.id)}
+                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
+                          title="Excluir Peça"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Linha 2: Valores & Estoque */}
+                    <div className="grid grid-cols-2 gap-2 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Preço de Venda:</span>
+                        <div className="flex items-baseline gap-1">
+                          <strong className="text-emerald-400 font-mono font-black text-sm">
+                            R$ {part.sellPrice.toFixed(2)}
+                          </strong>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono block">
+                          Custo: R$ {part.costPrice.toFixed(2)} (+{markupVal.toFixed(0)}%)
+                        </span>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 block">Estoque Físico:</span>
+                        <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                          {isZero ? (
+                            <span className="bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">
+                              ZERADO (0)
+                            </span>
+                          ) : isLow ? (
+                            <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">
+                              BAIXO ({part.currentStock} {part.unit})
+                            </span>
+                          ) : (
+                            <span className="bg-slate-800 text-slate-200 text-xs font-mono font-bold px-2 py-0.5 rounded">
+                              {part.currentStock} {part.unit}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-500 block mt-0.5">
+                          Mín: {part.minStock} {part.unit}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Linha 3: Fornecedor e Condição de Pagamento */}
+                    {(part.supplierName || part.supplierPaymentTerms) && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/60 text-[11px]">
+                        {part.supplierName && (
+                          <div className="flex items-center gap-1.5 text-slate-300 truncate">
+                            <Truck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span className="font-semibold truncate">{part.supplierName}</span>
+                            {part.supplierPhone && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  WhatsAppService.openWhatsAppChat(
+                                    part.supplierPhone!,
+                                    `Olá ${part.supplierName}, preciso cotar/pedir a peça: ${part.description} (${part.code})`
+                                  )
+                                }
+                                className="text-emerald-400 hover:underline flex items-center gap-1 font-mono text-[10px] ml-1 shrink-0"
+                              >
+                                <Phone className="w-3 h-3" />
+                                {part.supplierPhone}
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {part.supplierPaymentTerms && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 shrink-0 ml-auto">
+                            {part.supplierPaymentTerms === 'a_vista'
+                              ? 'À vista'
+                              : part.supplierPaymentTerms === '30d'
+                              ? '30 d'
+                              : part.supplierPaymentTerms === '30_60d'
+                              ? '30/60d'
+                              : '30/60/90d'}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </>
       ) : (
         /* VISÃO DE COMPRAS & NOTAS DE FORNECEDORES */
@@ -1054,7 +1202,7 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-300">
                 <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
                   <tr>
@@ -1229,6 +1377,100 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                   })()}
                 </tbody>
               </table>
+            </div>
+
+            {/* Cards de Compras no Mobile */}
+            <div className="md:hidden space-y-3 p-3 bg-slate-900 border-t border-slate-800">
+              {(() => {
+                const filteredList = filterPurchasesByDue(purchases, dueFilter);
+                if (filteredList.length === 0) {
+                  return (
+                    <div className="p-6 text-center text-xs text-slate-500">
+                      Nenhuma nota fiscal encontrada para o filtro "{dueFilter}".
+                    </div>
+                  );
+                }
+
+                return filteredList.map(({ purchase, analysis }) => {
+                  const nextPending = analysis.nextPendingInstallment;
+                  const isComplete = analysis.urgency === 'quitado';
+
+                  return (
+                    <div
+                      key={purchase.id}
+                      className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-2.5 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="font-mono text-xs font-bold text-amber-400 block">
+                            NF-e: {purchase.nfeNumber}
+                          </span>
+                          <h4 className="font-bold text-white text-xs">
+                            {purchase.supplierName}
+                          </h4>
+                          <span className="text-[10px] text-slate-400">
+                            Emissão: {formatDatePtBR(purchase.issueDate)}
+                          </span>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 block">Valor da Nota:</span>
+                          <strong className="text-white font-mono font-bold text-xs">
+                            R$ {purchase.totalValue.toFixed(2)}
+                          </strong>
+                          <div className="mt-1">
+                            <span
+                              className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                                isComplete
+                                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                              }`}
+                            >
+                              {isComplete
+                                ? 'Quitado'
+                                : `Parc. ${purchase.paidInstallmentsCount}/${purchase.totalInstallmentsCount}`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Próxima Parcela & Ação de Pagamento */}
+                      <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between gap-2 text-xs">
+                        {nextPending ? (
+                          <>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className={`px-1.5 py-0.2 rounded-full text-[9px] ${analysis.badgeClass}`}>
+                                  {analysis.badgeLabel}
+                                </span>
+                                <span className="font-bold text-amber-300 text-[11px] font-mono">
+                                  {analysis.dueDateFormatted}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                                Parc. {nextPending.installmentNumber}: R$ {nextPending.amount.toFixed(2)}
+                              </span>
+                            </div>
+
+                            {onPayPurchaseInstallment && (
+                              <button
+                                type="button"
+                                onClick={() => onPayPurchaseInstallment(purchase.id, nextPending.installmentNumber)}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-1 active:scale-95 transition-all shrink-0"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                <span>Pagar</span>
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-xs text-emerald-400 font-bold">✓ Nota Totalmente Paga</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>

@@ -518,9 +518,37 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       </div>
 
+      {/* Seletor Rápido de Etapas no Mobile (Atalho Horizontal com Contadores) */}
+      <div className="md:hidden flex items-center gap-1.5 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none">
+        {KANBAN_COLUMNS.map((col) => {
+          const count = sortedAndFilteredOrders.filter((o) => o.status === col.status).length;
+          const shortName = col.label.replace(/^\d+\.\s*/, '').split('/')[0].trim();
+          return (
+            <button
+              key={col.status}
+              type="button"
+              onClick={() => {
+                const el = document.getElementById(`kanban-col-${col.status}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold shrink-0 border transition-all ${
+                count > 0
+                  ? 'bg-slate-800/90 text-slate-200 border-slate-700 shadow-sm active:scale-95'
+                  : 'bg-slate-900/60 text-slate-500 border-slate-800/80'
+              }`}
+            >
+              <span>{shortName}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black ${col.badgeClass}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Visão KANBAN */}
       {viewMode === 'kanban' ? (
-        <div className="flex gap-3 overflow-x-auto pb-4 items-start min-h-[calc(100vh-270px)]">
+        <div className="flex gap-3 overflow-x-auto pb-4 items-start min-h-[calc(100vh-270px)] snap-x snap-mandatory scroll-smooth">
           {KANBAN_COLUMNS.map((column) => {
             const columnOrders = sortedAndFilteredOrders.filter((o) => o.status === column.status);
             const columnTotalValue = columnOrders.reduce((acc, o) => acc + o.netTotal, 0);
@@ -533,8 +561,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               return (
                 <div
                   key={column.status}
+                  id={`kanban-col-${column.status}`}
                   onClick={() => toggleColumnCollapse(column.status)}
-                  className="bg-slate-900/60 hover:bg-slate-900 border border-slate-800 rounded-xl p-2 flex flex-col items-center justify-between w-12 min-w-[48px] h-[calc(100vh-270px)] cursor-pointer transition-all group shrink-0"
+                  className="bg-slate-900/60 hover:bg-slate-900 border border-slate-800 rounded-xl p-2 flex flex-col items-center justify-between w-12 min-w-[48px] h-[calc(100vh-270px)] cursor-pointer transition-all group shrink-0 snap-center"
                   title={`Etapa: ${column.label} (${columnOrders.length} O.S.) - Clique para expandir`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -555,7 +584,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             return (
               <div
                 key={column.status}
-                className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex flex-col min-w-[280px] max-w-[320px] flex-1 h-[calc(100vh-270px)] shrink-0"
+                id={`kanban-col-${column.status}`}
+                className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex flex-col w-[85vw] max-w-[88vw] sm:w-auto sm:min-w-[280px] sm:max-w-[320px] flex-1 min-h-[480px] sm:h-[calc(100vh-270px)] shrink-0 snap-center shadow-lg"
               >
                 {/* Cabeçalho da Coluna */}
                 <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">

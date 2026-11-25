@@ -25,6 +25,7 @@ import {
   Gauge,
   Briefcase,
   UserCheck,
+  ChevronLeft,
 } from 'lucide-react';
 import { WhatsAppService } from '../services/whatsapp';
 import { getOrderWarranty } from '../utils/warranty';
@@ -107,6 +108,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(clients[0]?.id || null);
+  const [mobileTab, setMobileTab] = useState<'list' | 'detail'>('list');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
 
@@ -374,7 +376,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       {/* Grid: Lista de Clientes (Esquerda) e Prontuário do Veículo (Direita) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Lista de Clientes */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col max-h-[calc(100vh-210px)] overflow-hidden">
+        <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col max-h-[calc(100vh-210px)] overflow-hidden ${mobileTab === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
           <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center justify-between">
             <span>Clientes Cadastrados</span>
             <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">
@@ -393,7 +395,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 return (
                   <div
                     key={client.id}
-                    onClick={() => setSelectedClientId(client.id)}
+                    onClick={() => {
+                      setSelectedClientId(client.id);
+                      setMobileTab('detail');
+                    }}
                     className={`p-3 rounded-xl border cursor-pointer transition-all ${
                       isSelected
                         ? 'bg-amber-500/10 border-amber-500/50 shadow-sm'
@@ -442,7 +447,19 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         </div>
 
         {/* Detalhes & Prontuário do Cliente Selecionado (2 colunas) */}
-        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-6">
+        <div className={`lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-5 shadow-sm space-y-6 ${mobileTab === 'list' ? 'hidden lg:block' : 'block'}`}>
+          {/* Botão Voltar para Lista no Mobile */}
+          <div className="lg:hidden pb-2 border-b border-slate-800">
+            <button
+              type="button"
+              onClick={() => setMobileTab('list')}
+              className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 font-bold px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700 hover:bg-slate-800 transition-colors active:scale-95"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>← Voltar para Lista de Clientes</span>
+            </button>
+          </div>
+
           {selectedClient ? (
             <>
               {/* Header do Cliente */}

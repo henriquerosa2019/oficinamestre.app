@@ -452,8 +452,8 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
             </div>
           </div>
 
-          {/* Tabela com Categoria Curta e Selo Pendente Clicável */}
-          <div className="border border-slate-800 rounded-xl overflow-hidden">
+          {/* Tabela Desktop com Categoria Curta e Selo Pendente Clicável (hidden md:block) */}
+          <div className="hidden md:block border border-slate-800 rounded-xl overflow-hidden">
             <table className="w-full text-left text-xs text-slate-300">
               <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase text-[10px]">
                 <tr>
@@ -557,6 +557,91 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Cards de Transações no Mobile (md:hidden) */}
+          <div className="md:hidden space-y-3">
+            {filteredTransactions.length === 0 ? (
+              <div className="text-center py-8 text-slate-500 italic bg-slate-950/40 rounded-xl border border-slate-800">
+                Nenhum lançamento financeiro encontrado.
+              </div>
+            ) : (
+              filteredTransactions.map((tx) => {
+                const shortCat = getShortCategory(tx.category);
+                const isPaid = tx.status === 'pago';
+
+                return (
+                  <div
+                    key={tx.id}
+                    className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl space-y-2.5 shadow-sm"
+                  >
+                    {/* Topo do card: Categoria, Vencimento e Excluir */}
+                    <div className="flex items-center justify-between gap-2 text-[11px]">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${shortCat.badgeClass}`}>
+                          {shortCat.label}
+                        </span>
+                        <span className="text-slate-400 font-mono flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-slate-500" />
+                          {new Date(tx.dueDate).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteTransaction(tx.id)}
+                        className="text-slate-500 hover:text-red-400 p-1 transition-colors"
+                        title="Excluir lançamento"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Descrição e Info de Parcelas */}
+                    <div>
+                      <span className="font-bold text-white text-xs block">{tx.description}</span>
+                      {tx.installmentInfo && (
+                        <span className="text-[10px] text-amber-400 font-mono block mt-0.5">
+                          {tx.installmentInfo}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Rodapé: Valor e Botão 1 Toque */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                      <span
+                        className={`font-mono font-bold text-sm ${
+                          tx.type === 'receita' ? 'text-emerald-400' : 'text-red-400'
+                        }`}
+                      >
+                        {tx.type === 'receita' ? '+' : '-'} R$ {tx.amount.toFixed(2)}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTransactionStatus(tx)}
+                        className={`text-[11px] px-3 py-1.5 rounded-lg font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 ${
+                          isPaid
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-amber-500 text-slate-950 font-black hover:bg-amber-400'
+                        }`}
+                      >
+                        {isPaid ? (
+                          <>
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Pago</span>
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <span>Pagar Agora</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

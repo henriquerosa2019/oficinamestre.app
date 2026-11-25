@@ -1016,10 +1016,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl h-[92vh] max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-none sm:rounded-2xl w-full max-w-5xl h-[100dvh] sm:h-[92vh] max-h-[100dvh] sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Cabeçalho do Modal com Layout Espaçado e Elegante */}
-        <div className="px-5 sm:px-6 py-2.5 sm:py-3 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="px-3 sm:px-6 py-2.5 sm:py-3 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center font-mono font-bold shrink-0 shadow-inner">
               <Wrench className="w-5 h-5" />
@@ -1234,8 +1234,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         ) : (
           <>
             {/* Barra de 3 Abas Rápidas no Topo - Mais espaçada e com destaque */}
-            <div className="bg-slate-950 px-6 pt-3 pb-0 border-b border-slate-800 flex items-center justify-between gap-3 overflow-x-auto">
-          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="bg-slate-950 px-2 sm:px-6 pt-2 sm:pt-3 pb-0 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-3 overflow-x-auto shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             <button
               type="button"
               onClick={() => setActiveTab('diagnostico')}
