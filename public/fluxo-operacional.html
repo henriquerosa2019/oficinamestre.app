@@ -30,6 +30,14 @@
   #controls { display: flex; align-items: center; gap: 16px; }
   #controls label { display: flex; align-items: center; gap: 8px; color: #e2e8f0; font-size: 12.5px; }
   #zoomVal { width: 36px; display: inline-block; color: #e2e8f0; }
+  #backBtn {
+    background: #f59e0b; color: #0f172a; border: none; padding: 10px 18px;
+    border-radius: 8px; font-size: 13px; font-weight: 800; cursor: pointer;
+    text-decoration: none; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 2px 8px rgba(245,158,11,0.35);
+    transition: all 0.2s;
+  }
+  #backBtn:hover { background: #fbbf24; color: #000; transform: scale(1.03); }
   #downloadBtn {
     background: #2563eb; color: #fff; border: none; padding: 10px 18px;
     border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;
@@ -63,9 +71,14 @@
 <div id="app">
   <div id="card">
     <div id="toolbar">
-      <div>
-        <h1>Processo Operacional Vertical - OficinaMestre</h1>
-        <p>Fluxo ponta a ponta, de cima para baixo &middot; passe o mouse sobre cada elemento para ver a explica&ccedil;&atilde;o t&eacute;cnica</p>
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <a id="backBtn" href="/" onclick="try { if (window.opener) { window.close(); return false; } } catch(e){}" title="Retornar à tela principal do OficinaMestre Pro">
+          &#8592; Voltar para Aplicativo
+        </a>
+        <div>
+          <h1>Processo Operacional Vertical - OficinaMestre</h1>
+          <p>Fluxo ponta a ponta, de cima para baixo &middot; passe o mouse sobre cada elemento para ver a explica&ccedil;&atilde;o t&eacute;cnica</p>
+        </div>
       </div>
       <div id="controls">
         <label>Zoom

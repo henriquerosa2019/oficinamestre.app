@@ -19,6 +19,7 @@ interface HeaderProps {
   setActiveTab: (tab: 'dashboard' | 'orders' | 'parts' | 'clients' | 'financial' | 'maintenance') => void;
   onNewOrder: () => void;
   carsInShopCount: number;
+  totalOrdersCount?: number;
   pendingAlertsCount: number;
   onResetData: () => void;
   onExportData: () => void;
@@ -29,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   onNewOrder,
   carsInShopCount,
+  totalOrdersCount,
   pendingAlertsCount,
   onResetData,
   onExportData,
@@ -82,12 +84,19 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <KanbanSquare className="w-3.5 h-3.5" />
-              O.S.
-              {carsInShopCount > 0 && (
-                <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">
-                  {carsInShopCount}
+              <span>O.S.</span>
+              {carsInShopCount > 0 ? (
+                <span
+                  className="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.5 rounded-full"
+                  title={`${carsInShopCount} no pátio (em andamento) • ${typeof totalOrdersCount === 'number' ? totalOrdersCount : carsInShopCount} O.S. no total`}
+                >
+                  {carsInShopCount} pátio
                 </span>
-              )}
+              ) : typeof totalOrdersCount === 'number' ? (
+                <span className="bg-slate-700 text-slate-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full" title="Total de O.S. cadastradas">
+                  {totalOrdersCount}
+                </span>
+              ) : null}
             </button>
 
             <button
@@ -158,10 +167,18 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Ações Rápidas */}
           <div className="flex items-center gap-2">
             {/* Status Pátio */}
-            <div className="hidden lg:flex items-center gap-2 bg-slate-800/80 border border-slate-700/80 px-2.5 py-1.5 rounded-lg text-xs text-slate-300">
-              <Car className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              <span>
-                Pátio: <strong className="text-white">{carsInShopCount}</strong> no serviço
+            <div className="hidden md:flex items-center gap-2 bg-slate-800/80 border border-slate-700/80 px-3 py-1.5 rounded-xl text-xs text-slate-300 shadow-sm whitespace-nowrap">
+              <Car className="w-4 h-4 text-amber-400 animate-pulse" />
+              <span className="flex items-center gap-1">
+                <span className="font-bold text-slate-300 uppercase tracking-tight">Pátio:</span>
+                <strong className="text-amber-400 font-mono text-sm font-black mx-0.5">{carsInShopCount}</strong>
+                <span className="text-slate-400 font-medium">no</span>
+                <span className="font-bold text-amber-400 uppercase tracking-tight">Serviço</span>
+                {typeof totalOrdersCount === 'number' && (
+                  <span className="text-amber-400 font-mono font-bold ml-1 text-[11px]">
+                    ({totalOrdersCount} total)
+                  </span>
+                )}
               </span>
             </div>
 
@@ -169,7 +186,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onNewOrder}
-              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold px-3.5 py-2 rounded-lg text-sm shadow-md shadow-amber-500/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-sm shadow-md shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               <PlusCircle className="w-4 h-4 stroke-[2.5]" />
               <span className="hidden sm:inline">Nova O.S.</span>

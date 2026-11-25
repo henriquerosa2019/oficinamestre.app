@@ -119,7 +119,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="mt-3">
             <div className="text-2xl font-black text-white">
-              R$ {totalFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {totalFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-emerald-400 mt-1 flex items-center gap-1">
               <TrendingUp className="w-3.5 h-3.5" />
@@ -140,7 +140,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="mt-3">
             <div className="text-2xl font-black text-amber-400">
-              R$ {totalLucroReal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {totalLucroReal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-slate-400 mt-1">
               Após deduzir peças e comissões dos mecânicos
@@ -179,7 +179,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="mt-3">
             <div className="text-2xl font-black text-white">
-              R$ {ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-slate-400 mt-1">Peças + Mão de obra</p>
           </div>

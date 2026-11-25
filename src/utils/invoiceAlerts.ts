@@ -37,6 +37,21 @@ export interface PurchaseDueAnalysis {
 }
 
 /**
+ * Converte data ISO (YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ss...) para formato brasileiro DD/MM/YYYY
+ * sem sofrer deslocamento de fuso horário (UTC vs local).
+ */
+export function formatDatePtBR(dateStr?: string | null): string {
+  if (!dateStr) return '-';
+  const cleanStr = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+  const parts = cleanStr.split('-');
+  if (parts.length === 3) {
+    const [y, m, d] = parts;
+    return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+  }
+  return dateStr;
+}
+
+/**
  * Analisa o vencimento da próxima parcela pendente de uma compra/nota fiscal
  */
 export function getPurchaseDueAnalysis(purchase: SupplierPurchase): PurchaseDueAnalysis {
@@ -64,17 +79,10 @@ export function getPurchaseDueAnalysis(purchase: SupplierPurchase): PurchaseDueA
   const today = new Date();
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-  let dueMidnight: Date;
-  let formattedDue = next.dueDate;
-  if (next.dueDate.includes('T')) {
-    const [y, m, d] = next.dueDate.split('T')[0].split('-').map(Number);
-    dueMidnight = new Date(y, m - 1, d);
-    formattedDue = `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
-  } else {
-    const [y, m, d] = next.dueDate.split('-').map(Number);
-    dueMidnight = new Date(y, m - 1, d);
-    formattedDue = `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
-  }
+  const cleanDate = next.dueDate.includes('T') ? next.dueDate.split('T')[0] : next.dueDate;
+  const [y, m, d] = cleanDate.split('-').map(Number);
+  const dueMidnight = new Date(y, m - 1, d);
+  const formattedDue = formatDatePtBR(next.dueDate);
 
   const diffMs = dueMidnight.getTime() - todayMidnight.getTime();
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));

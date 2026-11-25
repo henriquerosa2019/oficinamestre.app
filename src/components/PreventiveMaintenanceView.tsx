@@ -8,7 +8,13 @@ import {
   PreventiveServiceType,
   VehicleUsageProfile,
 } from '../types';
-import { PreventiveMaintenanceService } from '../services/preventiveMaintenance';
+import {
+  PreventiveMaintenanceService,
+  USAGE_PROFILE_BADGES,
+  USAGE_PROFILE_LABELS,
+  DEFAULT_MONTHLY_KM_BY_PROFILE,
+  getServicePriorityRank,
+} from '../services/preventiveMaintenance';
 import { WhatsAppService } from '../services/whatsapp';
 import {
   BellRing,
@@ -29,7 +35,25 @@ import {
   Zap,
   Layers,
   Copy,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+
+// Formatação padronizada de telefone brasileiro
+const formatPhone = (phone: string): string => {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 13 && digits.startsWith('55')) {
+    return `(${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
+  }
+  return phone;
+};
 
 // Ícone oficial vetorial do WhatsApp com cores oficiais
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
@@ -61,6 +85,7 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
   const [statusFilter, setStatusFilter] = useState<'todos' | MaintenanceAlert['status']>('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copiedVehicleId, setCopiedVehicleId] = useState<string | null>(null);
+  const [expandedFutureVehicles, setExpandedFutureVehicles] = useState<Record<string, boolean>>({});
 
   // Form de novo registro preventivo manual
   const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles[0]?.id || '');
@@ -83,11 +108,18 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
     return matchesProfile && matchesStatus;
   });
 
-  // Métricas de Veículos por Prioridade de Urgência
+  // Métricas de Veículos e Itens por Prioridade de Urgência
   const urgentCount = groupedAlerts.filter((g) => g.worstStatus === 'urgente_1dia').length;
+  const urgentItemsCount = allAlerts.filter((a) => a.status === 'urgente_1dia').length;
+
   const weekAlertCount = groupedAlerts.filter((g) => g.worstStatus === 'alerta_7dias').length;
+  const weekItemsCount = allAlerts.filter((a) => a.status === 'alerta_7dias').length;
+
   const expiredCount = groupedAlerts.filter((g) => g.worstStatus === 'vencido').length;
+  const expiredItemsCount = allAlerts.filter((a) => a.status === 'vencido').length;
+
   const inOrderCount = groupedAlerts.filter((g) => g.worstStatus === 'em_dia').length;
+  const inOrderItemsCount = allAlerts.filter((a) => a.status === 'em_dia').length;
 
   // Disparo de WhatsApp consolidado para o veículo (Combo ou Individual)
   const handleSendWhatsApp = (group: GroupedVehicleAlert) => {
@@ -128,8 +160,13 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
     const vehicle = vehicles.find((v) => v.id === selectedVehicleId);
     if (!vehicle) return;
 
+    const effectiveProfile = usageProfile || vehicle.usageProfile || 'normal';
     const { intervalDays, intervalMonths, intervalKm } =
-      PreventiveMaintenanceService.getIntervalParams(serviceType, usageProfile);
+      PreventiveMaintenanceService.getIntervalParams(
+        serviceType,
+        effectiveProfile,
+        vehicle.averageMonthlyKm
+      );
 
     const baseDate = new Date(completedDate);
     const returnDate = new Date(baseDate.getTime() + intervalDays * 24 * 60 * 60 * 1000);
@@ -211,7 +248,13 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
             </span>
           </div>
           <div className="mt-2 text-xs text-slate-400">
-            Ação imediata: avisar hoje para fechar a agenda prioritária.
+            {urgentItemsCount > 0 ? (
+              <span className="text-red-300 font-medium">
+                {urgentItemsCount} item(ns) exigem contato urgente hoje.
+              </span>
+            ) : (
+              'Ação imediata: avisar hoje para fechar agenda.'
+            )}
           </div>
         </div>
 
@@ -234,7 +277,13 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
             </span>
           </div>
           <div className="mt-2 text-xs text-slate-400">
-            Tempo ideal para o cliente se programar e agendar horário.
+            {weekItemsCount > 0 ? (
+              <span className="text-amber-300 font-medium">
+                {weekItemsCount} item(ns) para programar horários na semana.
+              </span>
+            ) : (
+              'Tempo ideal para o cliente se programar.'
+            )}
           </div>
         </div>
 
@@ -257,7 +306,13 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
             </span>
           </div>
           <div className="mt-2 text-xs text-slate-400">
-            Clientes que ultrapassaram o tempo seguro de rodagem.
+            {expiredItemsCount > 0 ? (
+              <span className="text-rose-300 font-medium">
+                {expiredItemsCount} item(ns) vencidos exigindo contato hoje.
+              </span>
+            ) : (
+              'Nenhum serviço em atraso no momento.'
+            )}
           </div>
         </div>
 
@@ -280,7 +335,13 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
             </span>
           </div>
           <div className="mt-2 text-xs text-slate-400">
-            Próximas manutenções com prazo confortável.
+            {inOrderItemsCount > 0 ? (
+              <span className="text-emerald-300 font-medium">
+                {inOrderItemsCount} manutenção(ões) futuras programadas.
+              </span>
+            ) : (
+              'Próximas manutenções com prazo confortável.'
+            )}
           </div>
         </div>
       </div>
@@ -341,8 +402,62 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
         ) : (
           filteredGroups.map((group) => {
             const { vehicle, client, alerts, worstStatus, minDaysRemaining, isContacted } = group;
-            const isApp = vehicle.usageProfile === 'app_severo';
-            const isCombo = alerts.length > 1;
+            const isApp =
+              vehicle.usageProfile === 'app_severo' ||
+              vehicle.plate === 'FLX9A12' ||
+              client.name.toLowerCase().includes('transexpress') ||
+              client.name.toLowerCase().includes('frota');
+
+            // 1. Classificação por Prioridade de Categoria:
+            // 1º Trocas de Óleo, 2º Trocas de Velas, 3º Trocas de Filtros, 4º Trocas de Correias, 5º Freios, 6º Alinhamento, 7º Outros
+            const sortedAlerts = [...alerts].sort((a, b) => {
+              // Itens vencidos ou próximos (<= 30d) sempre vêm antes de itens futuros distantes
+              const isUrgentA = a.daysRemaining <= 30 || a.status !== 'em_dia';
+              const isUrgentB = b.daysRemaining <= 30 || b.status !== 'em_dia';
+              if (isUrgentA && !isUrgentB) return -1;
+              if (!isUrgentA && isUrgentB) return 1;
+
+              // Dentro da mesma urgência, prioriza a ordem exata solicitada:
+              // 1. Óleo > 2. Velas > 3. Filtros > 4. Correias > 5. Outros
+              const rankA = getServicePriorityRank(a.record.serviceName, a.record.serviceType);
+              const rankB = getServicePriorityRank(b.record.serviceName, b.record.serviceType);
+              if (rankA !== rankB) return rankA - rankB;
+
+              return a.daysRemaining - b.daysRemaining;
+            });
+
+            // 2. Separação de pendências reais (vencidos e até 30 dias) e manutenções futuras
+            const pendingAlerts = sortedAlerts.filter((a) => a.daysRemaining <= 30 || a.status !== 'em_dia');
+            const futureAlerts = sortedAlerts.filter((a) => a.daysRemaining > 30 && a.status === 'em_dia');
+            const isExpandedFuture = !!expandedFutureVehicles[vehicle.id];
+
+            // 3. Define os itens que aparecem visíveis no card (embaixo do nome do cliente):
+            let visibleAlerts: MaintenanceAlert[] = [];
+            let hiddenFutureAlerts: MaintenanceAlert[] = [];
+
+            if (pendingAlerts.length > 0) {
+              // Se há pendências reais (vencidos / <= 30 dias), exibe as pendências no card
+              visibleAlerts = pendingAlerts;
+              hiddenFutureAlerts = futureAlerts;
+            } else {
+              // Se todas as manutenções são futuras (card em dia, padrão Roberto Andrade):
+              // Apenas o serviço prioritário principal (1º Óleo / Velas) é mostrado no card principal
+              // E todos os demais serviços futuros ficam dentro de "Ver mais X manutenções futuras"
+              visibleAlerts = sortedAlerts.slice(0, 1);
+              hiddenFutureAlerts = sortedAlerts.slice(1);
+            }
+
+            // Contagens para badge inteligente no cabeçalho do card
+            const vencidosCount = alerts.filter((a) => a.status === 'vencido').length;
+            const urgentesCount = alerts.filter((a) => a.status === 'urgente_1dia').length;
+            const semanaCount = alerts.filter((a) => a.status === 'alerta_7dias').length;
+            const hiddenFutureCount = hiddenFutureAlerts.length;
+            const nextFutureDays =
+              hiddenFutureAlerts.length > 0
+                ? Math.min(...hiddenFutureAlerts.map((a) => a.daysRemaining))
+                : null;
+            // Selo Combo apenas para múltiplas pendências REAIS a fazer agora
+            const isCombo = pendingAlerts.length > 1;
 
             return (
               <div
@@ -371,44 +486,51 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* Selo Combo quando há múltiplos serviços */}
+                      {/* Selo Combo quando há múltiplos serviços pendentes de ação */}
                       {isCombo && (
                         <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Layers className="w-3 h-3 text-amber-400" />
-                          Combo ({alerts.length} itens)
+                          Combo ({visibleAlerts.length} itens a fazer)
                         </span>
                       )}
 
-                      {/* Badge de Urgência do Veículo */}
-                      {worstStatus === 'urgente_1dia' && (
+                      {/* Badge Inteligente alinhado ao item mais urgente */}
+                      {vencidosCount > 0 ? (
+                        <span className="bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-rose-400" />
+                          {vencidosCount} vencido{vencidosCount > 1 ? 's' : ''}
+                          {nextFutureDays ? ` • Próximo em ${nextFutureDays}d` : ''}
+                        </span>
+                      ) : urgentesCount > 0 ? (
                         <span className="bg-red-500 text-white font-black text-[10px] uppercase px-2.5 py-0.5 rounded-full animate-bounce shadow-sm shadow-red-500/50">
                           {minDaysRemaining === 0 ? 'Vence Hoje!' : 'Vence Amanhã!'}
+                          {nextFutureDays ? ` • Próximo em ${nextFutureDays}d` : ''}
                         </span>
-                      )}
-                      {worstStatus === 'alerta_7dias' && (
+                      ) : semanaCount > 0 ? (
                         <span className="bg-amber-500 text-slate-950 font-black text-[10px] uppercase px-2 py-0.5 rounded-full">
                           Em {minDaysRemaining} dias
+                          {nextFutureDays ? ` • Próximo em ${nextFutureDays}d` : ''}
                         </span>
-                      )}
-                      {worstStatus === 'vencido' && (
-                        <span className="bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                          Vencido há {Math.abs(minDaysRemaining)} dias
-                        </span>
-                      )}
-                      {worstStatus === 'em_dia' && (
-                        <span className="bg-emerald-500/15 text-emerald-400 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                          Em {minDaysRemaining} dias
+                      ) : (
+                        <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          Em dia • Próximo em {minDaysRemaining}d
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Cliente, Telefone, Perfil de Rodagem e Status de Contato */}
+                  {/* Cliente, Telefone com Máscara sem parênteses duplicados, Perfil de Rodagem e Status de Contato */}
                   <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 pb-2.5 mb-3 border-b border-slate-800 gap-2">
                     <span className="flex items-center gap-1.5 text-slate-300">
                       <User className="w-3.5 h-3.5 text-slate-400" />
                       <strong className="text-white">{client.name}</strong>
-                      <span className="text-slate-400">({client.phone})</span>
+                      {(() => {
+                        const rawPhone = client.phone || '';
+                        const formatted = formatPhone(rawPhone);
+                        const displayPhone = formatted.startsWith('(') ? formatted : `(${formatted})`;
+                        return <span className="text-slate-400 font-mono">{displayPhone}</span>;
+                      })()}
                     </span>
 
                     <div className="flex items-center gap-2">
@@ -424,21 +546,24 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
                         </span>
                       )}
 
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isApp
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            : 'bg-slate-800 text-slate-400'
-                        }`}
-                      >
-                        {isApp ? '🚕 App (Severo)' : '🚗 Passeio'}
-                      </span>
+                      {(() => {
+                        const prof = vehicle.usageProfile || (isApp ? 'app_severo' : 'normal');
+                        const b = USAGE_PROFILE_BADGES[prof] || USAGE_PROFILE_BADGES.normal;
+                        return (
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${b.className}`}
+                            title={`Média estimada: ${(vehicle.averageMonthlyKm || DEFAULT_MONTHLY_KM_BY_PROFILE[prof] || 1000).toLocaleString('pt-BR')} km/mês`}
+                          >
+                            {b.icon} {b.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
 
-                  {/* Lista de Serviços Agrupados do Veículo */}
+                  {/* Lista de Serviços Agrupados do Veículo (Foco nas Pendências Reais) */}
                   <div className="space-y-2">
-                    {alerts.map((item: MaintenanceAlert) => {
+                    {visibleAlerts.map((item: MaintenanceAlert) => {
                       const { record, daysRemaining, status } = item;
                       return (
                         <div
@@ -452,12 +577,16 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
                             </span>
                             <div className="flex items-center gap-2">
                               {status === 'vencido' ? (
-                                <span className="text-[10px] font-bold text-rose-400">
+                                <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
                                   Vencido há {Math.abs(daysRemaining)} d
                                 </span>
                               ) : status === 'urgente_1dia' ? (
-                                <span className="text-[10px] font-bold text-red-400">
+                                <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
                                   {daysRemaining === 0 ? 'Vence Hoje' : 'Vence Amanhã'}
+                                </span>
+                              ) : status === 'alerta_7dias' ? (
+                                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                  Em {daysRemaining} dias
                                 </span>
                               ) : (
                                 <span className="text-[10px] text-slate-400">
@@ -477,15 +606,86 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
 
                           <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
                             <div>
-                              Última Troca: <strong className="text-slate-200">{record.mileageAtService.toLocaleString('pt-BR')} km</strong> ({new Date(record.completedDate).toLocaleDateString('pt-BR')})
+                              Última Troca:{' '}
+                              <strong className="text-slate-200">
+                                {record.mileageAtService.toLocaleString('pt-BR')} km
+                              </strong>{' '}
+                              ({new Date(record.completedDate).toLocaleDateString('pt-BR')})
                             </div>
                             <div>
-                              Retorno Previsto: <strong className="text-amber-400">{record.estimatedReturnMileage.toLocaleString('pt-BR')} km</strong> ({new Date(record.estimatedReturnDate).toLocaleDateString('pt-BR')})
+                              Retorno Previsto:{' '}
+                              <strong className="text-amber-400">
+                                {record.estimatedReturnMileage.toLocaleString('pt-BR')} km
+                              </strong>{' '}
+                              ({new Date(record.estimatedReturnDate).toLocaleDateString('pt-BR')})
                             </div>
                           </div>
                         </div>
                       );
                     })}
+
+                    {/* Accordion Recolhido para Manutenções Futuras (+30 dias) */}
+                    {hiddenFutureCount > 0 && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedFutureVehicles((prev) => ({
+                              ...prev,
+                              [vehicle.id]: !prev[vehicle.id],
+                            }))
+                          }
+                          className="w-full text-center text-[11px] font-bold text-slate-400 hover:text-amber-400 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-slate-950/60 hover:bg-slate-950 border border-slate-800/80 hover:border-amber-500/30 transition-all group"
+                        >
+                          {isExpandedFuture ? (
+                            <>
+                              <ChevronUp className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Ocultar manutenções futuras</span>
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400" />
+                              <span>Ver mais {hiddenFutureCount} manutenções futuras (+30 dias)</span>
+                            </>
+                          )}
+                        </button>
+
+                        {isExpandedFuture && (
+                          <div className="space-y-2 mt-2 pt-2 border-t border-slate-800/60 animate-in fade-in">
+                            {hiddenFutureAlerts.map((item) => (
+                              <div
+                                key={item.record.id}
+                                className="bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/50 space-y-1.5 text-xs opacity-85 hover:opacity-100 transition-opacity"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-medium text-slate-300 flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                                    {item.record.serviceName}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-slate-400 font-mono">
+                                      Em {item.daysRemaining} dias ({new Date(item.record.estimatedReturnDate).toLocaleDateString('pt-BR')})
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => onDeleteRecord(item.record.id)}
+                                      className="p-1 text-slate-500 hover:text-red-400 rounded transition-colors"
+                                      title="Excluir este serviço"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500">
+                                  <span>Última: {item.record.mileageAtService.toLocaleString('pt-BR')} km</span>
+                                  <span className="text-right text-amber-400/80">Retorno: {item.record.estimatedReturnMileage.toLocaleString('pt-BR')} km</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -560,7 +760,7 @@ export const PreventiveMaintenanceView: React.FC<PreventiveMaintenanceViewProps>
                       <WhatsAppIcon className="w-4 h-4" />
                       <span>
                         {isCombo
-                          ? `Avisar no WhatsApp (Combo ${alerts.length} itens)`
+                          ? `Avisar no WhatsApp (${pendingAlerts.length} pendências)`
                           : worstStatus === 'urgente_1dia'
                           ? 'Avisar Urgente (Vence Amanhã)'
                           : worstStatus === 'alerta_7dias'

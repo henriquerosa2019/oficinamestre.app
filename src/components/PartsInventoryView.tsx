@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Part, ParsedXMLInvoice, SupplierPurchase } from '../types';
 import {
   Package,
@@ -19,16 +19,18 @@ import {
   Eye,
   Check,
   CheckCircle,
-  Clock,
   Filter,
+  FileText,
 } from 'lucide-react';
 import { XMLParserService } from '../services/xmlParser';
 import { ExcelParserService, ParsedExcelRow } from '../services/excelParser';
 import {
   getPurchaseDueAnalysis,
   filterPurchasesByDue,
+  formatDatePtBR,
   InvoiceDueFilter,
 } from '../utils/invoiceAlerts';
+import { SupplierInvoicesReportModal } from './SupplierInvoicesReportModal';
 
 interface PartsInventoryViewProps {
   parts: Part[];
@@ -59,9 +61,12 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
   const [selectedPurchase, setSelectedPurchase] = useState<SupplierPurchase | null>(null);
   const [isPurchaseDetailsOpen, setIsPurchaseDetailsOpen] = useState(false);
   const [dueFilter, setDueFilter] = useState<InvoiceDueFilter>('todas');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [installmentCustomDates, setInstallmentCustomDates] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'critical' | 'zero'>('all');
+  const [supplierFilter, setSupplierFilter] = useState('');
 
   // Modais
   const [isXmlModalOpen, setIsXmlModalOpen] = useState(false);
@@ -81,18 +86,106 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
   // Filtros
   const categories = Array.from(new Set(parts.map((p) => p.category)));
 
-  const filteredParts = parts.filter((part) => {
-    const s = searchTerm.toLowerCase();
-    const matchesSearch =
-      !searchTerm ||
-      part.description.toLowerCase().includes(s) ||
-      part.code.toLowerCase().includes(s) ||
-      part.brand.toLowerCase().includes(s);
+  // Lista única de Fornecedores e Notas Fiscais para filtro rápido
+  const supplierInvoices = useMemo(() => {
+    const map = new Map<string, { key: string; label: string; supplier: string; invoice: string; count: number }>();
+    parts.forEach((p) => {
+      if (p.lastInvoiceNumber || p.supplierName) {
+        const key = p.lastInvoiceNumber || p.supplierName || '';
+        const displayLabel = p.lastInvoiceNumber && p.supplierName 
+          ? `${p.lastInvoiceNumber} • ${p.supplierName}` 
+          : p.lastInvoiceNumber || p.supplierName || '';
+        const existing = map.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          map.set(key, {
+            key,
+            label: displayLabel,
+            supplier: p.supplierName || '',
+            invoice: p.lastInvoiceNumber || '',
+            count: 1,
+          });
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [parts]);
 
-    const matchesCategory = !categoryFilter || part.category === categoryFilter;
+  // Métricas do estoque (Imobilizado, Preço de venda, Retorno potencial e itens críticos)
+  const stockMetrics = useMemo(() => {
+    let totalPhysicalUnits = 0;
+    let totalCost = 0;
+    let totalSell = 0;
+    let zeroCount = 0;
+    let criticalCount = 0;
 
-    return matchesSearch && matchesCategory;
-  });
+    parts.forEach((p) => {
+      totalPhysicalUnits += p.currentStock;
+      totalCost += p.costPrice * p.currentStock;
+      totalSell += p.sellPrice * p.currentStock;
+      if (p.currentStock === 0) zeroCount++;
+      else if (p.currentStock <= p.minStock) criticalCount++;
+    });
+
+    const potentialGain = totalSell - totalCost;
+    const averageMarkup = totalCost > 0 ? (potentialGain / totalCost) * 100 : 0;
+
+    return {
+      totalPhysicalUnits,
+      totalCost,
+      totalSell,
+      potentialGain,
+      averageMarkup,
+      zeroCount,
+      criticalCount,
+      totalCritical: zeroCount + criticalCount,
+    };
+  }, [parts]);
+
+  // Ajuste rápido de quantidade (+ / -) direto na tabela
+  const handleQuickAdjustStock = (part: Part, delta: number) => {
+    const newStock = Math.max(0, part.currentStock + delta);
+    onSavePart({
+      ...part,
+      currentStock: newStock,
+    });
+  };
+
+  const filteredParts = useMemo(() => {
+    return parts.filter((part) => {
+      const s = searchTerm.toLowerCase();
+      const matchesSearch =
+        !searchTerm ||
+        part.description.toLowerCase().includes(s) ||
+        part.code.toLowerCase().includes(s) ||
+        part.brand.toLowerCase().includes(s) ||
+        (part.sku && part.sku.toLowerCase().includes(s)) ||
+        (part.supplierName && part.supplierName.toLowerCase().includes(s)) ||
+        (part.lastInvoiceNumber && part.lastInvoiceNumber.toLowerCase().includes(s)) ||
+        (part.location && part.location.toLowerCase().includes(s));
+
+      const matchesCategory = !categoryFilter || part.category === categoryFilter;
+
+      let matchesStock = true;
+      if (stockStatusFilter === 'critical') {
+        matchesStock = part.currentStock <= part.minStock;
+      } else if (stockStatusFilter === 'zero') {
+        matchesStock = part.currentStock === 0;
+      }
+
+      let matchesSupplier = true;
+      if (supplierFilter) {
+        matchesSupplier =
+          part.lastInvoiceNumber === supplierFilter ||
+          part.supplierName === supplierFilter ||
+          Boolean(part.lastInvoiceNumber && part.lastInvoiceNumber.includes(supplierFilter)) ||
+          Boolean(part.supplierName && part.supplierName.includes(supplierFilter));
+      }
+
+      return matchesSearch && matchesCategory && matchesStock && matchesSupplier;
+    });
+  }, [parts, searchTerm, categoryFilter, stockStatusFilter, supplierFilter]);
 
   // Processar arquivo XML enviado pelo usuário
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,76 +357,253 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
 
       {activeSubTab === 'parts' ? (
         <>
-          {/* Barra de Ações & Filtros */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl">
-            <div className="flex flex-1 items-center gap-2">
-              <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar peça por código, descrição ou marca..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs sm:text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-amber-500"
-                />
+          {/* Resumo do Estoque Físico & Capital Imobilizado */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {/* Card 1: Unidades Físicas & Alertas */}
+            <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5 text-amber-400" />
+                  Estoque Físico Total
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {parts.length} SKUs
+                </span>
               </div>
-
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
-              >
-                <option value="">Todas Categorias</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-sm sm:text-base font-black text-white font-mono">
+                  {stockMetrics.totalPhysicalUnits} <span className="text-xs font-normal text-slate-400">unidades</span>
+                </span>
+                {stockMetrics.totalCritical > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setStockStatusFilter(stockStatusFilter === 'critical' ? 'all' : 'critical')}
+                    className="text-[10px] font-bold text-amber-400 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 px-1.5 py-0.5 rounded transition-colors flex items-center gap-1"
+                    title="Filtrar itens que precisam de reposição"
+                  >
+                    <AlertTriangle className="w-3 h-3 text-amber-400" />
+                    {stockMetrics.zeroCount > 0 ? `${stockMetrics.zeroCount} zerados` : ''}
+                    {stockMetrics.criticalCount > 0 ? ` • ${stockMetrics.criticalCount} baixos` : ''}
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Botão Importar Planilha Excel */}
-              <button
-                onClick={() => setIsExcelModalOpen(true)}
-                className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-3.5 py-1.5 rounded-lg text-xs shadow-md shadow-emerald-950/40 transition-all hover:scale-[1.02]"
-              >
-                <FileSpreadsheet className="w-4 h-4 stroke-[2.5]" />
-                Importar Excel (.xlsx)
-              </button>
+            {/* Card 2: Valor Imobilizado (Custo) */}
+            <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5 text-blue-400" />
+                  Imobilizado a Custo
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">Investimento</span>
+              </div>
+              <div className="mt-2">
+                <span className="text-sm sm:text-base font-black text-white font-mono">
+                  R$ {stockMetrics.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
 
-              {/* Botão Importar XML Destacado */}
-              <button
-                onClick={() => setIsXmlModalOpen(true)}
-                className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-3.5 py-1.5 rounded-lg text-xs shadow-md shadow-amber-500/10 transition-all hover:scale-[1.02]"
-              >
-                <UploadCloud className="w-4 h-4 stroke-[2.5]" />
-                Importar XML (NF-e)
-              </button>
+            {/* Card 3: Preço de Venda Total */}
+            <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                  Preço de Venda Total
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">Retorno bruto</span>
+              </div>
+              <div className="mt-2">
+                <span className="text-sm sm:text-base font-black text-emerald-400 font-mono">
+                  R$ {stockMetrics.totalSell.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
 
-              <button
-                onClick={() => {
-                  setEditingPart({
-                    id: 'part-' + Date.now(),
-                    sku: '',
-                    code: '',
-                    description: '',
-                    brand: '',
-                    category: 'Geral',
-                    costPrice: 0,
-                    sellPrice: 0,
-                    currentStock: 1,
-                    minStock: 2,
-                    unit: 'UN',
-                    location: 'Prateleira A1',
-                  });
-                  setIsEditModalOpen(true);
-                }}
-                className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-3 py-1.5 rounded-lg text-xs border border-slate-700 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Nova Peça
-              </button>
+            {/* Card 4: Ganho Bruto Potencial com Markup Médio */}
+            <div className="bg-slate-900 border border-amber-500/30 p-3 rounded-xl bg-gradient-to-br from-slate-900 to-amber-950/20">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
+                  Ganho Bruto Potencial
+                </span>
+                <span
+                  className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black px-1.5 py-0.2 rounded border border-emerald-500/40"
+                  title="Markup médio sobre o custo total do estoque"
+                >
+                  +{stockMetrics.averageMarkup.toFixed(1)}% mkp
+                </span>
+              </div>
+              <div className="mt-2">
+                <span className="text-sm sm:text-base font-black text-amber-300 font-mono">
+                  R$ {stockMetrics.potentialGain.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Barra de Ações & Filtros */}
+          <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-xl space-y-3">
+            {/* Linha 1: Busca, Categoria, NF-e/Fornecedor e Ações */}
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+              <div className="flex flex-1 flex-wrap items-center gap-2">
+                {/* Busca Textual */}
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar peça por código, descrição, marca ou NF-e..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs sm:text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-amber-500"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white rounded-full hover:bg-slate-700"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro por Categoria */}
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                >
+                  <option value="">Todas Categorias ({categories.length})</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Filtro por NF-e / Fornecedor */}
+                <select
+                  value={supplierFilter}
+                  onChange={(e) => setSupplierFilter(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                  title="Filtrar por Nota Fiscal de Entrada ou Fornecedor"
+                >
+                  <option value="">Todas NF-e / Fornecedores</option>
+                  {supplierInvoices.map((s) => (
+                    <option key={s.key} value={s.key}>
+                      {s.label} ({s.count} itens)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Botão Importar Planilha Excel */}
+                <button
+                  type="button"
+                  onClick={() => setIsExcelModalOpen(true)}
+                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-3.5 py-1.5 rounded-lg text-xs shadow-md shadow-emerald-950/40 transition-all hover:scale-[1.02]"
+                >
+                  <FileSpreadsheet className="w-4 h-4 stroke-[2.5]" />
+                  Importar Excel (.xlsx)
+                </button>
+
+                {/* Botão Importar XML Destacado */}
+                <button
+                  type="button"
+                  onClick={() => setIsXmlModalOpen(true)}
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-3.5 py-1.5 rounded-lg text-xs shadow-md shadow-amber-500/10 transition-all hover:scale-[1.02]"
+                >
+                  <UploadCloud className="w-4 h-4 stroke-[2.5]" />
+                  Importar XML (NF-e)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingPart({
+                      id: 'part-' + Date.now(),
+                      sku: '',
+                      code: '',
+                      description: '',
+                      brand: '',
+                      category: 'Geral',
+                      costPrice: 0,
+                      sellPrice: 0,
+                      currentStock: 1,
+                      minStock: 2,
+                      unit: 'UN',
+                      location: 'Prateleira A1',
+                    });
+                    setIsEditModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-3 py-1.5 rounded-lg text-xs border border-slate-700 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Nova Peça
+                </button>
+              </div>
+            </div>
+
+            {/* Linha 2: Filtros Rápidos de Situação de Estoque */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-xs">
+              <div className="flex items-center gap-1 bg-slate-800/70 p-1 rounded-lg border border-slate-700/60">
+                <button
+                  type="button"
+                  onClick={() => setStockStatusFilter('all')}
+                  className={`px-2.5 py-1 rounded text-xs transition-colors ${
+                    stockStatusFilter === 'all'
+                      ? 'bg-slate-700 text-white font-bold shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Todas as Peças ({parts.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStockStatusFilter('critical')}
+                  className={`px-2.5 py-1 rounded text-xs flex items-center gap-1 transition-colors ${
+                    stockStatusFilter === 'critical'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                      : 'text-amber-400 hover:text-amber-300'
+                  }`}
+                  title="Mostrar apenas peças zeradas ou abaixo do estoque mínimo"
+                >
+                  <AlertTriangle className="w-3 h-3" />
+                  Apenas Zerados / Baixos ({stockMetrics.totalCritical})
+                </button>
+                {stockMetrics.zeroCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setStockStatusFilter('zero')}
+                    className={`px-2.5 py-1 rounded text-xs flex items-center gap-1 transition-colors ${
+                      stockStatusFilter === 'zero'
+                        ? 'bg-red-500 text-white font-bold shadow-sm'
+                        : 'text-red-400 hover:text-red-300'
+                    }`}
+                    title="Mostrar apenas peças com estoque zerado"
+                  >
+                    Estoque Zerado ({stockMetrics.zeroCount})
+                  </button>
+                )}
+              </div>
+
+              {(searchTerm || categoryFilter || supplierFilter || stockStatusFilter !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCategoryFilter('');
+                    setSupplierFilter('');
+                    setStockStatusFilter('all');
+                  }}
+                  className="text-xs text-amber-400 hover:text-amber-300 underline underline-offset-2"
+                >
+                  Limpar filtros ({filteredParts.length} de {parts.length} exibidos)
+                </button>
+              )}
             </div>
           </div>
 
@@ -348,7 +618,14 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                     <th className="py-3 px-4">Marca / Categoria</th>
                     <th className="py-3 px-4 text-right">Preço de Custo</th>
                     <th className="py-3 px-4 text-right">Preço de Venda</th>
-                    <th className="py-3 px-4 text-center">Margem</th>
+                    <th className="py-3 px-4 text-center">
+                      <div className="flex flex-col items-center">
+                        <span>Markup / Margem</span>
+                        <span className="text-[9px] text-slate-500 font-normal lowercase tracking-normal" title="Markup sobre o custo • Margem real sobre o preço de venda">
+                          (mkp s/ custo • mg s/ venda)
+                        </span>
+                      </div>
+                    </th>
                     <th className="py-3 px-4 text-center">Estoque Atual</th>
                     <th className="py-3 px-4 text-center">Ações</th>
                   </tr>
@@ -357,31 +634,52 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                   {filteredParts.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="text-center py-10 text-slate-500">
-                        Nenhuma peça encontrada no estoque. Use o botão acima para importar um XML de compra.
+                        Nenhuma peça encontrada com os filtros selecionados.
                       </td>
                     </tr>
                   ) : (
                     filteredParts.map((part) => {
                       const isLow = part.currentStock <= part.minStock;
                       const isZero = part.currentStock === 0;
-                      const marginPercent =
+                      const markupVal =
                         part.costPrice > 0 ? ((part.sellPrice - part.costPrice) / part.costPrice) * 100 : 0;
+                      const grossMarginVal =
+                        part.sellPrice > 0 ? ((part.sellPrice - part.costPrice) / part.sellPrice) * 100 : 0;
 
                       return (
-                        <tr key={part.id} className="hover:bg-slate-800/60 transition-colors">
+                        <tr
+                          key={part.id}
+                          className={`hover:bg-slate-800/60 transition-colors ${
+                            isZero ? 'bg-red-500/[0.04]' : isLow ? 'bg-amber-500/[0.02]' : ''
+                          }`}
+                        >
                           <td className="py-3 px-4 font-mono font-bold text-amber-400">
                             {part.code || part.sku}
                           </td>
                           <td className="py-3 px-4">
-                            <div className="font-bold text-white">{part.description}</div>
-                            <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                              {part.supplierName && (
-                                <span className="text-[10px] text-purple-300 bg-purple-500/10 border border-purple-500/25 px-1.5 py-0.5 rounded font-mono font-medium">
-                                  {part.supplierName} {part.lastInvoiceNumber ? `• ${part.lastInvoiceNumber}` : ''}
+                            <div className="font-bold text-white flex items-center gap-2">
+                              <span>{part.description}</span>
+                              {isZero && (
+                                <span className="bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] font-black px-1.5 py-0.2 rounded uppercase">
+                                  Zerado
                                 </span>
                               )}
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                              {part.supplierName && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSupplierFilter(part.lastInvoiceNumber || part.supplierName || '')}
+                                  className="text-[10px] text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/25 px-1.5 py-0.5 rounded font-mono font-medium transition-colors"
+                                  title={`Filtrar apenas itens da ${part.lastInvoiceNumber || part.supplierName}`}
+                                >
+                                  {part.supplierName} {part.lastInvoiceNumber ? `• ${part.lastInvoiceNumber}` : ''}
+                                </button>
+                              )}
                               {part.location && (
-                                <span className="text-[10px] text-slate-400">Loc: {part.location}</span>
+                                <span className="text-[10px] text-slate-400 bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700/60">
+                                  Loc: {part.location}
+                                </span>
                               )}
                             </div>
                           </td>
@@ -390,32 +688,85 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                             <div className="text-[10px] text-slate-500">{part.category}</div>
                           </td>
                           <td className="py-3 px-4 text-right font-mono text-slate-400">
-                            R$ {part.costPrice.toFixed(2)}
+                            R$ {part.costPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="py-3 px-4 text-right font-mono font-black text-white">
-                            R$ {part.sellPrice.toFixed(2)}
+                            R$ {part.sellPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <span className="text-[11px] font-bold text-emerald-400 font-mono">
-                              +{marginPercent.toFixed(0)}%
-                            </span>
+                            <div className="font-mono">
+                              <span
+                                className="text-[11px] font-bold text-emerald-400 block"
+                                title={`Markup sobre custo: +${markupVal.toFixed(1)}%`}
+                              >
+                                +{markupVal.toFixed(0)}% <span className="text-[9px] text-slate-500 font-normal">mkp</span>
+                              </span>
+                              <span
+                                className="text-[10px] text-slate-400 block"
+                                title={`Margem bruta sobre preço de venda: ${grossMarginVal.toFixed(1)}%`}
+                              >
+                                {grossMarginVal.toFixed(0)}% mg
+                              </span>
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <span
-                              className={`inline-flex items-center gap-1 font-mono font-bold px-2 py-0.5 rounded-full text-xs ${
-                                isZero
-                                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                  : isLow
-                                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                  : 'bg-emerald-500/15 text-emerald-400'
-                              }`}
-                            >
-                              {isLow && <AlertTriangle className="w-3 h-3" />}
-                              {part.currentStock} {part.unit}
-                            </span>
+                            {/* Ajuste Rápido de Quantidade (- / +) */}
+                            <div className="inline-flex items-center gap-1 bg-slate-950/80 p-1 rounded-lg border border-slate-800 shadow-inner">
+                              <button
+                                type="button"
+                                onClick={() => handleQuickAdjustStock(part, -1)}
+                                disabled={part.currentStock <= 0}
+                                className="w-5 h-5 flex items-center justify-center bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-slate-800 text-slate-300 hover:text-white rounded text-xs font-black transition-colors"
+                                title="Reduzir 1 unidade (baixa rápida de balcão)"
+                              >
+                                -
+                              </button>
+                              <span
+                                className={`font-mono font-bold px-1.5 py-0.5 rounded text-xs min-w-[42px] text-center ${
+                                  isZero
+                                    ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                    : isLow
+                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                    : 'bg-emerald-500/15 text-emerald-400'
+                                }`}
+                                title={
+                                  isZero
+                                    ? 'Item Zerado! Reposição prioritária'
+                                    : isLow
+                                    ? `Estoque abaixo do mínimo (${part.minStock})`
+                                    : `Estoque regular (Mínimo: ${part.minStock})`
+                                }
+                              >
+                                {part.currentStock} {part.unit}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleQuickAdjustStock(part, 1)}
+                                className="w-5 h-5 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-xs font-black transition-colors"
+                                title="Adicionar 1 unidade (entrada rápida de balcão)"
+                              >
+                                +
+                              </button>
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-center">
                             <div className="flex items-center justify-center gap-1.5">
+                              {/* Atalho para Compras / Notas de Fornecedores */}
+                              {part.supplierName && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveSubTab('purchases');
+                                    if (part.supplierName) {
+                                      setSearchTerm(part.lastInvoiceNumber || part.supplierName);
+                                    }
+                                  }}
+                                  className="p-1.5 text-purple-400 hover:text-purple-300 hover:bg-purple-500/15 rounded transition-colors"
+                                  title={`Ver notas de compra de ${part.supplierName}`}
+                                >
+                                  <FileCode className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -442,6 +793,39 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                     })
                   )}
                 </tbody>
+                {/* Rodapé com Totais do Estoque */}
+                {filteredParts.length > 0 && (
+                  <tfoot className="bg-slate-950 border-t border-slate-800 text-xs font-bold text-white">
+                    {(() => {
+                      const visUnits = filteredParts.reduce((acc, p) => acc + p.currentStock, 0);
+                      const visCost = filteredParts.reduce((acc, p) => acc + p.costPrice * p.currentStock, 0);
+                      const visSell = filteredParts.reduce((acc, p) => acc + p.sellPrice * p.currentStock, 0);
+                      const visGain = visSell - visCost;
+                      const visMkp = visCost > 0 ? (visGain / visCost) * 100 : 0;
+
+                      return (
+                        <tr>
+                          <td colSpan={3} className="py-3 px-4 text-slate-400">
+                            Total ({filteredParts.length} SKUs • {visUnits} unidades físicas):
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono text-slate-300">
+                            R$ {visCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-black text-white">
+                            R$ {visSell.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-4 text-center font-mono text-emerald-400 text-[11px]">
+                            +{visMkp.toFixed(0)}% mkp
+                          </td>
+                          <td className="py-3 px-4 text-center font-mono font-black text-amber-400">
+                            {visUnits} un
+                          </td>
+                          <td></td>
+                        </tr>
+                      );
+                    })()}
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>
@@ -456,7 +840,7 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                 Total em Compras
               </span>
               <div className="text-xl font-black text-white font-mono mt-1">
-                R$ {totalCompras.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {totalCompras.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-slate-500">{purchases.length} notas cadastradas</span>
             </div>
@@ -466,7 +850,7 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                 Total Quitado
               </span>
               <div className="text-xl font-black text-emerald-400 font-mono mt-1">
-                R$ {totalQuitado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {totalQuitado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-slate-500">Parcelas já pagas</span>
             </div>
@@ -476,27 +860,34 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                 Saldo a Pagar
               </span>
               <div className="text-xl font-black text-amber-400 font-mono mt-1">
-                R$ {saldoAPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {saldoAPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-slate-500">A vencer a fornecedores</span>
             </div>
 
-            <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-4 bg-gradient-to-br from-slate-900 to-amber-950/20">
-              <span className="text-[11px] font-semibold text-amber-300 uppercase tracking-wider block">
-                Próximo Vencimento
-              </span>
-              {proximoVencimento ? (
-                <>
-                  <div className="text-sm font-black text-white font-mono mt-1 truncate">
-                    {new Date(proximoVencimento.dueDate).toLocaleDateString('pt-BR')} • R$ {proximoVencimento.amount.toFixed(2)}
+            <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-4 bg-gradient-to-br from-slate-900 to-amber-950/20 flex flex-col justify-between">
+              <div>
+                <span className="text-[11px] font-semibold text-amber-300 uppercase tracking-wider block">
+                  Próximo Vencimento
+                </span>
+                {proximoVencimento ? (
+                  <div className="mt-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm font-black text-amber-400 font-mono">
+                        {formatDatePtBR(proximoVencimento.dueDate)}
+                      </span>
+                      <span className="text-base font-black text-white font-mono shrink-0">
+                        R$ {proximoVencimento.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 truncate block mt-0.5">
+                      {proximoVencimento.purchase.supplierName} (Parc. {proximoVencimento.installmentNumber}/{proximoVencimento.totalInstallments})
+                    </span>
                   </div>
-                  <span className="text-[10px] text-amber-300/80 truncate block">
-                    {proximoVencimento.purchase.supplierName} ({proximoVencimento.installmentNumber}/{proximoVencimento.totalInstallments})
-                  </span>
-                </>
-              ) : (
-                <div className="text-xs text-emerald-400 mt-1 font-bold">✓ Tudo em dia!</div>
-              )}
+                ) : (
+                  <div className="text-xs text-emerald-400 mt-1 font-bold">✓ Tudo em dia!</div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -521,37 +912,47 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
               </button>
             </div>
 
-            {/* Barra de Filtros de Vencimento de Notas Fiscais */}
-            <div className="px-4 py-2.5 bg-slate-950/80 border-b border-slate-800 flex flex-wrap items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-400 flex items-center gap-1 mr-1">
-                <Filter className="w-3.5 h-3.5 text-amber-400" />
-                Vencimento:
-              </span>
-              {[
-                { id: 'todas', label: 'Todas as Notas' },
-                { id: 'vencidas', label: '🚨 Vencidas', highlight: 'text-red-400 font-bold' },
-                { id: 'vence_hoje', label: '⚠️ Vence Hoje', highlight: 'text-amber-400 font-black animate-pulse' },
-                { id: 'em_1dia', label: 'A Vencer em 1 dia', highlight: 'text-orange-400 font-bold' },
-                { id: 'em_2dias', label: 'Em 2 dias' },
-                { id: 'em_3dias', label: 'Em 3 dias' },
-                { id: 'em_4dias', label: 'Em 4 dias' },
-                { id: 'em_5dias', label: 'Em 5 dias' },
-                { id: 'em_semana', label: 'Em 1 semana (7 dias)' },
-                { id: 'quitadas', label: '✓ Quitadas' },
-              ].map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setDueFilter(f.id as InvoiceDueFilter)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                    dueFilter === f.id
-                      ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                  } ${f.highlight || ''}`}
-                >
-                  {f.label}
-                </button>
-              ))}
+            {/* Barra de Filtros de Vencimento de Notas Fiscais Simplificada & Botão de Relatório */}
+            <div className="px-4 py-2.5 bg-slate-950/80 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-400 flex items-center gap-1 mr-1">
+                  <Filter className="w-3.5 h-3.5 text-amber-400" />
+                  Vencimento:
+                </span>
+                {[
+                  { id: 'todas', label: 'Todas as Notas' },
+                  { id: 'vencidas', label: '🚨 Vencidas', highlight: 'text-red-400 font-bold' },
+                  { id: 'vence_hoje', label: '⚠️ Vence Hoje', highlight: 'text-amber-400 font-black animate-pulse' },
+                  { id: 'em_semana', label: '📅 Próximos 7 dias', highlight: 'text-amber-300 font-bold' },
+                  { id: 'quitadas', label: '✓ Quitadas' },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setDueFilter(f.id as InvoiceDueFilter)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      dueFilter === f.id
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    <span className={dueFilter === f.id ? 'text-slate-950 font-black' : (f.highlight || '')}>
+                      {f.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Botão Gerar Relatório ao canto direito da linha */}
+              <button
+                type="button"
+                onClick={() => setIsReportModalOpen(true)}
+                className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-400 font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm transition-all ml-auto hover:scale-[1.02] active:scale-95"
+                title="Gerar Relatório de Vencimentos (Vencidas, Vence Hoje e Próximos 7 Dias)"
+              >
+                <FileText className="w-3.5 h-3.5 text-amber-400" />
+                <span>Gerar Relatório</span>
+              </button>
             </div>
 
             <div className="overflow-x-auto">
@@ -590,6 +991,15 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                           : 0;
                       const isComplete = analysis.urgency === 'quitado';
 
+                      // Vínculo com peças do estoque
+                      const linkedParts = parts.filter(
+                        (p) =>
+                          p.purchaseId === purchase.id ||
+                          (purchase.partCodes && purchase.partCodes.includes(p.code)) ||
+                          (p.lastInvoiceNumber && p.lastInvoiceNumber.includes(purchase.nfeNumber))
+                      );
+                      const lowStockParts = linkedParts.filter((p) => p.currentStock <= p.minStock);
+
                       return (
                         <tr key={purchase.id} className="hover:bg-slate-800/60 transition-colors">
                           <td className="py-3 px-4">
@@ -598,11 +1008,34 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                               {purchase.supplierCnpj || 'CNPJ não inf.'}
                             </span>
                           </td>
-                          <td className="py-3 px-4 font-mono font-bold text-amber-400">
-                            NF-e {purchase.nfeNumber}
+                          <td className="py-3 px-4">
+                            <span className="font-mono font-bold text-amber-400 block">
+                              NF-e {purchase.nfeNumber}
+                            </span>
+                            {linkedParts.length > 0 && (
+                              <div className="mt-1">
+                                {lowStockParts.length > 0 ? (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/30"
+                                    title={`Atenção: ${lowStockParts.length} peça(s) desta nota estão com estoque baixo ou no limite: ${lowStockParts.map((p) => `${p.code} (${p.currentStock}/${p.minStock} ${p.unit})`).join(', ')}`}
+                                  >
+                                    <AlertTriangle className="w-3 h-3 text-red-400 shrink-0" />
+                                    {lowStockParts.length} {lowStockParts.length === 1 ? 'item em alerta' : 'itens em alerta'}
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20"
+                                    title={`${linkedParts.length} peça(s) vinculadas com estoque regular`}
+                                  >
+                                    <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0" />
+                                    {linkedParts.length} {linkedParts.length === 1 ? 'item ok' : 'itens ok'}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-slate-300 text-[11px] font-mono">
-                            {new Date(purchase.issueDate).toLocaleDateString('pt-BR')}
+                            {formatDatePtBR(purchase.issueDate)}
                           </td>
                           <td className="py-3 px-4 text-right font-mono font-bold text-white">
                             R$ {purchase.totalValue.toFixed(2)}
@@ -631,9 +1064,9 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                             </div>
                           </td>
                           <td className="py-3 px-4 text-center font-mono text-[11px] text-slate-300">
-                            <div>1ª: {new Date(purchase.firstDueDate).toLocaleDateString('pt-BR')}</div>
-                            <div className="text-slate-500 text-[10px]">
-                              Última: {new Date(purchase.lastDueDate).toLocaleDateString('pt-BR')}
+                            <div>1ª: {formatDatePtBR(purchase.firstDueDate)}</div>
+                            <div className="text-slate-400 text-[10px]">
+                              Última: {formatDatePtBR(purchase.lastDueDate)}
                             </div>
                           </td>
                           <td className="py-3 px-4 text-center">
@@ -1226,7 +1659,7 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
                   CNPJ: {selectedPurchase.supplierCnpj || 'Não informado'} • Emitida em{' '}
-                  {new Date(selectedPurchase.issueDate).toLocaleDateString('pt-BR')}
+                  {formatDatePtBR(selectedPurchase.issueDate)}
                 </p>
               </div>
               <button
@@ -1298,8 +1731,8 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                             </span>
                           </div>
                           <span className="text-[11px] text-slate-400 font-mono block mt-0.5">
-                            Vencimento: {new Date(inst.dueDate).toLocaleDateString('pt-BR')}
-                            {inst.paidAt && ` • Pago em ${new Date(inst.paidAt).toLocaleDateString('pt-BR')}`}
+                            Vencimento: {formatDatePtBR(inst.dueDate)}
+                            {inst.paidAt && ` • Pago em ${formatDatePtBR(inst.paidAt)}`}
                           </span>
                         </div>
 
@@ -1393,13 +1826,22 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                   <div className="flex flex-wrap gap-1.5">
                     {selectedPurchase.partCodes.map((code) => {
                       const matched = parts.find((p) => p.code === code);
+                      const isLow = matched && matched.currentStock <= matched.minStock;
                       return (
                         <span
                           key={code}
-                          className="bg-slate-950 border border-slate-800 text-slate-300 px-2.5 py-1 rounded-lg font-mono text-[11px]"
+                          className={`border px-2.5 py-1.5 rounded-lg font-mono text-[11px] flex items-center gap-1.5 ${
+                            isLow
+                              ? 'bg-amber-500/10 border-amber-500/40 text-amber-200'
+                              : 'bg-slate-950 border-slate-800 text-slate-300'
+                          }`}
                         >
                           <strong className="text-amber-400">{code}</strong>
-                          {matched && ` • ${matched.description}`}
+                          {matched && (
+                            <span>
+                              • {matched.description} (Estoque: <strong className={isLow ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>{matched.currentStock} {matched.unit}</strong> / Mín: {matched.minStock} {matched.unit})
+                            </span>
+                          )}
                         </span>
                       );
                     })}
@@ -1424,6 +1866,14 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* MODAL DE RELATÓRIO DE VENCIMENTOS DE FORNECEDORES */}
+      <SupplierInvoicesReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        purchases={purchases}
+        parts={parts}
+      />
     </div>
   );
 };

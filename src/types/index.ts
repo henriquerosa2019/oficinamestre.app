@@ -18,7 +18,7 @@ export interface Client {
   createdAt: string;
 }
 
-export type VehicleUsageProfile = 'normal' | 'app_severo' | 'moderado';
+export type VehicleUsageProfile = 'normal' | 'app_severo' | 'frota' | 'severo_curto' | 'moderado';
 
 export interface Vehicle {
   id: string;

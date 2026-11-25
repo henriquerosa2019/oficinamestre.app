@@ -56,6 +56,15 @@ const INITIAL_CLIENTS: Client[] = [
     address: 'Rod. Anhanguera, km 25 - SP',
     createdAt: '2026-11-01T10:00:00Z',
   },
+  {
+    id: 'cli-4',
+    name: 'Henrique Rosa',
+    phone: '21993793746',
+    document: '345.678.901-22',
+    email: 'henrique.rosa@gmail.com',
+    address: 'Rua Barata Ribeiro, 502 - Copacabana, Rio de Janeiro - RJ',
+    createdAt: '2026-11-12T11:00:00Z',
+  },
 ];
 
 const INITIAL_VEHICLES: Vehicle[] = [
@@ -100,6 +109,34 @@ const INITIAL_VEHICLES: Vehicle[] = [
     fuelType: 'flex',
     usageProfile: 'app_severo', // Motorista de aplicativo / uso severo
     averageMonthlyKm: 4200,
+  },
+  {
+    id: 'veh-4',
+    clientId: 'cli-4',
+    plate: 'RKL2D99',
+    brand: 'Chevrolet',
+    model: 'Onix 1.0 Manual',
+    year: 2022,
+    engine: '1.0 Flex Manual',
+    color: 'Prata Switchblade',
+    mileage: 64000,
+    fuelType: 'flex',
+    usageProfile: 'normal',
+    averageMonthlyKm: 1000,
+  },
+  {
+    id: 'veh-5',
+    clientId: 'cli-4',
+    plate: 'TTZ8D77',
+    brand: 'Chevrolet',
+    model: 'Tracker Premier 1.2 Turbo',
+    year: 2023,
+    engine: '1.2 Turbo Flex',
+    color: 'Azul Eclipse',
+    mileage: 24500,
+    fuelType: 'flex',
+    usageProfile: 'moderado',
+    averageMonthlyKm: 1400,
   },
 ];
 
@@ -491,6 +528,48 @@ const INITIAL_ORDERS: ServiceOrder[] = [
     isPaid: false,
     createdAt: '2026-11-18T11:20:00Z',
     updatedAt: '2026-11-18T11:45:00Z',
+  },
+  {
+    id: 'ord-104',
+    orderNumber: 'OS-3224',
+    vehicleId: 'veh-4',
+    clientId: 'cli-4',
+    mechanicId: 'mec-1',
+    status: 'em_andamento',
+    complaintDescription: 'Barulho na suspensão dianteira ao passar em lombadas e ruído ao esterçar.',
+    technicalDiagnostic: 'Buchas da bandeja e bieletas com folga acentuada. Amortecedores dianteiros com início de vazamento.',
+    checklist: {
+      fuelLevel: 55,
+      mileage: 38200,
+      hasSpareWheel: true,
+      hasJack: true,
+      hasLugWrench: true,
+      hasTriangle: true,
+      hasManual: true,
+      hasKeyChain: true,
+      lightsWorking: true,
+      hornWorking: true,
+      wipersWorking: true,
+      damagePoints: [],
+    },
+    parts: [
+      { id: 'poi-8', partId: 'part-3', code: 'N-1238', description: 'Kit Bieletas e Buchas de Suspensão', quantity: 2, unitCost: 30.0, unitPrice: 60.0, total: 120.0 },
+    ],
+    services: [
+      { id: 'soi-7', serviceId: 'srv-2', description: 'Substituição de Bieletas e Alinhamento', mechanicId: 'mec-1', price: 180.0, commissionRate: 20, commissionValue: 36.0 },
+    ],
+    partsTotal: 120.0,
+    servicesTotal: 180.0,
+    grossTotal: 300.0,
+    discount: 0,
+    netTotal: 300.0,
+    partsCostTotal: 60.0,
+    mechanicsCommissionTotal: 36.0,
+    netProfit: 204.0,
+    profitMarginPercent: 68.0,
+    isPaid: false,
+    createdAt: '2026-11-20T08:30:00Z',
+    updatedAt: '2026-11-20T10:00:00Z',
   }
 ];
 
@@ -597,6 +676,86 @@ const INITIAL_MAINTENANCE_RECORDS: MaintenanceRecord[] = [
     intervalKm: 10000,
     notes: 'Serviço vencido',
   },
+  {
+    id: 'mrec-5',
+    serviceOrderId: 'ord-104',
+    vehicleId: 'veh-4', // Chevrolet Onix (Henrique Rosa)
+    clientId: 'cli-4',
+    serviceType: 'troca_oleo',
+    serviceName: 'Troca de Óleo e Filtro de Óleo',
+    completedDate: '2026-10-24', // Feito há cerca de 1 mês
+    mileageAtService: 64000,
+    usageProfile: 'normal',
+    estimatedReturnDate: '2027-10-24',
+    estimatedReturnMileage: 74000,
+    intervalMonths: 12,
+    intervalKm: 10000,
+    notes: 'Óleo sintético 5W30 e filtro de óleo.',
+  },
+  {
+    id: 'mrec-6',
+    serviceOrderId: 'ord-104',
+    vehicleId: 'veh-4',
+    clientId: 'cli-4',
+    serviceType: 'revisao_geral',
+    serviceName: 'Troca de Velas de Ignição',
+    completedDate: '2026-10-24',
+    mileageAtService: 64000,
+    usageProfile: 'normal',
+    estimatedReturnDate: '2027-10-24',
+    estimatedReturnMileage: 74000,
+    intervalMonths: 12,
+    intervalKm: 10000,
+    notes: 'Jogo de velas Green Plug.',
+  },
+  {
+    id: 'mrec-7',
+    serviceOrderId: 'ord-104',
+    vehicleId: 'veh-4',
+    clientId: 'cli-4',
+    serviceType: 'outro',
+    serviceName: 'Troca de Filtro de Ar do Motor',
+    completedDate: '2026-10-24',
+    mileageAtService: 64000,
+    usageProfile: 'normal',
+    estimatedReturnDate: '2027-10-24',
+    estimatedReturnMileage: 74000,
+    intervalMonths: 12,
+    intervalKm: 10000,
+    notes: 'Filtro de ar do motor substituído.',
+  },
+  {
+    id: 'mrec-8',
+    serviceOrderId: 'ord-104',
+    vehicleId: 'veh-4',
+    clientId: 'cli-4',
+    serviceType: 'outro',
+    serviceName: 'Troca de Filtro de Ar Condicionado (Cabine)',
+    completedDate: '2026-10-24',
+    mileageAtService: 64000,
+    usageProfile: 'normal',
+    estimatedReturnDate: '2027-10-24',
+    estimatedReturnMileage: 74000,
+    intervalMonths: 12,
+    intervalKm: 10000,
+    notes: 'Filtro de cabine com carvão ativado.',
+  },
+  {
+    id: 'mrec-9',
+    serviceOrderId: 'ord-104',
+    vehicleId: 'veh-4',
+    clientId: 'cli-4',
+    serviceType: 'outro',
+    serviceName: 'Limpeza do Corpo de Borboleta (TBI)',
+    completedDate: '2026-10-24',
+    mileageAtService: 64000,
+    usageProfile: 'normal',
+    estimatedReturnDate: '2027-10-24',
+    estimatedReturnMileage: 74000,
+    intervalMonths: 12,
+    intervalKm: 10000,
+    notes: 'Descarbonização do TBI e reaprendizado.',
+  },
 ];
 
 // Helper seguro de LocalStorage
@@ -664,7 +823,18 @@ export const StorageService = {
 
   // Clients
   getClients(): Client[] {
-    return getFromStorage<Client[]>(STORAGE_KEYS.CLIENTS, INITIAL_CLIENTS);
+    const clients = getFromStorage<Client[]>(STORAGE_KEYS.CLIENTS, INITIAL_CLIENTS);
+    const hasHenrique = clients.some(
+      (c) => c.phone.includes('993793746') || c.id === 'cli-4' || c.name.toLowerCase().includes('henrique')
+    );
+    if (!hasHenrique) {
+      const h = INITIAL_CLIENTS.find((c) => c.id === 'cli-4');
+      if (h) {
+        clients.push(h);
+        setToStorage(STORAGE_KEYS.CLIENTS, clients);
+      }
+    }
+    return clients;
   },
   saveClient(client: Client): void {
     const clients = this.getClients();
@@ -680,7 +850,77 @@ export const StorageService = {
 
   // Vehicles
   getVehicles(): Vehicle[] {
-    return getFromStorage<Vehicle[]>(STORAGE_KEYS.VEHICLES, INITIAL_VEHICLES);
+    const vehicles = getFromStorage<Vehicle[]>(STORAGE_KEYS.VEHICLES, INITIAL_VEHICLES);
+    let modified = false;
+
+    // Garante que Strada tem usageProfile: 'app_severo'
+    const strada = vehicles.find((v) => v.plate === 'FLX9A12');
+    if (strada && strada.usageProfile !== 'app_severo') {
+      strada.usageProfile = 'app_severo';
+      modified = true;
+    }
+
+    // Garante Onix 1.0 Manual para RKL2D99
+    const rkl = vehicles.find((v) => v.plate === 'RKL2D99');
+    if (rkl) {
+      if (rkl.model === '1.0' || !rkl.brand || rkl.brand === 'Genérica' || rkl.model.includes('Sandero')) {
+        rkl.brand = 'Chevrolet';
+        rkl.model = 'Onix 1.0 Manual';
+        rkl.engine = rkl.engine || '1.0 Flex Manual';
+        modified = true;
+      }
+      if (!rkl.clientId) {
+        rkl.clientId = 'cli-4';
+        modified = true;
+      }
+    } else {
+      const v4 = INITIAL_VEHICLES.find((v) => v.plate === 'RKL2D99');
+      if (v4) {
+        vehicles.push(v4);
+        modified = true;
+      }
+    }
+
+    // Garante Tracker Premier para TTZ8D77
+    const ttz = vehicles.find((v) => v.plate === 'TTZ8D77');
+    if (ttz) {
+      if (!ttz.clientId) {
+        ttz.clientId = 'cli-4';
+        modified = true;
+      }
+    } else {
+      const v5 = INITIAL_VEHICLES.find((v) => v.plate === 'TTZ8D77');
+      if (v5) {
+        vehicles.push(v5);
+        modified = true;
+      }
+    }
+
+    // Garante que cada veículo tenha usageProfile e averageMonthlyKm preenchidos
+    vehicles.forEach((v) => {
+      if (!v.usageProfile) {
+        v.usageProfile = v.plate === 'FLX9A12' ? 'app_severo' : 'normal';
+        modified = true;
+      }
+      if (!v.averageMonthlyKm) {
+        v.averageMonthlyKm =
+          v.usageProfile === 'app_severo'
+            ? 3500
+            : v.usageProfile === 'frota'
+            ? 4000
+            : v.usageProfile === 'severo_curto'
+            ? 1200
+            : v.usageProfile === 'moderado'
+            ? 1600
+            : 1000;
+        modified = true;
+      }
+    });
+
+    if (modified) {
+      setToStorage(STORAGE_KEYS.VEHICLES, vehicles);
+    }
+    return vehicles;
   },
   saveVehicle(vehicle: Vehicle): void {
     const vehicles = this.getVehicles();
@@ -845,7 +1085,33 @@ export const StorageService = {
 
   // Service Orders
   getOrders(): ServiceOrder[] {
-    return getFromStorage<ServiceOrder[]>(STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
+    const orders = getFromStorage<ServiceOrder[]>(STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
+    let ordersModified = false;
+    const has3224 = orders.some((o) => o.orderNumber === 'OS-3224' || o.id === 'ord-104');
+    if (!has3224) {
+      const ord104 = INITIAL_ORDERS.find((o) => o.id === 'ord-104');
+      if (ord104) {
+        orders.push(ord104);
+        ordersModified = true;
+      }
+    }
+
+    // Auto-correção de digitação de balcão (ex: "pivto" -> "pivô")
+    orders.forEach((o) => {
+      if (o.technicalDiagnostic && /pivto/i.test(o.technicalDiagnostic)) {
+        o.technicalDiagnostic = o.technicalDiagnostic.replace(/pivto/gi, 'pivô');
+        ordersModified = true;
+      }
+      if (o.complaintDescription && /pivto/i.test(o.complaintDescription)) {
+        o.complaintDescription = o.complaintDescription.replace(/pivto/gi, 'pivô');
+        ordersModified = true;
+      }
+    });
+
+    if (ordersModified) {
+      setToStorage(STORAGE_KEYS.ORDERS, orders);
+    }
+    return orders;
   },
   saveOrder(order: ServiceOrder): void {
     const orders = this.getOrders();
@@ -853,6 +1119,15 @@ export const StorageService = {
     if (index >= 0) orders[index] = order;
     else orders.unshift(order);
     setToStorage(STORAGE_KEYS.ORDERS, orders);
+  },
+  updateOrderDiagnostic(orderId: string, diagnostic: string): void {
+    const orders = this.getOrders();
+    const order = orders.find((o) => o.id === orderId);
+    if (order) {
+      order.technicalDiagnostic = diagnostic;
+      order.updatedAt = new Date().toISOString();
+      setToStorage(STORAGE_KEYS.ORDERS, orders);
+    }
   },
   deleteOrder(id: string): void {
     const orders = this.getOrders().filter((o) => o.id !== id);

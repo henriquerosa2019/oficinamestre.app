@@ -143,7 +143,7 @@ export const QuickOrderCheckoutModal: React.FC<QuickOrderCheckoutModalProps> = (
               Valor Total do Serviço
             </span>
             <div className="text-3xl font-black text-emerald-400 font-mono mt-0.5">
-              R$ {order.netTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {order.netTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
               {order.services.length} serviço(s) • {order.parts.length} peça(s)

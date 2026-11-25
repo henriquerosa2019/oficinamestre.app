@@ -46,13 +46,20 @@ import {
   ChevronLeft,
   Lock,
   Download,
+  UserCheck,
+  Edit,
+  ChevronDown,
 } from 'lucide-react';
+import { formatPhone, formatCpfCnpj } from './ClientsView';
 import { CarDamageCanvas } from './CarDamageCanvas';
 import { WhatsAppService } from '../services/whatsapp';
 import { QuickOrderCheckoutModal } from './QuickOrderCheckoutModal';
 import { getOrderWarranty, toIsoDate, formatBrDate } from '../utils/warranty';
+import { PreventiveMaintenanceService } from '../services/preventiveMaintenance';
+import { StorageService } from '../services/storage';
 import { ReceiptDocument } from './ReceiptDocument';
 import { QuotationImageService } from '../services/quotationImageService';
+import { getClientLatestVehicle, findClientByPhoneOrDoc } from '../utils/clientVehicleHelper';
 import confetti from 'canvas-confetti';
 
 interface OrderModalProps {
@@ -65,6 +72,7 @@ interface OrderModalProps {
   mechanics: Mechanic[];
   availableParts: Part[];
   availableServices: ServiceItem[];
+  orders?: ServiceOrder[];
   onPrintReceipt: (order: ServiceOrder) => void;
   onQuickCheckout?: (order: ServiceOrder, paymentMethod: PaymentMethod, isPaid: boolean) => void;
   onSaveClient?: (client: Client, newVehicle?: Vehicle) => void;
@@ -86,6 +94,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   mechanics,
   availableParts,
   availableServices,
+  orders,
   onPrintReceipt,
   onQuickCheckout,
   onSaveClient,
@@ -94,6 +103,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   if (!isOpen) return null;
 
   const isEditing = !!order;
+
+  // Modo Somente Leitura: ativo se a OS estiver finalizada
+  const isReadOnly = order?.status === 'finalizado';
 
   // Controle de Abas
   const [activeTab, setActiveTab] = useState<'diagnostico' | 'itens' | 'fechamento'>(
@@ -165,6 +177,64 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [newClientYear, setNewClientYear] = useState<number>(new Date().getFullYear());
   const [newClientMileage, setNewClientMileage] = useState<number>(50000);
 
+  const allOrders = orders || StorageService.getOrders();
+
+  const initialClient = clients.find((c) => c.id === (order?.clientId || clients[0]?.id));
+  const [clientInputValue, setClientInputValue] = useState(initialClient?.name || '');
+  const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
+
+  // Sincroniza o texto do campo quando o clientId muda ou a OS carrega
+  useEffect(() => {
+    const c = clients.find((cl) => cl.id === clientId);
+    if (c && !isClientDropdownOpen) {
+      setClientInputValue(c.name);
+    }
+  }, [clientId, clients]);
+
+  // Função central: se identificado pelo telefone/CPF/nome, o nome completo continua dentro do campo onde o telefone foi digitado
+  // e seu último veículo que deu entrada é trazido diretamente para o campo de veículo da OS
+  const handleIdentifyAndPullClient = (targetClient: Client, customVehicle?: Vehicle) => {
+    setClientId(targetClient.id);
+    setClientInputValue(targetClient.name);
+    setIsClientDropdownOpen(false);
+
+    const lastVeh = customVehicle || getClientLatestVehicle(targetClient.id, vehicles, allOrders);
+    if (lastVeh) {
+      setVehicleId(lastVeh.id);
+      if (lastVeh.mileage) {
+        setMileage(lastVeh.mileage);
+      }
+    }
+  };
+
+  const matchedClientInQuickModal = isNewClientModalOpen
+    ? findClientByPhoneOrDoc(newClientPhone, clients) || findClientByPhoneOrDoc(newClientDocument, clients)
+    : undefined;
+
+  // Cliente atualmente selecionado
+  const selectedClient = clients.find((c) => c.id === clientId);
+
+  // Se o campo estiver vazio ou se o texto exibido for exatamente o nome do cliente selecionado,
+  // exibe a lista completa de todos os clientes cadastrados ao abrir a lista suspensa!
+  const isInputMatchingSelectedClient = Boolean(
+    selectedClient && clientInputValue.trim().toLowerCase() === selectedClient.name.trim().toLowerCase()
+  );
+
+  const filteredClientsList = clients.filter((c) => {
+    if (!clientInputValue.trim() || isInputMatchingSelectedClient) return true;
+    const term = clientInputValue.toLowerCase().trim();
+    const rawDigits = term.replace(/\D/g, '');
+    const cPhoneDigits = (c.phone || '').replace(/\D/g, '');
+    const cDocDigits = (c.document || '').replace(/\D/g, '');
+
+    return (
+      c.name.toLowerCase().includes(term) ||
+      (c.phone && c.phone.toLowerCase().includes(term)) ||
+      (c.document && c.document.toLowerCase().includes(term)) ||
+      (rawDigits.length >= 2 && (cPhoneDigits.includes(rawDigits) || cDocDigits.includes(rawDigits)))
+    );
+  });
+
   const [isNewVehicleModalOpen, setIsNewVehicleModalOpen] = useState(false);
   const [newVehPlate, setNewVehPlate] = useState('');
   const [newVehBrand, setNewVehBrand] = useState('');
@@ -207,9 +277,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   useEffect(() => {
     if (clientVehicles.length > 0 && !clientVehicles.find((v) => v.id === vehicleId)) {
-      setVehicleId(clientVehicles[0].id);
-      if (clientVehicles[0].mileage) {
-        setMileage(clientVehicles[0].mileage);
+      const latest = getClientLatestVehicle(clientId, vehicles, allOrders) || clientVehicles[clientVehicles.length - 1];
+      setVehicleId(latest.id);
+      if (latest.mileage) {
+        setMileage(latest.mileage);
       }
     }
   }, [clientId, vehicles]);
@@ -373,6 +444,52 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     createdAt: order?.createdAt || new Date().toISOString(),
     finishedAt: status === 'finalizado' ? order?.finishedAt || new Date().toISOString() : undefined,
   });
+
+  // Status de O.S. Finalizada (impede alteração ou avanço desnecessário)
+  const isFinalized = order?.status === 'finalizado' || status === 'finalizado';
+
+  // Cálculo da Data Prevista de Retorno (Previsão Preventiva)
+  const estimatedReturnDateFormatted = (() => {
+    // 1. Tenta buscar registro salvo no storage para esta OS ou veículo
+    const storedRecords = StorageService.getMaintenanceRecords();
+    const orderRecord = storedRecords.find(
+      (r) => (order?.id && r.serviceOrderId === order.id) || (vehicleId && r.vehicleId === vehicleId)
+    );
+
+    if (orderRecord?.estimatedReturnDate) {
+      return formatBrDate(orderRecord.estimatedReturnDate);
+    }
+
+    // 2. Se não houver registro prévio, calcula dinamicamente baseado nos serviços/peças da OS e perfil do veículo
+    let detectedType = 'troca_oleo';
+    if (services.length > 0) {
+      const types = services.map((s) => PreventiveMaintenanceService.detectServiceType(s.description));
+      if (types.includes('troca_oleo')) detectedType = 'troca_oleo';
+      else if (types.includes('alinhamento')) detectedType = 'alinhamento';
+      else if (types.includes('freios')) detectedType = 'freios';
+      else if (types.includes('revisao_geral')) detectedType = 'revisao_geral';
+      else if (types.includes('correia_dentada')) detectedType = 'correia_dentada';
+      else detectedType = types[0] || 'troca_oleo';
+    } else if (parts.length > 0) {
+      const types = parts.map((p) => PreventiveMaintenanceService.detectServiceType(p.description));
+      if (types.includes('troca_oleo')) detectedType = 'troca_oleo';
+      else if (types.includes('freios')) detectedType = 'freios';
+      else detectedType = types[0] || 'troca_oleo';
+    }
+
+    const currentV = vehicles.find((v) => v.id === vehicleId);
+    const profile = currentV?.usageProfile || 'normal';
+    const params = PreventiveMaintenanceService.getIntervalParams(
+      detectedType as any,
+      profile,
+      currentV?.averageMonthlyKm
+    );
+
+    const baseDateStr = serviceDate || entryDate || new Date().toISOString().split('T')[0];
+    const baseD = new Date(baseDateStr.includes('T') ? baseDateStr.split('T')[0] : baseDateStr);
+    const retDate = new Date(baseD.getTime() + params.intervalDays * 24 * 60 * 60 * 1000);
+    return formatBrDate(retDate.toISOString().split('T')[0]);
+  })();
 
   // Filtros em Tempo Real para Busca Digitável
   const filteredParts = availableParts.filter((p) => {
@@ -799,6 +916,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   // Salvar Ordem de Serviço
   const handleSave = () => {
+    if (isReadOnly) {
+      return;
+    }
+
     const isApprovedOrActive =
       status === 'aprovado' ||
       status === 'em_andamento' ||
@@ -869,66 +990,139 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const currentClient = clients.find((c) => c.id === clientId);
   const currentVehicle = vehicles.find((v) => v.id === vehicleId);
 
+  // Referência para captura do Prontuário / Recibo da OS Finalizada
+  const finalizedReceiptRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingFinalizedPng, setIsGeneratingFinalizedPng] = useState(false);
+
+  const handleDownloadFinalizedPng = async () => {
+    if (!finalizedReceiptRef.current) return;
+    setIsGeneratingFinalizedPng(true);
+    try {
+      const { dataUrl } = await QuotationImageService.generateImage(finalizedReceiptRef.current);
+      QuotationImageService.downloadImage(dataUrl, `recibo-${orderNumber}.png`);
+    } catch (err) {
+      console.error('Erro ao baixar PNG do recibo:', err);
+      alert('Não foi possível baixar a imagem. Tente novamente.');
+    } finally {
+      setIsGeneratingFinalizedPng(false);
+    }
+  };
+
+  const handleSendWhatsAppReceipt = () => {
+    if (!currentClient?.phone) return;
+    const orderData = order || getOrderDataSnapshot();
+    const msg = WhatsAppService.generateCarReadyMessage(orderData, currentClient, currentVehicle!);
+    WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        {/* Cabeçalho do Modal */}
-        <div className="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-3">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl h-[92vh] max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        {/* Cabeçalho do Modal com Layout Espaçado e Elegante */}
+        <div className="px-5 sm:px-6 py-2.5 sm:py-3 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center font-mono font-bold shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center font-mono font-bold shrink-0 shadow-inner">
               <Wrench className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-black text-white truncate">
-                  {isEditing ? `Editar ${orderNumber}` : 'Nova Ordem de Serviço'}
+              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                <h3 className="text-base font-black text-white truncate tracking-tight">
+                  {isFinalized ? `Prontuário da ${orderNumber}` : isEditing ? `Editar ${orderNumber}` : 'Nova Ordem de Serviço'}
                 </h3>
-                <span className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono font-bold shrink-0">
+                <span className="text-[11px] bg-slate-800 text-amber-400 border border-slate-700/80 px-2 py-0.5 rounded-md font-mono font-bold shrink-0">
                   {orderNumber}
                 </span>
+                {isFinalized && (
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-md font-black uppercase tracking-wider shrink-0 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Finalizada
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-slate-400 truncate hidden sm:block">
-                {currentVehicle ? `${currentVehicle.brand} ${currentVehicle.model} • Placa ${currentVehicle.plate}` : 'Gestão ágil de pátio'}
-                {currentClient ? ` • ${currentClient.name}` : ''}
+              <p className="text-xs text-slate-400 truncate hidden sm:flex items-center gap-1.5">
+                <Car className="w-3.5 h-3.5 text-slate-500" />
+                <span className="font-semibold text-slate-300">
+                  {currentVehicle ? `${currentVehicle.brand} ${currentVehicle.model} • Placa ${currentVehicle.plate}` : 'Gestão de Pátio'}
+                </span>
+                {currentClient && (
+                  <>
+                    <span className="text-slate-600">•</span>
+                    <span className="text-slate-400">{currentClient.name}</span>
+                  </>
+                )}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Bloco de Data de Entrada e Vencimento da Garantia */}
-            <div className="hidden md:flex flex-col text-right px-3 py-1 bg-slate-900 border border-slate-800 rounded-lg">
-              <span className="text-[10px] text-slate-400">
-                Data Entrada: <span className="text-slate-200 font-mono font-bold">{warrantyInfo.formattedEntryDate}</span>
-              </span>
-              {warrantyInfo.hasServiceDate ? (
-                <span className="text-xs text-white">
-                  Venc. Garantia: <strong className="text-amber-400 font-bold">{warrantyInfo.formattedExpiryDate}</strong>
+          <div className="flex items-center gap-3 shrink-0 ml-auto">
+            {/* Bloco de Telemetria Compacto em Grade 2 Colunas */}
+            <div className="hidden sm:grid grid-cols-2 text-right px-3 py-1 bg-slate-900 border border-slate-800 rounded-xl shadow-inner gap-x-3 gap-y-0.5 text-[11px] min-w-[270px]">
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-slate-400">Entrada:</span>
+                <span className="text-slate-200 font-mono font-bold">{warrantyInfo.formattedEntryDate}</span>
+              </div>
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-slate-400">Garantia:</span>
+                <strong className="text-amber-400 font-mono font-bold">
+                  {warrantyInfo.hasServiceDate ? warrantyInfo.formattedExpiryDate : '90d pós aprov.'}
+                </strong>
+              </div>
+              {(serviceDate || order?.serviceDate) && (
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="text-slate-400">Aprovação:</span>
+                  <span className="text-slate-200 font-mono font-bold">{formatBrDate(serviceDate || order?.serviceDate)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-emerald-400 font-medium flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-emerald-400" />
+                  Retorno:
                 </span>
-              ) : (
-                <span className="text-[10px] text-amber-400/90 font-medium">
-                  Garantia: 90 dias após aprovação
-                </span>
+                <strong className="text-emerald-300 font-mono font-bold">
+                  {estimatedReturnDateFormatted}
+                </strong>
+              </div>
+              {isFinalized && (
+                <div className="col-span-2 flex items-center justify-between gap-1.5 pt-0.5 border-t border-slate-800/80">
+                  <span className="text-slate-400">Finalização:</span>
+                  <span className="text-emerald-400 font-mono font-bold">
+                    {formatBrDate(order?.finishedAt || order?.updatedAt || order?.serviceDate || order?.createdAt)}
+                  </span>
+                </div>
               )}
             </div>
 
-            {/* Seletor de Status da OS */}
-            <select
-              value={status}
-              onChange={(e) => handleStatusChange(e.target.value as OrderStatus)}
-              className="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 font-bold text-amber-400 focus:outline-none focus:border-amber-500"
-            >
-              <option value="orcamento">1. Orçamento</option>
-              <option value="aguardando_aprovacao">2. Aguardando Aprovação</option>
-              <option value="aprovado">3. Aprovado / Peças</option>
-              <option value="em_andamento">4. Em Execução no Pátio</option>
-              <option value="pronto">5. Pronto para Retirada</option>
-              <option value="finalizado">6. Finalizada / Paga</option>
-              <option value="cancelado">Cancelada</option>
-            </select>
+            {/* Seletor de Status da OS / Badge de Finalizada */}
+            {isFinalized ? (
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Status</span>
+                <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Finalizada / Paga
+                </span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Status</span>
+                <select
+                  value={status}
+                  onChange={(e) => handleStatusChange(e.target.value as OrderStatus)}
+                  className="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 font-bold text-amber-400 focus:outline-none focus:border-amber-500 shadow-sm"
+                >
+                  <option value="orcamento">1. Orçamento</option>
+                  <option value="aguardando_aprovacao">2. Aguardando Aprovação</option>
+                  <option value="aprovado">3. Aprovado / Peças</option>
+                  <option value="em_andamento">4. Em Execução no Pátio</option>
+                  <option value="pronto">5. Pronto para Retirada</option>
+                  <option value="finalizado">6. Finalizada / Paga</option>
+                  <option value="cancelado">Cancelada</option>
+                </select>
+              </div>
+            )}
 
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors ml-1"
               title="Fechar janela"
             >
               <X className="w-5 h-5" />
@@ -936,13 +1130,116 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           </div>
         </div>
 
-        {/* Barra de 3 Abas Rápidas no Topo */}
-        <div className="bg-slate-950 px-4 sm:px-6 pt-2 border-b border-slate-800 flex items-center justify-between gap-2 overflow-x-auto">
-          <div className="flex items-center gap-1 sm:gap-2">
+        {isFinalized ? (
+          <>
+            {/* Visualização de Prontuário / Recibo Completo para O.S. Finalizada com Rolagem Fluida */}
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto p-4 sm:p-6 bg-slate-950/70 flex flex-col items-center">
+              {/* Banner Superior Informativo */}
+              <div className="w-[780px] max-w-full mb-3 flex items-center justify-between gap-3 px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="font-bold text-slate-200">Prontuário & Recibo Documental Concluído</span>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-emerald-400 font-medium">Garantia Ativa até {warrantyInfo.formattedExpiryDate}</span>
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono">
+                  Previsão de Retorno: <strong className="text-emerald-400">{estimatedReturnDateFormatted}</strong>
+                </div>
+              </div>
+
+              {/* Folha do Recibo Oficial com Altura Total e sem Cortes */}
+              <div className="bg-white shadow-2xl rounded-xl overflow-hidden border border-slate-300 max-w-full my-1 mb-8 shrink-0">
+                <ReceiptDocument
+                  ref={finalizedReceiptRef}
+                  order={order || getOrderDataSnapshot()}
+                  client={currentClient}
+                  vehicle={currentVehicle}
+                  mechanic={currentMechanic}
+                  isQuotation={false}
+                  estimatedReturnDate={estimatedReturnDateFormatted}
+                />
+              </div>
+            </div>
+
+            {/* Rodapé Especial para O.S. Finalizada */}
+            <div className="px-5 sm:px-6 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3 flex-wrap shrink-0">
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Documento oficial concluído e registrado no histórico do veículo.</span>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {currentClient?.phone && (
+                  <button
+                    type="button"
+                    onClick={handleSendWhatsAppReceipt}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-colors shadow-sm"
+                    title="Enviar comprovante e resumo da OS para o WhatsApp do cliente"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>Enviar no WhatsApp</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleCopyOrderMessage}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition-colors border border-slate-700"
+                  title="Copiar texto do recibo para a área de transferência"
+                >
+                  {copiedMsg ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
+                      <span className="text-emerald-400 font-bold">Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Copiar Texto</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadFinalizedPng}
+                  disabled={isGeneratingFinalizedPng}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition-colors border border-slate-700 disabled:opacity-50"
+                  title="Baixar imagem em PNG deste recibo"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{isGeneratingFinalizedPng ? 'Baixando...' : 'Baixar PNG'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onPrintReceipt(order || getOrderDataSnapshot())}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                  title="Imprimir Recibo Oficial da O.S."
+                >
+                  <Printer className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Imprimir Recibo</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white rounded-xl transition-colors bg-slate-900 border border-slate-800 ml-1"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Barra de 3 Abas Rápidas no Topo - Mais espaçada e com destaque */}
+            <div className="bg-slate-950 px-6 pt-3 pb-0 border-b border-slate-800 flex items-center justify-between gap-3 overflow-x-auto">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => setActiveTab('diagnostico')}
-              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
+              className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
                 activeTab === 'diagnostico'
                   ? 'bg-slate-900 text-amber-400 border-amber-500 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40'
@@ -955,7 +1252,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('itens')}
-              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
+              className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
                 activeTab === 'itens'
                   ? 'bg-slate-900 text-amber-400 border-amber-500 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40'
@@ -965,7 +1262,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               <span>2. Serviços & Peças</span>
               {services.length + parts.length > 0 && (
                 <span
-                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
                     activeTab === 'itens' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-amber-400'
                   }`}
                 >
@@ -977,7 +1274,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('fechamento')}
-              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
+              className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
                 activeTab === 'fechamento'
                   ? 'bg-slate-900 text-amber-400 border-amber-500 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40'
@@ -990,7 +1287,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               )}
               <span>{isQuotationStage ? '3. Proposta & Orçamento' : '3. Fechamento & Pagamento'}</span>
               <span
-                className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold ${
+                className={`px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold ${
                   activeTab === 'fechamento'
                     ? (isQuotationStage ? 'bg-sky-500/20 text-sky-300' : 'bg-emerald-500/20 text-emerald-300')
                     : 'bg-slate-800/80 text-slate-300'
@@ -1011,48 +1308,196 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <div className="space-y-5 animate-in fade-in duration-150">
               {/* Seção 1: Cliente, Veículo, Mecânico e Data de Entrada / Data do Serviço */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
-                {/* Campo Cliente com Botão Novo (+) Embaixo */}
+                {/* Campo Cliente com Identificação por Tel/CPF e Botão Novo (+) */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-amber-400" />
-                    Cliente
-                  </label>
-                  <select
-                    value={clientId}
-                    onChange={(e) => setClientId(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500"
-                  >
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.phone})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-400 uppercase flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-amber-400" />
+                      Cliente
+                    </label>
+                    {!isReadOnly && (
+                      <button
+                        type="button"
+                        onClick={() => setIsNewClientModalOpen(true)}
+                        className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        title="Cadastrar Novo Cliente & Veículo diretamente pela OS"
+                      >
+                        <Plus className="w-3 h-3 stroke-[3]" />
+                        <span>Novo (+)</span>
+                      </button>
+                    )}
+                  </div>
 
-                  {/* Botão Novo (+) Embaixo de Cliente */}
-                  <div className="mt-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setIsNewClientModalOpen(true)}
-                      className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-1 rounded-lg border border-amber-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                      title="Cadastrar Novo Cliente & Veículo diretamente pela OS"
-                    >
-                      <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                      <span>Novo (+)</span>
-                    </button>
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      disabled={isReadOnly}
+                      value={clientInputValue}
+                      onFocus={(e) => {
+                        if (!isReadOnly) {
+                          setIsClientDropdownOpen(true);
+                          e.target.select();
+                        }
+                      }}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setClientInputValue(val);
+                        setIsClientDropdownOpen(true);
+
+                        // Identificação automática ao entrar com telefone ou CPF
+                        const cleanDigits = val.replace(/\D/g, '');
+                        if (cleanDigits.length >= 6) {
+                          const matched = findClientByPhoneOrDoc(val, clients);
+                          if (matched && cleanDigits.length >= 8) {
+                            handleIdentifyAndPullClient(matched);
+                          }
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const matched =
+                            findClientByPhoneOrDoc(clientInputValue, clients) ||
+                            (filteredClientsList.length === 1 ? filteredClientsList[0] : undefined);
+                          if (matched) {
+                            handleIdentifyAndPullClient(matched);
+                          }
+                        }
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          setIsClientDropdownOpen(false);
+                          if (clientInputValue.trim()) {
+                            const matched = findClientByPhoneOrDoc(clientInputValue, clients);
+                            if (matched) {
+                              handleIdentifyAndPullClient(matched);
+                            } else if (currentClient) {
+                              setClientInputValue(currentClient.name);
+                            }
+                          }
+                        }, 250);
+                      }}
+                      placeholder="Buscar por telefone, CPF ou nome..."
+                      className={`w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-16 py-2 text-xs sm:text-sm text-white font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500 ${
+                        isReadOnly ? 'opacity-80 cursor-default' : ''
+                      }`}
+                    />
+                    {!isReadOnly && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-slate-400">
+                        {clientInputValue && (
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setClientInputValue('');
+                              setIsClientDropdownOpen(true);
+                            }}
+                            className="p-1 hover:text-white rounded"
+                            title="Limpar campo para buscar outro cliente"
+                          >
+                            <X className="w-3.5 h-3.5 text-slate-400 hover:text-white" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
+                          className="p-1 hover:text-white rounded"
+                          title="Ver lista de clientes cadastrados"
+                        >
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isClientDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Dropdown Flutuante (Absolute) de Sugestões de Clientes */}
+                    {!isReadOnly && isClientDropdownOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-50 divide-y divide-slate-800">
+                        <div className="px-3 py-1.5 bg-slate-950/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 sticky top-0 z-10">
+                          <span>Clientes Cadastrados ({filteredClientsList.length})</span>
+                          {isInputMatchingSelectedClient && (
+                            <span className="text-amber-400 font-normal lowercase text-[10px]">exibindo todos</span>
+                          )}
+                        </div>
+                        {filteredClientsList.length === 0 ? (
+                          <div className="p-3 text-xs text-slate-400 text-center">
+                            Nenhum cliente localizado para "{clientInputValue}".
+                          </div>
+                        ) : (
+                          filteredClientsList.map((c) => {
+                            const isSelected = c.id === clientId;
+                            const lastVeh = getClientLatestVehicle(c.id, vehicles, allOrders);
+                            return (
+                              <div
+                                key={c.id}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleIdentifyAndPullClient(c, lastVeh);
+                                }}
+                                className={`p-2.5 hover:bg-slate-800 cursor-pointer flex items-center justify-between text-xs transition-colors ${
+                                  isSelected ? 'bg-amber-500/15 border-l-4 border-amber-500' : ''
+                                }`}
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-white block truncate">{c.name}</span>
+                                    {isSelected && (
+                                      <span className="text-[9px] bg-amber-500/20 text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-500/40">
+                                        Selecionado
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[11px] text-slate-400 font-mono block">
+                                    Tel: {formatPhone(c.phone)} {c.document ? `• Doc: ${formatCpfCnpj(c.document)}` : ''}
+                                  </span>
+                                </div>
+                                {lastVeh && (
+                                  <div className="text-right shrink-0">
+                                    <span className="text-[10px] bg-slate-950 border border-slate-700 font-mono font-bold text-amber-400 px-1.5 py-0.5 rounded block">
+                                      {lastVeh.plate}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 block truncate max-w-[120px]">
+                                      {lastVeh.model}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Campo Veículo do Cliente com Botão Novo (+) Embaixo */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1 flex items-center gap-1.5">
-                    <Car className="w-3.5 h-3.5 text-amber-400" />
-                    Veículo do Cliente
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-400 uppercase flex items-center gap-1.5">
+                      <Car className="w-3.5 h-3.5 text-amber-400" />
+                      Veículo do Cliente
+                    </label>
+                    {!isReadOnly && (
+                      <button
+                        type="button"
+                        onClick={() => setIsNewVehicleModalOpen(true)}
+                        disabled={!clientId}
+                        className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-40 px-2 py-0.5 rounded border border-amber-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        title="Cadastrar Novo Veículo para este cliente"
+                      >
+                        <Plus className="w-3 h-3 stroke-[3]" />
+                        <span>Novo (+)</span>
+                      </button>
+                    )}
+                  </div>
                   <select
                     value={vehicleId}
                     onChange={(e) => setVehicleId(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500"
+                    disabled={isReadOnly}
+                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500 ${
+                      isReadOnly ? 'opacity-80 cursor-default' : ''
+                    }`}
                   >
                     {clientVehicles.length === 0 ? (
                       <option value="">Nenhum veículo cadastrado para este cliente</option>
@@ -1064,20 +1509,6 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       ))
                     )}
                   </select>
-
-                  {/* Botão Novo (+) Embaixo de Veículo */}
-                  <div className="mt-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setIsNewVehicleModalOpen(true)}
-                      disabled={!clientId}
-                      className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-40 px-2 py-1 rounded-lg border border-amber-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                      title="Cadastrar Novo Veículo para este cliente"
-                    >
-                      <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                      <span>Novo (+)</span>
-                    </button>
-                  </div>
                 </div>
 
                 {/* Mecânico Responsável */}
@@ -1089,7 +1520,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   <select
                     value={mechanicId}
                     onChange={(e) => setMechanicId(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500"
+                    disabled={isReadOnly}
+                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500 ${
+                      isReadOnly ? 'opacity-80 cursor-default' : ''
+                    }`}
                   >
                     {mechanics.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -1109,14 +1543,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     type="date"
                     value={entryDate}
                     onChange={(e) => setEntryDate(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500 font-mono font-medium"
+                    disabled={isReadOnly}
+                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500 font-mono font-medium ${
+                      isReadOnly ? 'opacity-80 cursor-default' : ''
+                    }`}
                   />
 
                   {/* Data do Serviço: Apenas com aprovação da OS */}
                   {status === 'aprovado' ||
                   status === 'em_andamento' ||
                   status === 'pronto' ||
-                  status === 'finalizado' ||
                   serviceDate ? (
                     <div className="mt-2 pt-2 border-t border-slate-800">
                       <label className="block text-[11px] font-semibold text-emerald-400 uppercase mb-1 flex items-center gap-1">
@@ -1127,7 +1563,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         type="date"
                         value={serviceDate || toIsoDate(new Date())}
                         onChange={(e) => setServiceDate(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono font-medium"
+                        disabled={isReadOnly}
+                        className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono font-medium ${
+                          isReadOnly ? 'opacity-80 cursor-default' : ''
+                        }`}
                       />
                       <div className="mt-1 text-xs text-slate-300">
                         <span className="text-[11px] text-slate-400">Venc. Garantia: </span>
@@ -1153,8 +1592,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     rows={2}
                     value={complaintDescription}
                     onChange={(e) => setComplaintDescription(e.target.value)}
+                    readOnly={isReadOnly}
                     placeholder="Ex: Barulho na roda direita ao frear, pedal fofo, luz de injeção acesa..."
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 ${
+                      isReadOnly ? 'opacity-85' : ''
+                    }`}
                   />
                 </div>
                 <div>
@@ -1165,8 +1607,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     rows={2}
                     value={technicalDiagnostic}
                     onChange={(e) => setTechnicalDiagnostic(e.target.value)}
+                    readOnly={isReadOnly}
                     placeholder="Ex: Pastilhas no ferro, fluido contaminado, correia ressecada com 70 mil km..."
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 ${
+                      isReadOnly ? 'opacity-85' : ''
+                    }`}
                   />
                 </div>
               </div>
@@ -1180,16 +1625,18 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </h4>
 
                   {/* Botão de 1 Toque: Marcar Tudo OK */}
-                  <button
-                    type="button"
-                    onClick={handleToggleChecklistAll}
-                    className="px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
-                  >
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    {hasSpareWheel && hasJack && hasLugWrench && hasTriangle
-                      ? 'Desmarcar Todos'
-                      : 'Marcar Tudo OK'}
-                  </button>
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={handleToggleChecklistAll}
+                      className="px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+                    >
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      {hasSpareWheel && hasJack && hasLugWrench && hasTriangle
+                        ? 'Desmarcar Todos'
+                        : 'Marcar Tudo OK'}
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1203,7 +1650,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       type="number"
                       value={mileage}
                       onChange={(e) => setMileage(Number(e.target.value))}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-white font-mono"
+                      disabled={isReadOnly}
+                      className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-white font-mono ${
+                        isReadOnly ? 'opacity-80' : ''
+                      }`}
                     />
                   </div>
 
@@ -1223,7 +1673,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       step="25"
                       value={fuelLevel}
                       onChange={(e) => setFuelLevel(Number(e.target.value))}
-                      className="w-full accent-amber-500 cursor-pointer"
+                      disabled={isReadOnly}
+                      className="w-full accent-amber-500 cursor-pointer disabled:opacity-60"
                     />
                     <div className="flex justify-between text-[10px] text-slate-500 font-mono">
                       <span>Reserva</span>
@@ -1239,7 +1690,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         type="checkbox"
                         checked={hasSpareWheel}
                         onChange={(e) => setHasSpareWheel(e.target.checked)}
-                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4"
+                        disabled={isReadOnly}
+                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
                       />
                       Estepe
                     </label>
@@ -1248,7 +1700,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         type="checkbox"
                         checked={hasJack}
                         onChange={(e) => setHasJack(e.target.checked)}
-                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4"
+                        disabled={isReadOnly}
+                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
                       />
                       Macaco
                     </label>
@@ -1257,7 +1710,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         type="checkbox"
                         checked={hasLugWrench}
                         onChange={(e) => setHasLugWrench(e.target.checked)}
-                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4"
+                        disabled={isReadOnly}
+                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
                       />
                       Chave de Roda
                     </label>
@@ -1266,7 +1720,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         type="checkbox"
                         checked={hasTriangle}
                         onChange={(e) => setHasTriangle(e.target.checked)}
-                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4"
+                        disabled={isReadOnly}
+                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
                       />
                       Triângulo
                     </label>
@@ -1274,7 +1729,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
 
                 {/* Canvas Interativo de Lataria */}
-                <CarDamageCanvas damagePoints={damagePoints} onChange={setDamagePoints} />
+                <CarDamageCanvas damagePoints={damagePoints} onChange={setDamagePoints} readOnly={isReadOnly} />
               </div>
 
               {/* Botão de Avanço Rápido para a Aba 2 */}
@@ -1694,8 +2149,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setActiveTab('fechamento')}
-                          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 shadow-lg transition-all active:scale-95"
-                          title="Avançar diretamente para o fechamento da O.S."
+                          disabled={isFinalized}
+                          className={`font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 shadow-lg transition-all ${
+                            isFinalized
+                              ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/60 shadow-none opacity-60'
+                              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 active:scale-95'
+                          }`}
+                          title={isFinalized ? 'Esta O.S. já foi finalizada' : 'Avançar diretamente para o fechamento da O.S.'}
                         >
                           <span>Avançar para Fechamento</span>
                           <ChevronRight className="w-4 h-4 stroke-[3]" />
@@ -2069,7 +2529,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('fechamento')}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm rounded-xl flex items-center gap-1.5 transition-colors shadow-sm"
+                  disabled={isFinalized}
+                  className={`px-4 py-2 font-bold text-xs sm:text-sm rounded-xl flex items-center gap-1.5 transition-all shadow-sm ${
+                    isFinalized
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/60 shadow-none opacity-60'
+                      : 'bg-amber-500 hover:bg-amber-400 text-slate-950 hover:scale-[1.02] active:scale-95'
+                  }`}
+                  title={isFinalized ? 'Esta O.S. já foi finalizada' : undefined}
                 >
                   <span>{isQuotationStage ? 'Avançar para Proposta & Envio' : 'Avançar para Fechamento & Pagamento'}</span>
                   <ChevronRight className="w-4 h-4" />
@@ -2466,13 +2932,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <button
               type="button"
               onClick={handleSave}
-              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm rounded-lg shadow-md shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="px-5 py-2.5 font-black text-xs sm:text-sm rounded-lg shadow-md transition-all bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98]"
             >
               Salvar Ordem de Serviço
             </button>
           </div>
         </div>
-      </div>
+      </>
+    )}
+  </div>
 
 {/* Modal de Finalização / Checkout Rápido */}
       <QuickOrderCheckoutModal
@@ -2562,6 +3030,67 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </div>
 
               <div className="p-6 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
+                {/* Banner de Reconhecimento Automático de Cliente Existente */}
+                {matchedClientInQuickModal && (
+                  <div className="bg-amber-500/15 border-2 border-amber-500/50 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold shrink-0">
+                        <UserCheck className="w-4 h-4 stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase text-amber-400 block tracking-wider">
+                          Cliente Já Cadastrado Localizado!
+                        </span>
+                        <span className="text-sm font-black text-white block">
+                          {matchedClientInQuickModal.name}
+                        </span>
+                        <span className="text-[11px] text-slate-300 font-mono block">
+                          Tel: {formatPhone(matchedClientInQuickModal.phone)} {matchedClientInQuickModal.document ? `• Doc: ${formatCpfCnpj(matchedClientInQuickModal.document)}` : ''}
+                        </span>
+                        {(() => {
+                          const lastVeh = getClientLatestVehicle(matchedClientInQuickModal.id, vehicles, allOrders);
+                          return lastVeh ? (
+                            <div className="text-[11px] text-emerald-400 font-medium flex items-center gap-1 mt-0.5">
+                              <Car className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <span>Último veículo: <strong className="font-mono text-amber-300">{lastVeh.plate}</strong> - {lastVeh.brand} {lastVeh.model} ({lastVeh.mileage ? `${lastVeh.mileage.toLocaleString('pt-BR')} km` : ''})</span>
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-slate-400 mt-0.5">Nenhum veículo vinculado ainda</div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const lastVeh = getClientLatestVehicle(matchedClientInQuickModal.id, vehicles, allOrders);
+                          handleIdentifyAndPullClient(matchedClientInQuickModal, lastVeh);
+                          setIsNewClientModalOpen(false);
+                        }}
+                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs shadow-md transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-1.5"
+                        title="Puxar cliente e seu último veículo para esta OS e fechar modal"
+                      >
+                        <UserCheck className="w-4 h-4 stroke-[2.5]" />
+                        <span>Puxar Cliente & Último Veículo</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewClientName(matchedClientInQuickModal.name);
+                          setNewClientPhone(formatPhone(matchedClientInQuickModal.phone));
+                          setNewClientDocument(formatCpfCnpj(matchedClientInQuickModal.document || ''));
+                          setNewClientAddress(matchedClientInQuickModal.address || '');
+                        }}
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-2.5 py-1.5 rounded-lg text-xs border border-slate-700"
+                        title="Preencher os campos para cadastrar novo veículo para este cliente"
+                      >
+                        Carregar Dados
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-slate-300 font-semibold mb-1">Nome Completo do Cliente *</label>
                   <input
@@ -2581,7 +3110,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       required
                       type="text"
                       value={newClientPhone}
-                      onChange={(e) => setNewClientPhone(e.target.value)}
+                      onChange={(e) => setNewClientPhone(formatPhone(e.target.value))}
                       placeholder="(11) 98765-4321"
                       className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
                     />
@@ -2591,7 +3120,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <input
                       type="text"
                       value={newClientDocument}
-                      onChange={(e) => setNewClientDocument(e.target.value)}
+                      onChange={(e) => setNewClientDocument(formatCpfCnpj(e.target.value))}
                       placeholder="000.000.000-00"
                       className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
                     />

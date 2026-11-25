@@ -299,7 +299,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
           </div>
           <div className="mt-3">
             <div className="text-2xl font-black text-emerald-400 font-mono">
-              R$ {totalEntrouNoCaixa.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {totalEntrouNoCaixa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-slate-400 mt-1">Dinheiro e Pix já recebidos</p>
           </div>
@@ -317,7 +317,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
           </div>
           <div className="mt-3">
             <div className="text-2xl font-black text-red-400 font-mono">
-              R$ {totalContasAPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {totalContasAPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-slate-400 mt-1">Boletos e despesas a vencer</p>
           </div>
@@ -339,7 +339,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                 balancoMes >= 0 ? 'text-amber-400' : 'text-red-400'
               }`}
             >
-              R$ {balancoMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {balancoMes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-slate-400 mt-1">Entrou no Caixa (-) Contas a Pagar</p>
           </div>

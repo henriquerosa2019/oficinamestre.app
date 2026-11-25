@@ -1,8 +1,10 @@
 import React, { forwardRef } from 'react';
 import { ServiceOrder, Client, Vehicle, Mechanic } from '../types';
-import { getOrderWarranty } from '../utils/warranty';
+import { getOrderWarranty, formatBrDate } from '../utils/warranty';
 import { AlertCircle } from 'lucide-react';
 import logoImg from '../assets/logo.png';
+import { PreventiveMaintenanceService } from '../services/preventiveMaintenance';
+import { StorageService } from '../services/storage';
 
 export interface ReceiptDocumentProps {
   order: ServiceOrder;
@@ -10,12 +12,72 @@ export interface ReceiptDocumentProps {
   vehicle?: Vehicle;
   mechanic?: Mechanic;
   isQuotation?: boolean;
+  estimatedReturnDate?: string;
 }
 
+const formatPaymentMethod = (method?: string): string => {
+  switch (method) {
+    case 'pix':
+      return 'PIX';
+    case 'dinheiro':
+      return 'DINHEIRO';
+    case 'cartao_credito':
+      return 'CARTÃO DE CRÉDITO';
+    case 'cartao_debito':
+      return 'CARTÃO DE DÉBITO';
+    case 'a_prazo':
+      return 'A PRAZO';
+    case 'boleto':
+      return 'BOLETO';
+    default:
+      return method ? method.toUpperCase().replace('_', ' ') : 'À VISTA';
+  }
+};
+
 export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
-  ({ order, client, vehicle, mechanic, isQuotation }, ref) => {
+  ({ order, client, vehicle, mechanic, isQuotation, estimatedReturnDate }, ref) => {
     const warranty = getOrderWarranty(order);
     const quotation = isQuotation ?? (order.status === 'orcamento' || order.status === 'aguardando_aprovacao');
+
+    const estimatedReturn = estimatedReturnDate || (() => {
+      // 1. Tenta buscar registro salvo no storage para esta OS ou veículo
+      const storedRecords = StorageService.getMaintenanceRecords();
+      const orderRecord = storedRecords.find(
+        (r) => (order.id && r.serviceOrderId === order.id) || (order.vehicleId && r.vehicleId === order.vehicleId)
+      );
+      if (orderRecord?.estimatedReturnDate) {
+        return formatBrDate(orderRecord.estimatedReturnDate);
+      }
+
+      // 2. Cálculo dinâmico se não houver registro prévio
+      let detectedType = 'troca_oleo';
+      if (order.services && order.services.length > 0) {
+        const types = order.services.map((s) => PreventiveMaintenanceService.detectServiceType(s.description));
+        if (types.includes('troca_oleo')) detectedType = 'troca_oleo';
+        else if (types.includes('alinhamento')) detectedType = 'alinhamento';
+        else if (types.includes('freios')) detectedType = 'freios';
+        else if (types.includes('revisao_geral')) detectedType = 'revisao_geral';
+        else if (types.includes('correia_dentada')) detectedType = 'correia_dentada';
+        else detectedType = types[0] || 'troca_oleo';
+      } else if (order.parts && order.parts.length > 0) {
+        const types = order.parts.map((p) => PreventiveMaintenanceService.detectServiceType(p.description));
+        if (types.includes('troca_oleo')) detectedType = 'troca_oleo';
+        else if (types.includes('freios')) detectedType = 'freios';
+        else detectedType = types[0] || 'troca_oleo';
+      }
+
+      const profile = vehicle?.usageProfile || 'normal';
+      const params = PreventiveMaintenanceService.getIntervalParams(
+        detectedType as any,
+        profile,
+        vehicle?.averageMonthlyKm
+      );
+
+      const baseDateStr = order.serviceDate || order.entryDate || new Date().toISOString().split('T')[0];
+      const baseD = new Date(baseDateStr.includes('T') ? baseDateStr.split('T')[0] : baseDateStr);
+      const retDate = new Date(baseD.getTime() + params.intervalDays * 24 * 60 * 60 * 1000);
+      return formatBrDate(retDate.toISOString().split('T')[0]);
+    })();
 
     return (
       <div
@@ -74,14 +136,24 @@ export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
                 Validade: 48 horas
               </span>
             )}
-            {warranty.hasServiceDate && (
+            {(order.serviceDate || warranty.hasServiceDate) && (
               <span className="text-[10px] text-slate-700 block font-medium">
-                Data Serviço: {warranty.formattedServiceDate}
+                Data Aprovação: {formatBrDate(order.serviceDate || warranty.serviceDateStr)}
+              </span>
+            )}
+            {order.status === 'finalizado' && (
+              <span className="text-[10px] text-emerald-800 block font-bold">
+                Data Finalização: {formatBrDate(order.finishedAt || order.updatedAt || order.serviceDate || order.createdAt)}
               </span>
             )}
             <span className="text-[11px] text-slate-950 block mt-0.5 font-black tracking-tight">
               Venc. Garantia: <strong>{warranty.formattedExpiryDate}</strong>
             </span>
+            {estimatedReturn && (
+              <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">
+                Previsão Retorno: <strong>{estimatedReturn}</strong>
+              </span>
+            )}
           </div>
         </div>
 
@@ -206,7 +278,7 @@ export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
                 {quotation
                   ? 'PROPOSTA (AGUARDANDO APROVAÇÃO)'
                   : order.isPaid
-                  ? `PAGO (${order.paymentMethod?.toUpperCase() || 'À VISTA'})`
+                  ? `PAGO (${formatPaymentMethod(order.paymentMethod)})`
                   : 'PENDENTE NO BALCÃO'}
               </strong>
             </div>
@@ -456,7 +528,7 @@ export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
               <p className="text-[10px] text-slate-700 mt-0.5 leading-relaxed m-0">
                 Prezado(a) <strong>{client?.name || 'Cliente'}</strong>, salve o WhatsApp comercial da{' '}
                 <strong>Oficina do Rico</strong> (Rico: <strong>(21) 96463-2820</strong>) na sua agenda para acompanhar a
-                garantia legal de 90 dias (válida até <strong>{warranty.formattedExpiryDate}</strong>), receber laudos e o
+                garantia legal de 90 dias (válida até <strong>{warranty.formattedExpiryDate}</strong>){estimatedReturn ? `, com previsão para o próximo retorno preventivo em ${estimatedReturn}` : ''}, receber laudos e o
                 histórico preventivo do seu <strong>{vehicle?.brand} {vehicle?.model}</strong>.
               </p>
             </div>

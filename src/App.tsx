@@ -70,12 +70,16 @@ export const App: React.FC = () => {
     (o) => o.status !== 'finalizado' && o.status !== 'cancelado'
   ).length;
 
-  // Contagem de alertas pendentes de ação preventiva (urgente 1 dia, 7 dias e vencidos)
-  const pendingAlertsCount = PreventiveMaintenanceService.calculateAlerts(
+  // Contagem de veículos com alertas pendentes de ação preventiva (urgente 1 dia, 7 dias e vencidos)
+  const allAlerts = PreventiveMaintenanceService.calculateAlerts(
     maintenanceRecords,
     vehicles,
     clients
-  ).filter((a) => a.status === 'urgente_1dia' || a.status === 'alerta_7dias' || a.status === 'vencido').length;
+  );
+  const groupedAlerts = PreventiveMaintenanceService.groupAlertsByVehicle(allAlerts);
+  const pendingAlertsCount = groupedAlerts.filter(
+    (g) => g.worstStatus === 'urgente_1dia' || g.worstStatus === 'alerta_7dias' || g.worstStatus === 'vencido'
+  ).length;
 
   // Ações de Ordem de Serviço
   const handleOpenNewOrder = () => {
@@ -442,6 +446,107 @@ export const App: React.FC = () => {
     setIsOrderModalOpen(true);
   };
 
+  const handleOpenNewOrderForVehicle = (client: Client, vehicle: Vehicle) => {
+    const draftOrder: ServiceOrder = {
+      id: '',
+      orderNumber: `OS-${Math.floor(1000 + Math.random() * 9000)}`,
+      clientId: client.id,
+      vehicleId: vehicle.id,
+      mechanicId: mechanics[0]?.id || '',
+      status: 'orcamento',
+      complaintDescription: `Atendimento / Revisão para ${vehicle.brand} ${vehicle.model} (${vehicle.plate})`,
+      technicalDiagnostic: '',
+      checklist: {
+        mileage: vehicle.mileage || 50000,
+        fuelLevel: 50,
+        hasSpareWheel: true,
+        hasJack: true,
+        hasLugWrench: true,
+        hasTriangle: true,
+        hasManual: true,
+        hasKeyChain: true,
+        lightsWorking: true,
+        hornWorking: true,
+        wipersWorking: true,
+        damagePoints: [],
+      },
+      parts: [],
+      services: [],
+      partsTotal: 0,
+      servicesTotal: 0,
+      grossTotal: 0,
+      discount: 0,
+      netTotal: 0,
+      partsCostTotal: 0,
+      mechanicsCommissionTotal: 0,
+      netProfit: 0,
+      profitMarginPercent: 0,
+      isPaid: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setEditingOrder(draftOrder);
+    setIsOrderModalOpen(true);
+  };
+
+  const handleSchedulePreventive = (
+    order: ServiceOrder,
+    vehicle?: Vehicle,
+    client?: Client,
+    observation?: string
+  ) => {
+    if (!vehicle || !client) return;
+
+    const obsText = observation || order.technicalDiagnostic || order.complaintDescription;
+    const serviceType = PreventiveMaintenanceService.detectServiceType(obsText);
+    const serviceName =
+      obsText.includes('Pastilha') || obsText.includes('freio')
+        ? 'Revisão de Pastilhas de Freio / Óleo'
+        : 'Revisão Preventiva (Retorno de O.S.)';
+
+    const today = new Date().toISOString().split('T')[0];
+    const profile = vehicle.usageProfile || 'normal';
+    const params = PreventiveMaintenanceService.getIntervalParams(
+      serviceType,
+      profile,
+      vehicle.averageMonthlyKm
+    );
+
+    const baseDate = new Date();
+    const returnDateObj = new Date(baseDate.getTime() + params.intervalDays * 24 * 60 * 60 * 1000);
+    const estimatedReturnDate = returnDateObj.toISOString().split('T')[0];
+    const currentMileage = order.checklist?.mileage || vehicle.mileage || 50000;
+    const estimatedReturnMileage = currentMileage + params.intervalKm;
+
+    const newRecord: MaintenanceRecord = {
+      id: 'mrec-' + Date.now(),
+      serviceOrderId: order.id,
+      vehicleId: vehicle.id,
+      clientId: client.id,
+      serviceType,
+      serviceName,
+      completedDate: today,
+      mileageAtService: currentMileage,
+      usageProfile: profile,
+      estimatedReturnDate,
+      estimatedReturnMileage,
+      intervalMonths: params.intervalMonths,
+      intervalKm: params.intervalKm,
+      notes: `Alerta gerado a partir do prontuário da ${order.orderNumber}: ${obsText}`,
+      contactStatus: 'pendente',
+    };
+
+    StorageService.saveMaintenanceRecord(newRecord);
+    setMaintenanceRecords(StorageService.getMaintenanceRecords());
+    setActiveTab('maintenance');
+  };
+
+  const handleUpdateOrderDiagnostic = (orderId: string, diagnostic: string) => {
+    StorageService.updateOrderDiagnostic(orderId, diagnostic);
+    setOrders(StorageService.getOrders());
+  };
+
   // Backup & Reset
   const handleResetData = () => {
     if (window.confirm('Deseja recarregar os dados de demonstração da oficina?')) {
@@ -469,6 +574,7 @@ export const App: React.FC = () => {
         setActiveTab={setActiveTab}
         onNewOrder={handleOpenNewOrder}
         carsInShopCount={carsInShopCount}
+        totalOrdersCount={orders.length}
         pendingAlertsCount={pendingAlertsCount}
         onResetData={handleResetData}
         onExportData={handleExportData}
@@ -523,8 +629,12 @@ export const App: React.FC = () => {
             vehicles={vehicles}
             orders={orders}
             onSaveClient={handleSaveClient}
+            onSaveVehicle={handleSaveVehicle}
             onDeleteClient={handleDeleteClient}
             onOpenOrder={handleOpenExistingOrder}
+            onNewOrderForVehicle={handleOpenNewOrderForVehicle}
+            onSchedulePreventive={handleSchedulePreventive}
+            onUpdateOrderDiagnostic={handleUpdateOrderDiagnostic}
           />
         )}
 
@@ -559,6 +669,7 @@ export const App: React.FC = () => {
           setEditingOrder(null);
         }}
         order={editingOrder}
+        orders={orders}
         onSave={handleSaveOrder}
         clients={clients}
         vehicles={vehicles}
