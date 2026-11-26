@@ -24,6 +24,8 @@ import {
   Truck,
   Phone,
   MapPin,
+  Database,
+  PlusCircle,
 } from 'lucide-react';
 import { XMLParserService } from '../services/xmlParser';
 import { ExcelParserService, ParsedExcelRow } from '../services/excelParser';
@@ -579,27 +581,7 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                 </select>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Botão Importar Planilha Excel */}
-                <button
-                  type="button"
-                  onClick={() => setIsExcelModalOpen(true)}
-                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-3.5 py-1.5 rounded-lg text-xs shadow-md shadow-emerald-950/40 transition-all hover:scale-[1.02]"
-                >
-                  <FileSpreadsheet className="w-4 h-4 stroke-[2.5]" />
-                  Importar Excel (.xlsx)
-                </button>
-
-                {/* Botão Importar XML Destacado */}
-                <button
-                  type="button"
-                  onClick={() => setIsXmlModalOpen(true)}
-                  className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-3.5 py-1.5 rounded-lg text-xs shadow-md shadow-amber-500/10 transition-all hover:scale-[1.02]"
-                >
-                  <UploadCloud className="w-4 h-4 stroke-[2.5]" />
-                  Importar XML (NF-e)
-                </button>
-
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -1075,6 +1057,42 @@ export const PartsInventoryView: React.FC<PartsInventoryViewProps> = ({
                 );
               })
             )}
+          </div>
+
+          {/* Seção de Importação de Peças (Final da Área de Estoque) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg mt-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                  <Database className="w-4 h-4 text-amber-400" />
+                  Importação Rápida de Estoque & Catálogo
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Importe notas fiscais eletrônicas de fornecedores ou planilhas de peças sem redigitar tudo manualmente.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                {/* Botão Importar Planilha Excel */}
+                <button
+                  type="button"
+                  onClick={() => setIsExcelModalOpen(true)}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm shadow-md shadow-emerald-950/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <FileSpreadsheet className="w-4 h-4 stroke-[2.5]" />
+                  <span>Importar Excel (.xlsx)</span>
+                </button>
+
+                {/* Botão Importar XML Destacado */}
+                <button
+                  type="button"
+                  onClick={() => setIsXmlModalOpen(true)}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm shadow-md shadow-amber-500/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <UploadCloud className="w-4 h-4 stroke-[2.5]" />
+                  <span>Importar XML (NF-e)</span>
+                </button>
+              </div>
+            </div>
           </div>
         </>
       ) : (

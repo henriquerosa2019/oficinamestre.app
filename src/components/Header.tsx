@@ -46,26 +46,30 @@ export const Header: React.FC<HeaderProps> = ({
     <>
       {/* Header Superior Sticky */}
       <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shadow-md">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between min-h-[64px] sm:min-h-[76px] py-2 sm:py-2.5 gap-2 sm:gap-4">
             {/* Logo & Marca */}
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
               <img
                 src="/logo.png"
-                alt="Oficina do Rico"
-                className="w-9 h-9 sm:w-12 sm:h-12 rounded-full object-contain bg-slate-950 border border-amber-500/40 p-0.5 shadow-lg shadow-amber-500/20 shrink-0"
+                alt="Rico Auto Mecânica"
+                className="w-[54px] h-[54px] sm:w-[68px] sm:h-[68px] rounded-2xl object-contain bg-slate-950 border-2 border-amber-500/60 p-1 shadow-lg shadow-amber-500/25 shrink-0 transition-transform hover:scale-105"
               />
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="text-base sm:text-lg font-black tracking-tight text-white truncate">
-                    Oficina do <span className="text-amber-500">Rico</span>
+              <div className="min-w-0 flex flex-col justify-center">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base sm:text-xl font-black tracking-tight text-white whitespace-nowrap">
+                    Rico <span className="text-amber-400">Auto Mecânica</span>
                   </span>
-                  <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded shrink-0">
-                    Auto Mecânica
+                  <span className="hidden sm:inline-flex items-center text-[10px] uppercase font-black tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                    Pro
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 hidden sm:block truncate">
-                  Gestão Ágil de Serviços, Peças & Clientes • (21) 96463-2820
+                <p className="text-[10px] sm:text-[11px] text-slate-400 truncate flex items-center gap-1">
+                  <span className="text-amber-500/90 font-bold hidden xs:inline">Oficina do Rico</span>
+                  <span className="text-slate-600 hidden xs:inline">•</span>
+                  <span className="font-medium text-slate-300">(21) 96463-2820</span>
+                  <span className="text-slate-600 hidden md:inline">•</span>
+                  <span className="hidden md:inline text-slate-400">Gestão Especializada</span>
                 </p>
               </div>
             </div>
@@ -356,15 +360,15 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative bg-slate-900 border-t border-slate-800 rounded-t-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto z-10 animate-in slide-in-from-bottom duration-200">
             {/* Cabeçalho do Drawer */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <img
                   src="/logo.png"
-                  alt="Oficina do Rico"
-                  className="w-8 h-8 rounded-full border border-amber-500/40 object-contain bg-slate-950 p-0.5"
+                  alt="Rico Auto Mecânica"
+                  className="w-12 h-12 rounded-xl border-2 border-amber-500/50 object-contain bg-slate-950 p-1 shadow-md shadow-amber-500/20"
                 />
                 <div>
-                  <h4 className="text-sm font-black text-white">Oficina do Rico Pro</h4>
-                  <p className="text-[11px] text-slate-400">Ferramentas & Demonstração</p>
+                  <h4 className="text-base font-black text-white">Rico <span className="text-amber-400">Auto Mecânica</span> Pro</h4>
+                  <p className="text-[11px] text-amber-500/90 font-medium">Oficina do Rico • (21) 96463-2820</p>
                 </div>
               </div>
               <button
