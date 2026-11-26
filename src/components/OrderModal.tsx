@@ -49,12 +49,14 @@ import {
   UserCheck,
   Edit,
   ChevronDown,
+  Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import { formatPhone, formatCpfCnpj } from './ClientsView';
 import { CarDamageCanvas } from './CarDamageCanvas';
 import { WhatsAppService } from '../services/whatsapp';
 import { QuickOrderCheckoutModal } from './QuickOrderCheckoutModal';
-import { getOrderWarranty, toIsoDate, formatBrDate } from '../utils/warranty';
+import { getOrderWarranty, toIsoDate, formatBrDate, parseLocalDate } from '../utils/warranty';
 import { PreventiveMaintenanceService } from '../services/preventiveMaintenance';
 import { StorageService } from '../services/storage';
 import { ReceiptDocument } from './ReceiptDocument';
@@ -448,17 +450,22 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   // Cálculo da Data Prevista de Retorno (Previsão Preventiva)
   const estimatedReturnDateFormatted = (() => {
-    // 1. Tenta buscar registro salvo no storage para esta OS ou veículo
+    const baseDateStr = serviceDate || entryDate || toIsoDate(new Date());
+
+    // 1. Tenta buscar registro salvo no storage para esta OS ou veículo, garantindo que seja futuro
     const storedRecords = StorageService.getMaintenanceRecords();
     const orderRecord = storedRecords.find(
-      (r) => (order?.id && r.serviceOrderId === order.id) || (vehicleId && r.vehicleId === vehicleId)
+      (r) =>
+        ((order?.id && r.serviceOrderId === order.id) || (vehicleId && r.vehicleId === vehicleId)) &&
+        r.estimatedReturnDate &&
+        r.estimatedReturnDate > baseDateStr
     );
 
     if (orderRecord?.estimatedReturnDate) {
       return formatBrDate(orderRecord.estimatedReturnDate);
     }
 
-    // 2. Se não houver registro prévio, calcula dinamicamente baseado nos serviços/peças da OS e perfil do veículo
+    // 2. Se não houver registro prévio futuro, calcula dinamicamente baseado nos serviços/peças da OS e perfil do veículo
     let detectedType = 'troca_oleo';
     if (services.length > 0) {
       const types = services.map((s) => PreventiveMaintenanceService.detectServiceType(s.description));
@@ -483,10 +490,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       currentV?.averageMonthlyKm
     );
 
-    const baseDateStr = serviceDate || entryDate || new Date().toISOString().split('T')[0];
-    const baseD = new Date(baseDateStr.includes('T') ? baseDateStr.split('T')[0] : baseDateStr);
-    const retDate = new Date(baseD.getTime() + params.intervalDays * 24 * 60 * 60 * 1000);
-    return formatBrDate(retDate.toISOString().split('T')[0]);
+    const baseD = parseLocalDate(baseDateStr);
+    const retDate = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate() + params.intervalDays);
+    return formatBrDate(retDate);
   })();
 
   // Filtros em Tempo Real para Busca Digitável
@@ -1681,48 +1687,67 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Acessórios Obrigatórios */}
-                  <div className="sm:col-span-2 flex flex-wrap gap-3 items-center pt-2">
-                    <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
-                      <input
-                        type="checkbox"
-                        checked={hasSpareWheel}
-                        onChange={(e) => setHasSpareWheel(e.target.checked)}
-                        disabled={isReadOnly}
-                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
-                      />
-                      Estepe
-                    </label>
-                    <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
-                      <input
-                        type="checkbox"
-                        checked={hasJack}
-                        onChange={(e) => setHasJack(e.target.checked)}
-                        disabled={isReadOnly}
-                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
-                      />
-                      Macaco
-                    </label>
-                    <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
-                      <input
-                        type="checkbox"
-                        checked={hasLugWrench}
-                        onChange={(e) => setHasLugWrench(e.target.checked)}
-                        disabled={isReadOnly}
-                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
-                      />
-                      Chave de Roda
-                    </label>
-                    <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
-                      <input
-                        type="checkbox"
-                        checked={hasTriangle}
-                        onChange={(e) => setHasTriangle(e.target.checked)}
-                        disabled={isReadOnly}
-                        className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
-                      />
-                      Triângulo
-                    </label>
+                  {/* Acessórios Obrigatórios + Botão de Marcação Rápida */}
+                  <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
+                        <input
+                          type="checkbox"
+                          checked={hasSpareWheel}
+                          onChange={(e) => setHasSpareWheel(e.target.checked)}
+                          disabled={isReadOnly}
+                          className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
+                        />
+                        Estepe
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
+                        <input
+                          type="checkbox"
+                          checked={hasJack}
+                          onChange={(e) => setHasJack(e.target.checked)}
+                          disabled={isReadOnly}
+                          className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
+                        />
+                        Macaco
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
+                        <input
+                          type="checkbox"
+                          checked={hasLugWrench}
+                          onChange={(e) => setHasLugWrench(e.target.checked)}
+                          disabled={isReadOnly}
+                          className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
+                        />
+                        Chave de Roda
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
+                        <input
+                          type="checkbox"
+                          checked={hasTriangle}
+                          onChange={(e) => setHasTriangle(e.target.checked)}
+                          disabled={isReadOnly}
+                          className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
+                        />
+                        Triângulo
+                      </label>
+                    </div>
+
+                    {!isReadOnly && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHasSpareWheel(true);
+                          setHasJack(true);
+                          setHasLugWrench(true);
+                          setHasTriangle(true);
+                        }}
+                        className="text-[11px] font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-500/30 transition-colors flex items-center gap-1"
+                        title="Marcar todos os 4 acessórios obrigatórios como presentes no veículo"
+                      >
+                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Marcar Acessórios Conformes</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1749,29 +1774,113 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           {/* ========================================================================= */}
           {activeTab === 'itens' && (
             <div className="space-y-5 animate-in fade-in duration-150">
-              {/* Barra de Resumo Parcial Rápido */}
-              <div className="grid grid-cols-3 gap-2 sm:gap-4 bg-slate-950/70 p-3 rounded-xl border border-slate-800 text-center">
-                <div>
-                  <span className="text-[11px] text-slate-400 block">Mão de Obra ({services.length})</span>
-                  <span className="font-mono text-xs sm:text-sm font-bold text-white">
-                    R$ {formatCurrency(servicesTotal)}
-                  </span>
+              {/* Barra de Resumo Parcial Rápido com Detalhamento do Desconto */}
+              <div className="bg-slate-950/80 p-3 sm:p-4 rounded-xl border border-slate-800 space-y-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-center">
+                  <div className="bg-slate-900/70 p-2 sm:p-2.5 rounded-lg border border-slate-800">
+                    <span className="text-[11px] text-slate-400 block font-medium">Mão de Obra ({services.length})</span>
+                    <span className="font-mono text-xs sm:text-sm font-bold text-white">
+                      R$ {formatCurrency(servicesTotal)}
+                    </span>
+                  </div>
+                  <div className="bg-slate-900/70 p-2 sm:p-2.5 rounded-lg border border-slate-800">
+                    <span className="text-[11px] text-slate-400 block font-medium">
+                      Peças {partsSupplyMode === 'cliente_todas' ? '(Cliente)' : `(${parts.length})`}
+                    </span>
+                    <span className="font-mono text-xs sm:text-sm font-bold text-white">
+                      {partsSupplyMode === 'cliente_todas' ? 'R$ 0,00' : `R$ ${partsTotal.toFixed(2)}`}
+                    </span>
+                  </div>
+                  <div className="bg-slate-900/70 p-2 sm:p-2.5 rounded-lg border border-slate-800">
+                    <span className="text-[11px] text-slate-300 block font-semibold">Subtotal Bruto</span>
+                    <span className="font-mono text-xs sm:text-sm font-bold text-slate-200">
+                      R$ {formatCurrency(grossTotal)}
+                    </span>
+                  </div>
+                  <div className="bg-amber-500/10 p-2 sm:p-2.5 rounded-lg border border-amber-500/40 text-center">
+                    <span className="text-[11px] text-amber-400 block font-bold uppercase tracking-wider">
+                      Total da O.S.
+                    </span>
+                    <span className="font-mono text-sm sm:text-base font-black text-amber-400">
+                      R$ {formatCurrency(netTotal)}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[11px] text-slate-400 block">
-                    Peças {partsSupplyMode === 'cliente_todas' ? '(Cliente)' : `(${parts.length})`}
-                  </span>
-                  <span className="font-mono text-xs sm:text-sm font-bold text-white">
-                    {partsSupplyMode === 'cliente_todas' ? 'R$ 0,00' : `R$ ${partsTotal.toFixed(2)}`}
-                  </span>
-                </div>
-                <div className="border-l border-slate-800 pl-2">
-                  <span className="text-[11px] text-amber-400/90 font-bold block">Subtotal Parcial</span>
-                  <span className="font-mono text-sm sm:text-base font-black text-amber-400">
-                    R$ {formatCurrency(servicesTotal + partsTotal)}
-                  </span>
-                </div>
+
+                {/* Banner Transparente de Desconto para esclarecer qualquer divergência entre Subtotal e Fechamento */}
+                {discount > 0 ? (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-red-500/10 border border-red-500/30 px-3 py-2 rounded-lg text-xs text-red-200">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse shrink-0"></span>
+                      <span>
+                        Desconto Aplicado: <strong className="font-mono text-red-400">- R$ {formatCurrency(discount)}</strong>
+                        <span className="text-slate-400 mx-1.5">•</span>
+                        <span>(Subtotal Bruto: <strong>R$ {formatCurrency(grossTotal)}</strong> ➔ Valor Final Fechamento: <strong className="text-amber-300">R$ {formatCurrency(netTotal)}</strong>)</span>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('fechamento')}
+                      className="text-[11px] text-amber-400 hover:text-amber-300 underline font-bold shrink-0"
+                    >
+                      Editar Desconto na Aba 3
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                    <span>Sem desconto comercial aplicado. O subtotal bruto corresponde ao total da O.S.</span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('fechamento')}
+                      className="text-slate-400 hover:text-amber-400 transition-colors"
+                    >
+                      + Aplicar Desconto
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {/* Ação Direta do Mecânico no Pátio (1 Toque) */}
+              {(status === 'em_andamento' || status === 'aprovado') && (
+                <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-900 p-3 sm:p-4 rounded-xl border border-emerald-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                      <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-emerald-400 uppercase tracking-wide">
+                          Ação Direta do Mecânico no Pátio
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          {status === 'em_andamento' ? '4. Em Execução' : '3. Aprovado'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 mt-0.5">
+                        Terminou o serviço no carro? Marque como pronto em 1 toque sem precisar transitar por abas financeiras.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatus('pronto');
+                      confetti({
+                        particleCount: 70,
+                        spread: 60,
+                        origin: { y: 0.6 },
+                      });
+                      alert('✅ Sucesso! Veículo marcado como "5. Pronto para Retirada no Pátio". O cliente já pode vir buscar!');
+                    }}
+                    className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02] active:scale-95 shrink-0"
+                    title="Avança a O.S. diretamente para Pronto para Retirada"
+                  >
+                    <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                    <span>Concluir Serviço (Marcar Pronto)</span>
+                  </button>
+                </div>
+              )}
 
               {/* Bloco 1: Serviços Mecânicos (Mão de Obra) */}
               <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-3">
@@ -1783,6 +1892,56 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   <span className="text-xs font-bold text-amber-400">
                     Subtotal: R$ {formatCurrency(servicesTotal)}
                   </span>
+                </div>
+
+                {/* Combos Rápidos de Serviços Pré-Cadastrados */}
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    Combos Rápidos & Serviços Pré-Cadastrados (1 Clique):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableServices.slice(0, 8).map((srv) => (
+                      <button
+                        key={srv.id}
+                        type="button"
+                        onClick={() => {
+                          handleAddService(srv.id, srv.name, srv.standardPrice);
+                        }}
+                        className="px-2.5 py-1 bg-slate-900 hover:bg-amber-500/20 text-slate-200 hover:text-amber-300 rounded-lg text-xs font-semibold border border-slate-700/80 hover:border-amber-500/40 transition-colors flex items-center gap-1.5"
+                        title={`Adicionar "${srv.name}" com valor sugerido de R$ ${srv.standardPrice.toFixed(2)}`}
+                      >
+                        <Plus className="w-3 h-3 text-amber-400" />
+                        <span>{srv.name}</span>
+                        <span className="font-mono text-[11px] text-amber-400/90 font-bold">
+                          R$ {srv.standardPrice.toFixed(0)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Seletor Suspenso do Catálogo Geral de Serviços */}
+                <div>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      const found = availableServices.find((s) => s.id === e.target.value);
+                      if (found) {
+                        handleAddService(found.id, found.name, found.standardPrice);
+                      }
+                      e.target.value = '';
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-lg px-3 py-1.5 text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500 cursor-pointer"
+                  >
+                    <option value="">📋 Escolher do Catálogo Completo de Serviços da Oficina ({availableServices.length} cadastrados)...</option>
+                    {availableServices.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} — R$ {s.standardPrice.toFixed(2)} ({s.category || 'Geral'})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Campo de Busca Digitável para Serviços + Valor Individual */}
@@ -2204,6 +2363,31 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 {/* Seletor & Inclusão de Peças (Ativo quando a oficina fornece ou faltam peças) */}
                 {partsSupplyMode !== 'cliente_todas' && (
                   <>
+                    {/* Seletor Suspenso do Estoque Físico de Peças */}
+                    <div>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          if (!e.target.value) return;
+                          const found = availableParts.find((p) => p.id === e.target.value);
+                          if (found) {
+                            setSelectedPartId(found.id);
+                            setPartSearch(`${found.description} (Cód: ${found.code})`);
+                            setPartPriceInput(found.sellPrice.toString());
+                          }
+                          e.target.value = '';
+                        }}
+                        className="w-full bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-lg px-3 py-1.5 text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500 cursor-pointer"
+                      >
+                        <option value="">📦 Escolher do Estoque Físico da Oficina ({availableParts.length} itens cadastrados)...</option>
+                        {availableParts.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.description} (Cód: {p.code}) — Saldo: {p.currentStock} {p.unit || 'un'} {p.currentStock <= p.minStock ? '⚠️' : '✓'} | R$ {p.sellPrice.toFixed(2)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div className="relative">
                       <div className="flex flex-col sm:flex-row gap-2">
                         {/* Busca Digitável */}
@@ -2375,72 +2559,115 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                             : 'Nenhuma peça ou insumo adicionado ainda.'}
                         </div>
                       ) : (
-                        parts.map((item) => (
-                          <div key={item.id} className="py-2.5 flex items-center justify-between text-xs gap-3">
-                            <div className="flex-1 min-w-0 pr-2">
-                              <div className="font-bold text-slate-100 truncate">{item.description}</div>
-                              <div className="text-slate-400 text-[11px] flex items-center gap-2">
-                                <span className="font-mono text-slate-500">Cód: {item.code}</span>
-                                <span>• Subtotal: R$ {formatCurrency(item.total)}</span>
-                              </div>
-                            </div>
+                        parts.map((item) => {
+                          const stockItem = availableParts.find((p) => p.id === item.partId || p.code === item.code);
+                          const isOutOfStock = stockItem ? stockItem.currentStock <= 0 : false;
+                          const isQtyExceeded = stockItem ? item.quantity > stockItem.currentStock : false;
+                          const isBelowMin = stockItem ? stockItem.currentStock <= stockItem.minStock && !isOutOfStock : false;
 
-                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                              {/* Controles de Quantidade Rápida [-] [Qtd] [+] */}
-                              <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdatePartQty(item.id, item.quantity - 1)}
-                                  disabled={item.quantity <= 1}
-                                  className="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent rounded transition-colors"
-                                  title="Diminuir quantidade"
-                                >
-                                  <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
-                                </button>
-                                <span className="font-mono font-bold text-white text-xs px-2 min-w-[28px] text-center">
-                                  {item.quantity}
+                          return (
+                            <div key={item.id} className="py-2.5 px-3 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2.5 bg-slate-900/60 hover:bg-slate-900/90 rounded-lg border border-slate-800/80 transition-colors">
+                              <div className="flex-1 min-w-0 pr-2 space-y-1">
+                                <div className="font-bold text-slate-100 truncate flex items-center gap-2">
+                                  <span className="truncate">{item.description}</span>
+                                  {stockItem?.location && (
+                                    <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 shrink-0 font-normal">
+                                      Loc: {stockItem.location}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-slate-400 text-[11px] flex items-center gap-2 flex-wrap">
+                                  <span className="font-mono text-slate-500">Cód: {item.code}</span>
+                                  <span>•</span>
+                                  <span>Subtotal: R$ {formatCurrency(item.total)}</span>
+                                  <span>•</span>
+                                  {stockItem ? (
+                                    isOutOfStock ? (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-500/20 text-red-400 border border-red-500/50 flex items-center gap-1">
+                                        <AlertTriangle className="w-3 h-3 stroke-[2.5]" />
+                                        <span>SEM ESTOQUE FÍSICO (0 un no pátio)</span>
+                                      </span>
+                                    ) : isQtyExceeded ? (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-500/20 text-red-400 border border-red-500/50 flex items-center gap-1 animate-pulse">
+                                        <AlertTriangle className="w-3 h-3 stroke-[2.5]" />
+                                        <span>Qtd ({item.quantity}) excede saldo físico ({stockItem.currentStock} {stockItem.unit || 'un'})</span>
+                                      </span>
+                                    ) : isBelowMin ? (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                                        <span>⚠️ Estoque Baixo: {stockItem.currentStock} {stockItem.unit || 'un'}</span>
+                                        <span className="text-slate-400">(mín: {stockItem.minStock})</span>
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                                        <Check className="w-3 h-3 stroke-[2.5]" />
+                                        <span>Saldo: {stockItem.currentStock} {stockItem.unit || 'un'} disponíveis</span>
+                                      </span>
+                                    )
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                                      Item avulso / sob encomenda
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                                {/* Controles de Quantidade Rápida [-] [Qtd] [+] */}
+                                <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdatePartQty(item.id, item.quantity - 1)}
+                                    disabled={item.quantity <= 1}
+                                    className="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent rounded transition-colors"
+                                    title="Diminuir quantidade"
+                                  >
+                                    <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
+                                  </button>
+                                  <span className="font-mono font-bold text-white text-xs px-2 min-w-[28px] text-center">
+                                    {item.quantity}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdatePartQty(item.id, item.quantity + 1)}
+                                    className="w-7 h-7 flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-slate-800 rounded transition-colors"
+                                    title="Aumentar quantidade"
+                                  >
+                                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                                  </button>
+                                </div>
+
+                                {/* Input Editável de Valor Unitário */}
+                                <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 focus-within:border-amber-500">
+                                  <span className="text-slate-400 text-xs font-bold">R$</span>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={item.unitPrice}
+                                    onChange={(e) => handleUpdatePartUnitPrice(item.id, parseFloat(e.target.value) || 0)}
+                                    className="w-16 sm:w-20 bg-transparent text-xs sm:text-sm font-mono font-bold text-white text-right focus:outline-none"
+                                    title="Clique para alterar o valor unitário desta peça"
+                                  />
+                                </div>
+
+                                {/* Subtotal da Peça */}
+                                <span className="font-mono font-bold text-white text-xs sm:text-sm min-w-[70px] text-right">
+                                  R$ {formatCurrency(item.total)}
                                 </span>
+
+                                {/* Botão de Exclusão */}
                                 <button
                                   type="button"
-                                  onClick={() => handleUpdatePartQty(item.id, item.quantity + 1)}
-                                  className="w-7 h-7 flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-slate-800 rounded transition-colors"
-                                  title="Aumentar quantidade"
+                                  onClick={() => handleRemovePart(item.id)}
+                                  className="p-1 text-slate-500 hover:text-red-400 transition-colors"
+                                  title="Remover peça"
                                 >
-                                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
-
-                              {/* Input Editável de Valor Unitário */}
-                              <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 focus-within:border-amber-500">
-                                <span className="text-slate-400 text-xs font-bold">R$</span>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={item.unitPrice}
-                                  onChange={(e) => handleUpdatePartUnitPrice(item.id, parseFloat(e.target.value) || 0)}
-                                  className="w-16 sm:w-20 bg-transparent text-xs sm:text-sm font-mono font-bold text-white text-right focus:outline-none"
-                                  title="Clique para alterar o valor unitário desta peça"
-                                />
-                              </div>
-
-                              {/* Subtotal da Peça */}
-                              <span className="font-mono font-bold text-white text-xs sm:text-sm min-w-[70px] text-right">
-                                R$ {formatCurrency(item.total)}
-                              </span>
-
-                              {/* Botão de Exclusão */}
-                              <button
-                                type="button"
-                                onClick={() => handleRemovePart(item.id)}
-                                className="p-1 text-slate-500 hover:text-red-400 transition-colors"
-                                title="Remover peça"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
 
@@ -3457,7 +3684,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           client={currentClient}
           vehicle={currentVehicle}
           mechanic={currentMechanic}
-          isQuotation={true}
+          isQuotation={status === 'orcamento' || status === 'aguardando_aprovacao'}
+          estimatedReturnDate={estimatedReturnDateFormatted}
         />
       </div>
     </div>

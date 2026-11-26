@@ -85,7 +85,7 @@ test.describe('Ciclo de Vida de Ordens de Serviço (O.S.) e Recibo Finalizado', 
     await expect(page.getByText(/Data Entrada:/i).first()).toBeVisible();
     await expect(page.getByText(/Venc\. Garantia:/i).first()).toBeVisible();
     await expect(page.getByText(/Previsão Retorno:/i).first()).toBeVisible();
-    await expect(page.getByText(/PAGO \(PIX\)/i)).toBeVisible();
+    await expect(page.getByText(/PAGO \(PIX\)/i).first()).toBeVisible();
 
     // 10. Garantir categoricamente que NÃO existe botão Editar OS
     await expect(page.getByRole('button', { name: /Editar O\.S\./i })).not.toBeVisible();
@@ -98,5 +98,36 @@ test.describe('Ciclo de Vida de Ordens de Serviço (O.S.) e Recibo Finalizado', 
 
     // 12. Fechar o modal da O.S. finalizada
     await page.getByRole('button', { name: 'Fechar', exact: true }).click();
+  });
+
+  test('Deve validar coerência de dados de OS-1001, transparência de desconto, catálogo e ação do mecânico', async ({ page }) => {
+    // 1. Ir para a aba O.S. (Kanban)
+    await page.getByRole('button', { name: /^O\.S\./i }).click();
+
+    // 2. Abrir a OS-1001 (Volkswagen Gol 1.6 MSI Flex)
+    await page.getByText('OS-1001').first().click();
+
+    // 3. Na Aba 2 (aberta por padrão na edição): Validar a barra de resumo com subtotal bruto e desconto detalhado
+    await expect(page.getByText('Subtotal Bruto', { exact: true })).toBeVisible();
+    await expect(page.getByText('R$ 593,00').first()).toBeVisible();
+    await expect(page.getByText(/Desconto Aplicado:/i)).toBeVisible();
+    await expect(page.getByText('- R$ 23,00')).toBeVisible();
+    await expect(page.getByText('R$ 570,00').first()).toBeVisible();
+
+    // 4. Validar a Ação Direta do Mecânico no Pátio
+    await expect(page.getByRole('button', { name: /Concluir Serviço \(Marcar Pronto\)/i })).toBeVisible();
+
+    // 5. Validar o Catálogo de Serviços Pré-Cadastrados e Combos Rápidos
+    await expect(page.getByText(/Combos Rápidos & Serviços Pré-Cadastrados/i)).toBeVisible();
+
+    // 6. Validar Saldo de Estoque e Alerta na Linha de Peças
+    await expect(page.getByText(/disponíveis/i).first()).toBeVisible();
+
+    // 7. Navegar para a Aba 1 e validar botão de preenchimento rápido de conformidade de acessórios
+    await page.getByRole('button', { name: /1\. Diagnóstico & Entrada/i }).click();
+    await expect(page.getByRole('button', { name: /Marcar Acessórios Conformes/i })).toBeVisible();
+
+    // 8. Fechar modal da O.S.
+    await page.getByRole('button', { name: /Cancelar/i }).first().click();
   });
 });

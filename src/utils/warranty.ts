@@ -14,20 +14,52 @@ export interface WarrantyCalculation {
 }
 
 /**
- * Converte data para string no formato YYYY-MM-DD
+ * Converte qualquer entrada de data de forma segura para a data do calendário local,
+ * prevenindo deslocamentos de fuso horário UTC (ex: UTC-3 Brasil voltando 1 dia).
  */
-export function toIsoDate(dateInput?: string | Date | null): string {
-  if (!dateInput) return new Date().toISOString().split('T')[0];
-  if (typeof dateInput === 'string') {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-      return dateInput;
-    }
-    if (dateInput.includes('T')) {
-      return dateInput.split('T')[0];
+export function parseLocalDate(input?: string | Date | null): Date {
+  if (!input) {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  if (input instanceof Date) {
+    return new Date(input.getFullYear(), input.getMonth(), input.getDate());
+  }
+  if (typeof input === 'string') {
+    const match = input.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1;
+      const day = parseInt(match[3], 10);
+      return new Date(year, month, day);
     }
   }
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+  const d = new Date(input);
+  if (isNaN(d.getTime())) {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/**
+ * Converte data para string no formato YYYY-MM-DD sem deslocamento UTC
+ */
+export function toIsoDate(dateInput?: string | Date | null): string {
+  if (!dateInput) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  if (typeof dateInput === 'string') {
+    const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return `${match[1]}-${match[2]}-${match[3]}`;
+    }
+  }
+  const d = parseLocalDate(dateInput);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -35,22 +67,17 @@ export function toIsoDate(dateInput?: string | Date | null): string {
 }
 
 /**
- * Normaliza e formata uma data para DD/MM/AAAA
+ * Normaliza e formata uma data para DD/MM/AAAA de forma determinística
  */
 export function formatBrDate(dateInput?: string | Date | null): string {
   if (!dateInput) return '';
-  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-    const [year, month, day] = dateInput.split('-');
-    return `${day}/${month}/${year}`;
-  }
-  if (typeof dateInput === 'string' && dateInput.includes('T')) {
-    const [year, month, day] = dateInput.split('T')[0].split('-');
-    if (year && month && day) {
-      return `${day}/${month}/${year}`;
+  if (typeof dateInput === 'string') {
+    const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return `${match[3]}/${match[2]}/${match[1]}`;
     }
   }
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return '';
+  const d = parseLocalDate(dateInput);
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
@@ -66,50 +93,35 @@ export function getOrderWarranty(order?: Partial<ServiceOrder> | null): Warranty
 
   // Data de Entrada: entryDate > createdAt > hoje
   const rawEntry = order?.entryDate || order?.createdAt || new Date();
-  const entryDateIso = toIsoDate(rawEntry);
+  const entryDateObj = parseLocalDate(rawEntry);
+  const entryDateIso = toIsoDate(entryDateObj);
 
   // Data base de referência para a garantia CDC (90 dias a partir da aprovação / realização do serviço):
   // serviceDate > finishedAt > entryDate > createdAt > hoje
   const rawBase = order?.serviceDate || order?.finishedAt || order?.entryDate || order?.createdAt;
-  let baseDate = rawBase ? new Date(rawBase) : new Date();
-  if (isNaN(baseDate.getTime())) {
-    baseDate = new Date();
-  }
+  const baseDateObj = parseLocalDate(rawBase);
 
-  // Normaliza base para meia-noite local
-  const baseYear = baseDate.getFullYear();
-  const baseMonth = baseDate.getMonth();
-  const baseDay = baseDate.getDate();
-  const baseMidnight = new Date(baseYear, baseMonth, baseDay);
-
-  let expiryMidnight: Date;
+  let expiryDateObj: Date;
   if (order?.warrantyExpiresAt) {
-    const custom = new Date(order.warrantyExpiresAt);
-    if (!isNaN(custom.getTime())) {
-      expiryMidnight = new Date(custom.getFullYear(), custom.getMonth(), custom.getDate());
-    } else {
-      expiryMidnight = new Date(baseYear, baseMonth, baseDay);
-      expiryMidnight.setDate(expiryMidnight.getDate() + warrantyDays);
-    }
+    expiryDateObj = parseLocalDate(order.warrantyExpiresAt);
   } else {
-    expiryMidnight = new Date(baseYear, baseMonth, baseDay);
-    expiryMidnight.setDate(expiryMidnight.getDate() + warrantyDays);
+    expiryDateObj = new Date(baseDateObj.getFullYear(), baseDateObj.getMonth(), baseDateObj.getDate() + warrantyDays);
   }
 
   const today = new Date();
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const diffMs = expiryMidnight.getTime() - todayMidnight.getTime();
+  const diffMs = expiryDateObj.getTime() - todayMidnight.getTime();
   const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   const isExpired = daysRemaining < 0;
 
   return {
     warrantyDays,
     entryDateStr: entryDateIso,
-    serviceDateStr: toIsoDate(baseMidnight),
-    expiryDateStr: toIsoDate(expiryMidnight),
-    formattedEntryDate: formatBrDate(entryDateIso),
-    formattedServiceDate: formatBrDate(baseMidnight),
-    formattedExpiryDate: formatBrDate(expiryMidnight),
+    serviceDateStr: toIsoDate(baseDateObj),
+    expiryDateStr: toIsoDate(expiryDateObj),
+    formattedEntryDate: formatBrDate(entryDateObj),
+    formattedServiceDate: formatBrDate(baseDateObj),
+    formattedExpiryDate: formatBrDate(expiryDateObj),
     isExpired,
     daysRemaining,
     hasServiceDate,

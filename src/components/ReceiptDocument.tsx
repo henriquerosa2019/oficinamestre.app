@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 import { ServiceOrder, Client, Vehicle, Mechanic } from '../types';
-import { getOrderWarranty, formatBrDate } from '../utils/warranty';
+import { getOrderWarranty, formatBrDate, parseLocalDate, toIsoDate } from '../utils/warranty';
 import { AlertCircle } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { PreventiveMaintenanceService } from '../services/preventiveMaintenance';
@@ -37,19 +37,25 @@ const formatPaymentMethod = (method?: string): string => {
 export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
   ({ order, client, vehicle, mechanic, isQuotation, estimatedReturnDate }, ref) => {
     const warranty = getOrderWarranty(order);
-    const quotation = isQuotation ?? (order.status === 'orcamento' || order.status === 'aguardando_aprovacao');
+    const isActuallyQuotationStatus = order.status === 'orcamento' || order.status === 'aguardando_aprovacao';
+    const quotation = isActuallyQuotationStatus && isQuotation !== false;
 
     const estimatedReturn = estimatedReturnDate || (() => {
-      // 1. Tenta buscar registro salvo no storage para esta OS ou veículo
+      const baseDateStr = order.serviceDate || order.entryDate || toIsoDate(new Date());
+
+      // 1. Tenta buscar registro salvo no storage para esta OS ou veículo, garantindo que seja futuro
       const storedRecords = StorageService.getMaintenanceRecords();
       const orderRecord = storedRecords.find(
-        (r) => (order.id && r.serviceOrderId === order.id) || (order.vehicleId && r.vehicleId === order.vehicleId)
+        (r) =>
+          ((order.id && r.serviceOrderId === order.id) || (order.vehicleId && r.vehicleId === order.vehicleId)) &&
+          r.estimatedReturnDate &&
+          r.estimatedReturnDate > baseDateStr
       );
       if (orderRecord?.estimatedReturnDate) {
         return formatBrDate(orderRecord.estimatedReturnDate);
       }
 
-      // 2. Cálculo dinâmico se não houver registro prévio
+      // 2. Cálculo dinâmico se não houver registro prévio futuro
       let detectedType = 'troca_oleo';
       if (order.services && order.services.length > 0) {
         const types = order.services.map((s) => PreventiveMaintenanceService.detectServiceType(s.description));
@@ -73,10 +79,9 @@ export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
         vehicle?.averageMonthlyKm
       );
 
-      const baseDateStr = order.serviceDate || order.entryDate || new Date().toISOString().split('T')[0];
-      const baseD = new Date(baseDateStr.includes('T') ? baseDateStr.split('T')[0] : baseDateStr);
-      const retDate = new Date(baseD.getTime() + params.intervalDays * 24 * 60 * 60 * 1000);
-      return formatBrDate(retDate.toISOString().split('T')[0]);
+      const baseD = parseLocalDate(baseDateStr);
+      const retDate = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate() + params.intervalDays);
+      return formatBrDate(retDate);
     })();
 
     return (
@@ -275,10 +280,16 @@ export const ReceiptDocument = forwardRef<HTMLDivElement, ReceiptDocumentProps>(
             <div>
               Pagamento:{' '}
               <strong>
-                {quotation
-                  ? 'PROPOSTA (AGUARDANDO APROVAÇÃO)'
-                  : order.isPaid
+                {order.isPaid
                   ? `PAGO (${formatPaymentMethod(order.paymentMethod)})`
+                  : quotation
+                  ? 'PROPOSTA (AGUARDANDO APROVAÇÃO)'
+                  : order.status === 'aprovado'
+                  ? 'ORÇAMENTO APROVADO • SEPARAÇÃO DE PEÇAS'
+                  : order.status === 'em_andamento'
+                  ? 'APROVADO • EM EXECUÇÃO NO PÁTIO (PAGTO NA RETIRADA)'
+                  : order.status === 'pronto'
+                  ? 'SERVIÇOS CONCLUÍDOS • PENDENTE NA RETIRADA'
                   : 'PENDENTE NO BALCÃO'}
               </strong>
             </div>

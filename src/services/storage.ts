@@ -147,6 +147,10 @@ const INITIAL_SERVICES: ServiceItem[] = [
   { id: 'srv-4', name: 'Troca de Correia Dentada e Tensor', standardPrice: 280.0, category: 'Motor' },
   { id: 'srv-5', name: 'Limpeza de Bicos e TBI', standardPrice: 180.0, category: 'Injeção Eletrônica' },
   { id: 'srv-6', name: 'Revisão Preventiva Geral (Check 40 itens)', standardPrice: 250.0, category: 'Revisão' },
+  { id: 'srv-7', name: 'Troca de Discos e Pastilhas Dianteiras', standardPrice: 140.0, category: 'Freios' },
+  { id: 'srv-8', name: 'Sangria e Troca de Fluido de Freio DOT 4', standardPrice: 80.0, category: 'Freios' },
+  { id: 'srv-9', name: 'Troca de Velas de Ignição e Cabos', standardPrice: 80.0, category: 'Ignição' },
+  { id: 'srv-10', name: 'Troca de Amortecedores Dianteiros e Batentes', standardPrice: 190.0, category: 'Suspensão' },
 ];
 
 const INITIAL_PURCHASES: SupplierPurchase[] = [
@@ -433,9 +437,12 @@ const INITIAL_ORDERS: ServiceOrder[] = [
     netProfit: 304.0, // 570 - 234 - 32 = R$ 304,00 de Lucro Real!
     profitMarginPercent: 53.3,
     isPaid: false,
-    createdAt: '2026-11-17T08:30:00Z',
-    updatedAt: '2026-11-18T10:00:00Z',
-    estimatedDelivery: '2026-11-18T17:30:00Z',
+    entryDate: '2026-11-26',
+    serviceDate: '2026-11-26',
+    warrantyDays: 90,
+    createdAt: '2026-11-26T08:30:00Z',
+    updatedAt: '2026-11-26T10:00:00Z',
+    estimatedDelivery: '2026-11-26T17:30:00Z',
   },
   {
     id: 'ord-102',
@@ -631,7 +638,7 @@ const INITIAL_MAINTENANCE_RECORDS: MaintenanceRecord[] = [
   },
   {
     id: 'mrec-2',
-    serviceOrderId: 'ord-101',
+    serviceOrderId: 'ord-past-1',
     vehicleId: 'veh-1', // Gol (Uso Normal - 1 ano)
     clientId: 'cli-1',
     serviceType: 'troca_oleo',
