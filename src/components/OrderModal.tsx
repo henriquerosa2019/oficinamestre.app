@@ -99,21 +99,6 @@ export const DEFAULT_QUICK_SERVICES = [
   { name: 'Sangria e Troca de Fluido de Freio DOT 4', value: 90 },
 ];
 
-export const MILEAGE_QUICK_ROWS = [
-  {
-    label: 'Até 50k',
-    values: [5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000],
-  },
-  {
-    label: 'Até 100k',
-    values: [55000, 60000, 65000, 70000, 75000, 80000, 85000, 90000, 95000, 100000],
-  },
-  {
-    label: 'Até 150k',
-    values: [105000, 110000, 115000, 120000, 125000, 130000, 135000, 140000, 145000, 150000],
-  },
-];
-
 export const OrderModal: React.FC<OrderModalProps> = ({
   order,
   isOpen,
@@ -1463,51 +1448,6 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     </div>
                   </div>
 
-                  {/* ATALHOS DE QUILOMETRAGEM EM FILEIRAS DE 10 EM 10 MIL */}
-                  <div className="wide -mt-1 pt-3 border-t border-[#1e2b43]/60 space-y-2">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <span className="text-[11px] font-[650] text-[#bac8d9] flex items-center gap-1.5">
-                        <Gauge className="w-3.5 h-3.5 text-[#ffab00]" />
-                        Atalhos Rápidos de KM (5 em 5 mil até 150 mil):
-                      </span>
-                      {mileage > 0 && (
-                        <span className="text-[11px] font-mono font-bold text-[#ffab00] bg-[#19263b] px-2 py-0.5 rounded border border-[#2b3d5b]">
-                          {mileage.toLocaleString('pt-BR')} km selecionados
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      {MILEAGE_QUICK_ROWS.map((row) => (
-                        <div key={row.label} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                          <span className="text-[10px] text-[#7284a1] font-mono font-bold w-14 shrink-0 hidden sm:inline">
-                            {row.label}:
-                          </span>
-                          <div className="grid grid-cols-5 sm:grid-cols-10 gap-1 flex-1">
-                            {row.values.map((val) => {
-                              const isSelected = mileage === val;
-                              const valFormatted = val / 1000;
-                              return (
-                                <button
-                                  key={val}
-                                  type="button"
-                                  onClick={() => setMileage(val)}
-                                  className={`py-1.5 px-0.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
-                                    isSelected
-                                      ? 'bg-[#ffab00] text-slate-950 font-black shadow-md ring-1 ring-[#ffab00]'
-                                      : 'bg-[#19263b] text-[#8a9bb5] border border-[#2b3d5b] hover:text-[#edf2fb] hover:border-[#3e5377]'
-                                  }`}
-                                >
-                                  <span className="sm:hidden">{valFormatted}k</span>
-                                  <span className="hidden sm:inline">{valFormatted} mil</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
 
                 {/* DIAGNÓSTICO TÉCNICO DO MECÂNICO */}
