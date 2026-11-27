@@ -258,6 +258,60 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [showAdvancedDetails, setShowAdvancedDetails] = useState(isEditing);
   const [plateFoundMatch, setPlateFoundMatch] = useState<{ vehicle: Vehicle; client?: Client } | null>(null);
 
+  // Tags de relatos rápidos e opções de combustível estilo Lovable
+  const QUICK_SYMPTOM_OPTIONS = [
+    'Revisão',
+    'Troca de óleo',
+    'Freio',
+    'Barulho',
+    'Suspensão',
+    'Motor falhando',
+    'Ar-condicionado',
+    'Elétrica',
+    'Luz no painel',
+    'Pneu',
+  ];
+
+  const [selectedSymptomTags, setSelectedSymptomTags] = useState<string[]>(() => {
+    if (!order?.complaintDescription) return [];
+    return QUICK_SYMPTOM_OPTIONS.filter((tag) =>
+      order.complaintDescription.toLowerCase().includes(tag.toLowerCase())
+    );
+  });
+
+  const [complaintDetails, setComplaintDetails] = useState<string>(() => {
+    if (!order?.complaintDescription) return '';
+    let text = order.complaintDescription;
+    QUICK_SYMPTOM_OPTIONS.forEach((tag) => {
+      text = text.replace(new RegExp(`\\b${tag}\\b[,;\\s-]*`, 'gi'), '');
+    });
+    return text.trim();
+  });
+
+  const toggleSymptomTag = (tag: string) => {
+    setSelectedSymptomTags((prev) => {
+      const exists = prev.includes(tag);
+      const updated = exists ? prev.filter((t) => t !== tag) : [...prev, tag];
+      const fullText = [updated.join(', '), complaintDetails.trim()].filter(Boolean).join(' - ');
+      setComplaintDescription(fullText);
+      return updated;
+    });
+  };
+
+  const handleDetailsChange = (val: string) => {
+    setComplaintDetails(val);
+    const fullText = [selectedSymptomTags.join(', '), val.trim()].filter(Boolean).join(' - ');
+    setComplaintDescription(fullText);
+  };
+
+  const FUEL_OPTIONS = [
+    { label: 'Reserva', value: 0 },
+    { label: '1/4', value: 25 },
+    { label: '1/2', value: 50 },
+    { label: '3/4', value: 75 },
+    { label: 'Cheio', value: 100 },
+  ];
+
   // Manipulador de digitação da Placa com busca automática inteligente
   const handlePlateChange = (newPlate: string) => {
     setPlateInput(newPlate);
@@ -1154,9 +1208,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               <Wrench className="w-5 h-5" />
             </div>
             <div className="min-w-0">
+              <span className="text-[10px] sm:text-xs font-black tracking-widest text-[#f97316] uppercase block">
+                OFICINA MESTRE
+              </span>
               <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                <h3 className="text-base font-black text-white truncate tracking-tight">
-                  {isFinalized ? `Prontuário da ${orderNumber}` : isEditing ? `Editar ${orderNumber}` : 'Nova Ordem de Serviço'}
+                <h3 className="text-base sm:text-xl font-black text-white truncate tracking-tight">
+                  {isFinalized ? `Prontuário da ${orderNumber}` : isEditing ? `Editar ${orderNumber}` : 'Nova OS'}
                 </h3>
                 <span className="text-[11px] bg-slate-800 text-amber-400 border border-slate-700/80 px-2 py-0.5 rounded-md font-mono font-bold shrink-0">
                   {orderNumber}
@@ -1429,629 +1486,350 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         </div>
 
         {/* Corpo do Modal - Conteúdo Dinâmico por Aba */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 text-slate-200">
+        <div className={`overflow-y-auto flex-1 ${activeTab === 'diagnostico' ? 'bg-[#faf8f5]' : 'bg-slate-900 text-slate-200 p-4 sm:p-6 space-y-5'}`}>
           {/* ========================================================================= */}
           {/* ABA 1: DIAGNÓSTICO & ENTRADA */}
           {/* ========================================================================= */}
           {activeTab === 'diagnostico' && (
-            <div className="space-y-5 animate-in fade-in duration-150">
-              {/* ========================================================================= */}
-              {/* FLUXO ÁGIL ESTILO LOVABLE: PASSO 1 (PLACA & MODELO) + PASSO 2 (CLIENTE) */}
-              {/* ========================================================================= */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* PASSO 1: VEÍCULO & PLACA */}
-                  <div className="bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-md shadow-amber-500/30">
-                            1
-                          </div>
-                          <span className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                            <Car className="w-4 h-4 text-amber-400" />
-                            Placa do Veículo
-                          </span>
-                        </div>
-
-                        {plateFoundMatch ? (
-                          <span className="text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Veículo Cadastrado
-                          </span>
-                        ) : formatPlate(plateInput).length === 7 ? (
-                          <span className="text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                            Novo Veículo
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {/* Placa Mercosul Destacada */}
-                      <div className="my-2 flex justify-center">
-                        <MercosulPlateInput
-                          value={plateInput}
-                          onChange={handlePlateChange}
-                          disabled={isReadOnly}
-                          autoFocus={!isEditing}
-                        />
-                      </div>
-
-                      {/* Modelo do Veículo */}
-                      <div className="mt-4">
-                        <label className="block text-xs font-semibold text-slate-400 mb-1">
-                          Modelo <span className="text-slate-500 font-normal">(ex: Gol 1.6 prata, Onix 1.0...)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={quickModel}
-                          onChange={(e) => setQuickModel(e.target.value)}
-                          disabled={isReadOnly}
-                          placeholder="Informe a marca e modelo do carro"
-                          className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl px-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none transition-colors"
-                        />
-                      </div>
-                    </div>
+            <div className="max-w-xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 pb-28 text-slate-900 animate-in fade-in duration-150">
+              {/* PASSO 1: PLACA */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-full bg-[#f97316] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
+                    1
                   </div>
+                  <h4 className="text-base font-black text-slate-900 tracking-tight">
+                    Placa
+                  </h4>
+                  {plateFoundMatch && (
+                    <span className="ml-auto text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Veículo Cadastrado
+                    </span>
+                  )}
+                </div>
 
-                  {/* PASSO 2: CLIENTE & CONTATO */}
-                  <div className="bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-md shadow-amber-500/30">
-                            2
-                          </div>
-                          <span className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                            <User className="w-4 h-4 text-amber-400" />
-                            Cliente & Contato
-                          </span>
+                {/* CARD DA PLACA EXATO ESTILO LOVABLE */}
+                <div className="bg-white rounded-2xl border-[3px] border-[#f97316] p-4 sm:p-5 shadow-xs flex items-center justify-center transition-all">
+                  <input
+                    type="text"
+                    value={formatPlate(plateInput)}
+                    onChange={(e) => handlePlateChange(e.target.value)}
+                    placeholder="A B C 1 D 2 3"
+                    maxLength={7}
+                    disabled={isReadOnly}
+                    autoFocus={!isEditing}
+                    className="w-full text-center font-mono font-black text-3xl sm:text-4xl tracking-[0.25em] text-slate-700 placeholder-slate-300 uppercase bg-transparent focus:outline-none selection:bg-orange-100"
+                  />
+                </div>
+
+                {/* MODELO DO VEÍCULO */}
+                <div>
+                  <input
+                    type="text"
+                    value={quickModel}
+                    onChange={(e) => setQuickModel(e.target.value)}
+                    disabled={isReadOnly}
+                    placeholder="Modelo (ex: Gol 1.6 prata)"
+                    className="w-full bg-white border border-slate-200 focus:border-[#f97316] rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 font-medium focus:outline-none transition-colors shadow-xs"
+                  />
+                </div>
+              </div>
+
+              {/* PASSO 2: CLIENTE */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-full bg-[#f97316] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
+                    2
+                  </div>
+                  <h4 className="text-base font-black text-slate-900 tracking-tight">
+                    Cliente
+                  </h4>
+                  {plateFoundMatch?.client && (
+                    <span className="ml-auto text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full">
+                      Cliente Vinculado
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={quickClientName}
+                    onChange={(e) => {
+                      setQuickClientName(e.target.value);
+                      setClientInputValue(e.target.value);
+                    }}
+                    disabled={isReadOnly}
+                    placeholder="Nome do cliente"
+                    className="w-full bg-white border border-slate-200 focus:border-[#f97316] rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 font-medium focus:outline-none transition-colors shadow-xs"
+                  />
+
+                  <input
+                    type="text"
+                    value={quickClientPhone}
+                    onChange={(e) => setQuickClientPhone(e.target.value)}
+                    disabled={isReadOnly}
+                    placeholder="WhatsApp (opcional)"
+                    className="w-full bg-white border border-slate-200 focus:border-[#f97316] rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 font-medium focus:outline-none transition-colors shadow-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* PASSO 3: O QUE O CLIENTE RELATOU? */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-full bg-[#f97316] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
+                    3
+                  </div>
+                  <h4 className="text-base font-black text-slate-900 tracking-tight">
+                    O que o cliente relatou?
+                  </h4>
+                </div>
+
+                {/* 10 PÍLULAS DE TAGS RÁPIDAS */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {QUICK_SYMPTOM_OPTIONS.map((tag) => {
+                    const isSelected = selectedSymptomTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        disabled={isReadOnly}
+                        onClick={() => toggleSymptomTag(tag)}
+                        className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all border shadow-xs select-none cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#f97316] text-white border-[#f97316] shadow-sm'
+                            : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* TEXTAREA DETALHES */}
+                <div className="pt-1">
+                  <textarea
+                    rows={3}
+                    value={complaintDetails}
+                    onChange={(e) => handleDetailsChange(e.target.value)}
+                    disabled={isReadOnly}
+                    placeholder="Detalhes (opcional)"
+                    className="w-full bg-white border border-slate-200 focus:border-[#f97316] rounded-xl p-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition-colors shadow-xs resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* PASSO 4: CHEGADA DO VEÍCULO */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-full bg-[#f97316] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
+                    4
+                  </div>
+                  <h4 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    Chegada do veículo
+                    <span className="text-xs font-normal text-slate-400">opcional</span>
+                  </h4>
+                </div>
+
+                {/* KM NO PAINEL */}
+                <div>
+                  <input
+                    type="number"
+                    value={mileage || ''}
+                    onChange={(e) => setMileage(Number(e.target.value))}
+                    disabled={isReadOnly}
+                    placeholder="KM no painel"
+                    className="w-full bg-white border border-slate-200 focus:border-[#f97316] rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 font-medium focus:outline-none transition-colors shadow-xs"
+                  />
+                </div>
+
+                {/* SELETOR DE COMBUSTÍVEL EM 5 BOTÕES */}
+                <div className="pt-1">
+                  <label className="block text-xs font-semibold text-slate-500 mb-2">
+                    Combustível
+                  </label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {FUEL_OPTIONS.map((opt) => {
+                      const isSelected = fuelLevel === opt.value;
+                      return (
+                        <button
+                          key={opt.label}
+                          type="button"
+                          disabled={isReadOnly}
+                          onClick={() => setFuelLevel(opt.value)}
+                          className={`py-3 rounded-xl text-center text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#f97316] text-white shadow-md shadow-orange-500/20'
+                              : 'bg-white text-slate-800 border border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* SEÇÃO EXPANSÍVEL: OPÇÕES TÉCNICAS DA OFICINA (MECÂNICO, LAUDO COM PINOS E CHECKLIST) */}
+              <div className="pt-2">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedDetails(!showAdvancedDetails)}
+                    className="w-full flex items-center justify-between text-left text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Wrench className="w-4 h-4 text-[#f97316]" />
+                      <span>{showAdvancedDetails ? 'Ocultar Opções Técnicas da Oficina' : '+ Opções Técnicas da Oficina (Mecânico, Laudo com Pinos e Acessórios)'}</span>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showAdvancedDetails ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showAdvancedDetails && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 space-y-5 animate-in fade-in duration-150">
+                      {/* Mecânico Responsável & Datas */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">
+                            Mecânico Responsável
+                          </label>
+                          <select
+                            value={mechanicId}
+                            onChange={(e) => setMechanicId(e.target.value)}
+                            disabled={isReadOnly}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#f97316]"
+                          >
+                            {mechanics.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.name} (Comissão: {m.commissionRate}%)
+                              </option>
+                            ))}
+                          </select>
                         </div>
 
-                        {plateFoundMatch?.client ? (
-                          <span className="text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                            Cliente Vinculado
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="space-y-3.5">
-                        {/* Nome do Cliente */}
                         <div>
-                          <label className="block text-xs font-semibold text-slate-400 mb-1">
-                            Nome do cliente
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">
+                            Data de Entrada
                           </label>
                           <input
-                            type="text"
-                            value={quickClientName}
-                            onChange={(e) => {
-                              setQuickClientName(e.target.value);
-                              setClientInputValue(e.target.value);
-                            }}
+                            type="date"
+                            value={entryDate}
+                            onChange={(e) => setEntryDate(e.target.value)}
                             disabled={isReadOnly}
-                            placeholder="Nome completo ou apelido do cliente"
-                            className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl px-3 py-2 text-xs sm:text-sm text-white font-medium placeholder-slate-500 focus:outline-none transition-colors"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#f97316]"
                           />
                         </div>
-
-                        {/* WhatsApp do Cliente */}
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center justify-between">
-                            <span>WhatsApp <span className="text-slate-500 font-normal">(opcional)</span></span>
-                            {quickClientPhone && (
-                              <span className="text-[10px] text-emerald-400 font-mono">
-                                {formatPhone(quickClientPhone)}
-                              </span>
-                            )}
-                          </label>
-                          <div className="relative">
-                            <MessageCircle className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input
-                              type="text"
-                              value={quickClientPhone}
-                              onChange={(e) => setQuickClientPhone(e.target.value)}
-                              disabled={isReadOnly}
-                              placeholder="(21) 99999-9999"
-                              className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-white font-mono placeholder-slate-500 focus:outline-none transition-colors"
-                            />
-                          </div>
-                        </div>
                       </div>
-                    </div>
 
-                    {/* Botão de Toggle para Opções Avançadas */}
-                    <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                      <button
-                        type="button"
-                        onClick={() => setShowAdvancedDetails(!showAdvancedDetails)}
-                        className="text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1.5 transition-colors"
-                      >
-                        <span>{showAdvancedDetails ? 'Ocultar opções avançadas' : 'Mais opções (Mecânico, Datas & Busca Avançada)'}</span>
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAdvancedDetails ? 'rotate-180' : ''}`} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                      {/* Diagnóstico Técnico da Oficina */}
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">
+                          Diagnóstico Técnico Prévio
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={technicalDiagnostic}
+                          onChange={(e) => setTechnicalDiagnostic(e.target.value)}
+                          disabled={isReadOnly}
+                          placeholder="Ex: Pastilhas desgastadas, correia ressecada, óleo contaminado..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#f97316]"
+                        />
+                      </div>
 
-                {/* DETALHES AVANÇADOS / TRADICIONAIS (EXPANSÍVEL) */}
-                {showAdvancedDetails && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-950/80 p-4 rounded-xl border border-slate-800 animate-in fade-in duration-200">
-                    {/* Campo Cliente com Identificação por Tel/CPF e Botão Novo (+) */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-slate-400 uppercase flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-amber-400" />
-                      Cliente
-                    </label>
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => setIsNewClientModalOpen(true)}
-                        className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                        title="Cadastrar Novo Cliente & Veículo diretamente pela OS"
-                      >
-                        <Plus className="w-3 h-3 stroke-[3]" />
-                        <span>Novo (+)</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    <input
-                      type="text"
-                      disabled={isReadOnly}
-                      value={clientInputValue}
-                      onFocus={(e) => {
-                        if (!isReadOnly) {
-                          setIsClientDropdownOpen(true);
-                          e.target.select();
-                        }
-                      }}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setClientInputValue(val);
-                        setIsClientDropdownOpen(true);
-
-                        // Identificação automática ao entrar com telefone ou CPF
-                        const cleanDigits = val.replace(/\D/g, '');
-                        if (cleanDigits.length >= 6) {
-                          const matched = findClientByPhoneOrDoc(val, clients);
-                          if (matched && cleanDigits.length >= 8) {
-                            handleIdentifyAndPullClient(matched);
-                          }
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const matched =
-                            findClientByPhoneOrDoc(clientInputValue, clients) ||
-                            (filteredClientsList.length === 1 ? filteredClientsList[0] : undefined);
-                          if (matched) {
-                            handleIdentifyAndPullClient(matched);
-                          }
-                        }
-                      }}
-                      onBlur={() => {
-                        setTimeout(() => {
-                          setIsClientDropdownOpen(false);
-                          if (clientInputValue.trim()) {
-                            const matched = findClientByPhoneOrDoc(clientInputValue, clients);
-                            if (matched) {
-                              handleIdentifyAndPullClient(matched);
-                            } else if (currentClient) {
-                              setClientInputValue(currentClient.name);
-                            }
-                          }
-                        }, 250);
-                      }}
-                      placeholder="Buscar por telefone, CPF ou nome..."
-                      className={`w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-16 py-2 text-xs sm:text-sm text-white font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500 ${
-                        isReadOnly ? 'opacity-80 cursor-default' : ''
-                      }`}
-                    />
-                    {!isReadOnly && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-slate-400">
-                        {clientInputValue && (
+                      {/* Acessórios Obrigatórios (Estepe, Macaco, Chave, Triângulo) */}
+                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#f97316]" />
+                            Acessórios do Veículo
+                          </span>
                           <button
                             type="button"
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => {
-                              setClientInputValue('');
-                              setIsClientDropdownOpen(true);
-                            }}
-                            className="p-1 hover:text-white rounded"
-                            title="Limpar campo para buscar outro cliente"
+                            onClick={handleToggleChecklistAll}
+                            className="text-[11px] font-bold text-[#f97316] hover:underline"
                           >
-                            <X className="w-3.5 h-3.5 text-slate-400 hover:text-white" />
+                            {hasSpareWheel && hasJack && hasLugWrench && hasTriangle ? 'Desmarcar Todos' : 'Marcar Todos'}
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
-                          className="p-1 hover:text-white rounded"
-                          title="Ver lista de clientes cadastrados"
-                        >
-                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isClientDropdownOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Dropdown Flutuante (Absolute) de Sugestões de Clientes */}
-                    {!isReadOnly && isClientDropdownOpen && (
-                      <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-50 divide-y divide-slate-800">
-                        <div className="px-3 py-1.5 bg-slate-950/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 sticky top-0 z-10">
-                          <span>Clientes Cadastrados ({filteredClientsList.length})</span>
-                          {isInputMatchingSelectedClient && (
-                            <span className="text-amber-400 font-normal lowercase text-[10px]">exibindo todos</span>
-                          )}
                         </div>
-                        {filteredClientsList.length === 0 ? (
-                          <div className="p-3 text-xs text-slate-400 text-center">
-                            Nenhum cliente localizado para "{clientInputValue}".
-                          </div>
-                        ) : (
-                          filteredClientsList.map((c) => {
-                            const isSelected = c.id === clientId;
-                            const lastVeh = getClientLatestVehicle(c.id, vehicles, allOrders);
-                            return (
-                              <div
-                                key={c.id}
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  handleIdentifyAndPullClient(c, lastVeh);
-                                }}
-                                className={`p-2.5 hover:bg-slate-800 cursor-pointer flex items-center justify-between text-xs transition-colors ${
-                                  isSelected ? 'bg-amber-500/15 border-l-4 border-amber-500' : ''
-                                }`}
-                              >
-                                <div className="min-w-0 pr-2">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-bold text-white block truncate">{c.name}</span>
-                                    {isSelected && (
-                                      <span className="text-[9px] bg-amber-500/20 text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-500/40">
-                                        Selecionado
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[11px] text-slate-400 font-mono block">
-                                    Tel: {formatPhone(c.phone)} {c.document ? `• Doc: ${formatCpfCnpj(c.document)}` : ''}
-                                  </span>
-                                </div>
-                                {lastVeh && (
-                                  <div className="text-right shrink-0">
-                                    <span className="text-[10px] bg-slate-950 border border-slate-700 font-mono font-bold text-amber-400 px-1.5 py-0.5 rounded block">
-                                      {lastVeh.plate}
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 block truncate max-w-[120px]">
-                                      {lastVeh.model}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-700">
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={hasSpareWheel}
+                              onChange={(e) => setHasSpareWheel(e.target.checked)}
+                              disabled={isReadOnly}
+                              className="rounded text-[#f97316] focus:ring-0"
+                            />
+                            Estepe
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={hasJack}
+                              onChange={(e) => setHasJack(e.target.checked)}
+                              disabled={isReadOnly}
+                              className="rounded text-[#f97316] focus:ring-0"
+                            />
+                            Macaco
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={hasLugWrench}
+                              onChange={(e) => setHasLugWrench(e.target.checked)}
+                              disabled={isReadOnly}
+                              className="rounded text-[#f97316] focus:ring-0"
+                            />
+                            Chave de Roda
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={hasTriangle}
+                              onChange={(e) => setHasTriangle(e.target.checked)}
+                              disabled={isReadOnly}
+                              className="rounded text-[#f97316] focus:ring-0"
+                            />
+                            Triângulo
+                          </label>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* Campo Veículo do Cliente com Botão Novo (+) Embaixo */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-slate-400 uppercase flex items-center gap-1.5">
-                      <Car className="w-3.5 h-3.5 text-amber-400" />
-                      Veículo do Cliente
-                    </label>
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => setIsNewVehicleModalOpen(true)}
-                        disabled={!clientId}
-                        className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-40 px-2 py-0.5 rounded border border-amber-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                        title="Cadastrar Novo Veículo para este cliente"
-                      >
-                        <Plus className="w-3 h-3 stroke-[3]" />
-                        <span>Novo (+)</span>
-                      </button>
-                    )}
-                  </div>
-                  <select
-                    value={vehicleId}
-                    onChange={(e) => setVehicleId(e.target.value)}
-                    disabled={isReadOnly}
-                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500 ${
-                      isReadOnly ? 'opacity-80 cursor-default' : ''
-                    }`}
-                  >
-                    {clientVehicles.length === 0 ? (
-                      <option value="">Nenhum veículo cadastrado para este cliente</option>
-                    ) : (
-                      clientVehicles.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.brand} {v.model} ({v.plate})
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-
-                {/* Mecânico Responsável */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1 flex items-center gap-1.5">
-                    <Wrench className="w-3.5 h-3.5 text-amber-400" />
-                    Mecânico Responsável
-                  </label>
-                  <select
-                    value={mechanicId}
-                    onChange={(e) => setMechanicId(e.target.value)}
-                    disabled={isReadOnly}
-                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500 ${
-                      isReadOnly ? 'opacity-80 cursor-default' : ''
-                    }`}
-                  >
-                    {mechanics.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} (Comissão: {m.commissionRate}%)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Data de Entrada & Data do Serviço */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                    Data de Entrada
-                  </label>
-                  <input
-                    type="date"
-                    value={entryDate}
-                    onChange={(e) => setEntryDate(e.target.value)}
-                    disabled={isReadOnly}
-                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500 font-mono font-medium ${
-                      isReadOnly ? 'opacity-80 cursor-default' : ''
-                    }`}
-                  />
-
-                  {/* Data do Serviço: Apenas com aprovação da OS */}
-                  {status === 'aprovado' ||
-                  status === 'em_andamento' ||
-                  status === 'pronto' ||
-                  serviceDate ? (
-                    <div className="mt-2 pt-2 border-t border-slate-800">
-                      <label className="block text-[11px] font-semibold text-emerald-400 uppercase mb-1 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                        Data do Serviço (Aprovada)
-                      </label>
-                      <input
-                        type="date"
-                        value={serviceDate || toIsoDate(new Date())}
-                        onChange={(e) => setServiceDate(e.target.value)}
-                        disabled={isReadOnly}
-                        className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono font-medium ${
-                          isReadOnly ? 'opacity-80 cursor-default' : ''
-                        }`}
-                      />
-                      <div className="mt-1 text-xs text-slate-300">
-                        <span className="text-[11px] text-slate-400">Venc. Garantia: </span>
-                        <strong className="text-amber-400 font-bold">{warrantyInfo.formattedExpiryDate}</strong>
-                        <span className="text-[10px] text-slate-500 ml-1">({warrantyDays}d)</span>
+                      {/* Laudo Interativo de Lataria com Pinos */}
+                      <div className="pt-2">
+                        <span className="block text-xs font-bold text-slate-700 mb-2">
+                          Laudo Visual de Avarias de Lataria (Pinos de Danos)
+                        </span>
+                        <CarDamageCanvas damagePoints={damagePoints} onChange={setDamagePoints} readOnly={isReadOnly} />
                       </div>
-                    </div>
-                  ) : (
-                    <div className="mt-2 py-1 px-2 bg-slate-900/80 rounded border border-slate-800 text-[10px] sm:text-[11px] text-slate-400">
-                      <span className="text-amber-400/90 font-medium">⏳ Data do Serviço:</span> Definida automaticamente após a aprovação da O.S.
                     </div>
                   )}
                 </div>
               </div>
-            )}
 
-            {/* BOTÃO GUIADO ESTILO LOVABLE */}
-            <div className="pt-1">
-              {formatPlate(plateInput).length < 7 ? (
-                <div className="w-full bg-slate-900/80 border border-slate-800 rounded-xl py-3 text-center text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-2 select-none">
-                  <Car className="w-4 h-4 text-slate-600" />
-                  <span>Informe a placa do veículo (7 caracteres)</span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    ensureQuickClientAndVehicle();
-                    setActiveTab('itens');
-                  }}
-                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider py-3 rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.005] active:scale-[0.995]"
-                >
-                  <span>Avançar para Serviços & Peças</span>
-                  <ChevronRight className="w-4 h-4 stroke-[3]" />
-                </button>
-              )}
-            </div>
-          </div>
-
-              {/* Seção 2: Diagnóstico e Relato */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Relato do Cliente (Sintoma / Queixa)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={complaintDescription}
-                    onChange={(e) => setComplaintDescription(e.target.value)}
-                    readOnly={isReadOnly}
-                    placeholder="Ex: Barulho na roda direita ao frear, pedal fofo, luz de injeção acesa..."
-                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 ${
-                      isReadOnly ? 'opacity-85' : ''
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Diagnóstico Técnico da Oficina
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={technicalDiagnostic}
-                    onChange={(e) => setTechnicalDiagnostic(e.target.value)}
-                    readOnly={isReadOnly}
-                    placeholder="Ex: Pastilhas no ferro, fluido contaminado, correia ressecada com 70 mil km..."
-                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 ${
-                      isReadOnly ? 'opacity-85' : ''
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* Seção 3: Checklist Rápido de Recepção & Avarias */}
-              <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-4">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-amber-400" />
-                    Checklist de Entrada & Proteção da Oficina
-                  </h4>
-
-                  {/* Botão de 1 Toque: Marcar Tudo OK */}
-                  {!isReadOnly && (
-                    <button
-                      type="button"
-                      onClick={handleToggleChecklistAll}
-                      className="px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
-                    >
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      {hasSpareWheel && hasJack && hasLugWrench && hasTriangle
-                        ? 'Desmarcar Todos'
-                        : 'Marcar Tudo OK'}
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* KM */}
-                  <div>
-                    <label className="text-xs text-slate-400 flex items-center gap-1.5 mb-1 font-semibold">
-                      <Gauge className="w-3.5 h-3.5 text-blue-400" />
-                      KM no Painel
-                    </label>
-                    <input
-                      type="number"
-                      value={mileage}
-                      onChange={(e) => setMileage(Number(e.target.value))}
-                      disabled={isReadOnly}
-                      className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-white font-mono ${
-                        isReadOnly ? 'opacity-80' : ''
-                      }`}
-                    />
+              {/* BARRA FIXA DE AÇÃO NO RODAPÉ ESTILO LOVABLE */}
+              <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-6 p-4 bg-[#faf8f5]/95 backdrop-blur-md border-t border-slate-200/80 z-20">
+                {formatPlate(plateInput).length < 7 ? (
+                  <div className="w-full bg-[#eef2f6] text-[#557086] font-black text-sm tracking-wider uppercase py-4 rounded-2xl text-center select-none shadow-xs cursor-not-allowed">
+                    INFORME A PLACA
                   </div>
-
-                  {/* Combustível */}
-                  <div>
-                    <label className="text-xs text-slate-400 flex items-center justify-between mb-1 font-semibold">
-                      <span className="flex items-center gap-1">
-                        <Fuel className="w-3.5 h-3.5 text-amber-400" />
-                        Combustível
-                      </span>
-                      <span className="font-bold text-white text-xs">{fuelLevel}%</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="25"
-                      value={fuelLevel}
-                      onChange={(e) => setFuelLevel(Number(e.target.value))}
-                      disabled={isReadOnly}
-                      className="w-full accent-amber-500 cursor-pointer disabled:opacity-60"
-                    />
-                    <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                      <span>Reserva</span>
-                      <span>1/2</span>
-                      <span>Cheio</span>
-                    </div>
-                  </div>
-
-                  {/* Acessórios Obrigatórios + Botão de Marcação Rápida */}
-                  <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
-                    <div className="flex flex-wrap gap-3 items-center">
-                      <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
-                        <input
-                          type="checkbox"
-                          checked={hasSpareWheel}
-                          onChange={(e) => setHasSpareWheel(e.target.checked)}
-                          disabled={isReadOnly}
-                          className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
-                        />
-                        Estepe
-                      </label>
-                      <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
-                        <input
-                          type="checkbox"
-                          checked={hasJack}
-                          onChange={(e) => setHasJack(e.target.checked)}
-                          disabled={isReadOnly}
-                          className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
-                        />
-                        Macaco
-                      </label>
-                      <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
-                        <input
-                          type="checkbox"
-                          checked={hasLugWrench}
-                          onChange={(e) => setHasLugWrench(e.target.checked)}
-                          disabled={isReadOnly}
-                          className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
-                        />
-                        Chave de Roda
-                      </label>
-                      <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
-                        <input
-                          type="checkbox"
-                          checked={hasTriangle}
-                          onChange={(e) => setHasTriangle(e.target.checked)}
-                          disabled={isReadOnly}
-                          className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 disabled:opacity-60"
-                        />
-                        Triângulo
-                      </label>
-                    </div>
-
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setHasSpareWheel(true);
-                          setHasJack(true);
-                          setHasLugWrench(true);
-                          setHasTriangle(true);
-                        }}
-                        className="text-[11px] font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-500/30 transition-colors flex items-center gap-1"
-                        title="Marcar todos os 4 acessórios obrigatórios como presentes no veículo"
-                      >
-                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Marcar Acessórios Conformes</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Canvas Interativo de Lataria */}
-                <CarDamageCanvas damagePoints={damagePoints} onChange={setDamagePoints} readOnly={isReadOnly} />
-              </div>
-
-              {/* Botão de Avanço Rápido para a Aba 2 */}
-              <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('itens')}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs sm:text-sm rounded-xl border border-slate-700 flex items-center gap-1.5 transition-colors"
-                >
-                  <span>Próximo: Serviços & Peças</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      ensureQuickClientAndVehicle();
+                      setActiveTab('itens');
+                    }}
+                    className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-black text-sm tracking-wider uppercase py-4 rounded-2xl text-center shadow-lg shadow-orange-500/25 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
+                  >
+                    <span>AVANÇAR PARA PEÇAS & SERVIÇOS</span>
+                    <ChevronRight className="w-5 h-5 stroke-[3]" />
+                  </button>
+                )}
               </div>
             </div>
           )}
