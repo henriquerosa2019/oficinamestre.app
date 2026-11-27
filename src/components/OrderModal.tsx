@@ -1419,7 +1419,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           </>
         ) : (
           <>
-            {/* Barra de 3 Abas Rápidas no Topo - Mais espaçada e com destaque */}
+            {/* Barra de 3 Abas Rápidas no Topo - Estilo Lovable */}
             <div className="bg-slate-950 px-2 sm:px-6 pt-2 sm:pt-3 pb-0 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-3 overflow-x-auto shrink-0">
           <div className="flex items-center gap-1.5 sm:gap-3">
             <button
@@ -1427,11 +1427,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               onClick={() => setActiveTab('diagnostico')}
               className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
                 activeTab === 'diagnostico'
-                  ? 'bg-slate-900 text-amber-400 border-amber-500 shadow-sm'
+                  ? 'bg-[#faf8f5] text-slate-900 border-[#f97316] shadow-sm font-black'
                   : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40'
               }`}
             >
-              <ClipboardList className="w-4 h-4 text-amber-400" />
+              <ClipboardList className={`w-4 h-4 ${activeTab === 'diagnostico' ? 'text-[#f97316]' : 'text-slate-400'}`} />
               <span>1. Diagnóstico & Entrada</span>
             </button>
 
@@ -1440,16 +1440,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               onClick={() => setActiveTab('itens')}
               className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
                 activeTab === 'itens'
-                  ? 'bg-slate-900 text-amber-400 border-amber-500 shadow-sm'
+                  ? 'bg-[#faf8f5] text-slate-900 border-[#f97316] shadow-sm font-black'
                   : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40'
               }`}
             >
-              <Wrench className="w-4 h-4 text-amber-400" />
+              <Wrench className={`w-4 h-4 ${activeTab === 'itens' ? 'text-[#f97316]' : 'text-slate-400'}`} />
               <span>2. Serviços & Peças</span>
               {services.length + parts.length > 0 && (
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                    activeTab === 'itens' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-amber-400'
+                    activeTab === 'itens' ? 'bg-[#f97316] text-white' : 'bg-slate-800 text-slate-300'
                   }`}
                 >
                   {services.length + parts.length}
@@ -1462,20 +1462,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               onClick={() => setActiveTab('fechamento')}
               className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
                 activeTab === 'fechamento'
-                  ? 'bg-slate-900 text-amber-400 border-amber-500 shadow-sm'
+                  ? 'bg-[#faf8f5] text-slate-900 border-[#f97316] shadow-sm font-black'
                   : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40'
               }`}
             >
               {isQuotationStage ? (
-                <FileText className="w-4 h-4 text-sky-400" />
+                <FileText className={`w-4 h-4 ${activeTab === 'fechamento' ? 'text-[#f97316]' : 'text-sky-400'}`} />
               ) : (
-                <DollarSign className="w-4 h-4 text-emerald-400" />
+                <DollarSign className={`w-4 h-4 ${activeTab === 'fechamento' ? 'text-[#f97316]' : 'text-emerald-400'}`} />
               )}
               <span>{isQuotationStage ? '3. Proposta & Orçamento' : '3. Fechamento & Pagamento'}</span>
               <span
                 className={`px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold ${
                   activeTab === 'fechamento'
-                    ? (isQuotationStage ? 'bg-sky-500/20 text-sky-300' : 'bg-emerald-500/20 text-emerald-300')
+                    ? 'bg-[#f97316]/15 text-[#f97316]'
                     : 'bg-slate-800/80 text-slate-300'
                 }`}
               >
@@ -1485,8 +1485,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           </div>
         </div>
 
-        {/* Corpo do Modal - Conteúdo Dinâmico por Aba */}
-        <div className={`overflow-y-auto flex-1 ${activeTab === 'diagnostico' ? 'bg-[#faf8f5]' : 'bg-slate-900 text-slate-200 p-4 sm:p-6 space-y-5'}`}>
+        {/* Corpo do Modal - Conteúdo Dinâmico por Aba em Fundo Off-White #faf8f5 */}
+        <div className="overflow-y-auto flex-1 bg-[#faf8f5] text-slate-900">
           {/* ========================================================================= */}
           {/* ABA 1: DIAGNÓSTICO & ENTRADA */}
           {/* ========================================================================= */}
@@ -1674,144 +1674,138 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
               </div>
 
-              {/* SEÇÃO EXPANSÍVEL: OPÇÕES TÉCNICAS DA OFICINA (MECÂNICO, LAUDO COM PINOS E CHECKLIST) */}
-              <div className="pt-2">
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvancedDetails(!showAdvancedDetails)}
-                    className="w-full flex items-center justify-between text-left text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Wrench className="w-4 h-4 text-[#f97316]" />
-                      <span>{showAdvancedDetails ? 'Ocultar Opções Técnicas da Oficina' : '+ Opções Técnicas da Oficina (Mecânico, Laudo com Pinos e Acessórios)'}</span>
+                            {/* PASSO 5: VISTORIA DO VEÍCULO & AVARIAS DA LATARIA (DIRETAMENTE VISÍVEL COMO SOLICITADO) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6 h-6 rounded-full bg-[#f97316] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
+                      5
                     </div>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showAdvancedDetails ? 'rotate-180' : ''}`} />
-                  </button>
+                    <div>
+                      <span className="text-sm font-bold text-slate-900 block">Vistoria & Avarias da Lataria</span>
+                      <span className="text-[11px] text-slate-500">Clique na silhueta do veículo para marcar arranhões, amassados e trincas</span>
+                    </div>
+                  </div>
+                </div>
 
-                  {showAdvancedDetails && (
-                    <div className="mt-4 pt-4 border-t border-slate-100 space-y-5 animate-in fade-in duration-150">
-                      {/* Mecânico Responsável & Datas */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-500 mb-1">
-                            Mecânico Responsável
-                          </label>
-                          <select
-                            value={mechanicId}
-                            onChange={(e) => setMechanicId(e.target.value)}
-                            disabled={isReadOnly}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#f97316]"
-                          >
-                            {mechanics.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.name} (Comissão: {m.commissionRate}%)
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+                  {/* Silhueta Vetorial do Carro com Pinos de Avarias */}
+                  <CarDamageCanvas damagePoints={damagePoints} onChange={setDamagePoints} readOnly={isReadOnly} />
 
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-500 mb-1">
-                            Data de Entrada
-                          </label>
-                          <input
-                            type="date"
-                            value={entryDate}
-                            onChange={(e) => setEntryDate(e.target.value)}
-                            disabled={isReadOnly}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#f97316]"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Diagnóstico Técnico da Oficina */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 mb-1">
-                          Diagnóstico Técnico Prévio
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={technicalDiagnostic}
-                          onChange={(e) => setTechnicalDiagnostic(e.target.value)}
+                  {/* Acessórios Obrigatórios (Estepe, Macaco, Chave, Triângulo) */}
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-[#f97316]" />
+                        Checklist de Acessórios Obrigatórios
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleToggleChecklistAll}
+                        className="text-[11px] font-bold text-[#f97316] hover:underline cursor-pointer"
+                      >
+                        {hasSpareWheel && hasJack && hasLugWrench && hasTriangle ? 'Desmarcar Todos' : 'Marcar Todos'}
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-700">
+                      <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-slate-900">
+                        <input
+                          type="checkbox"
+                          checked={hasSpareWheel}
+                          onChange={(e) => setHasSpareWheel(e.target.checked)}
                           disabled={isReadOnly}
-                          placeholder="Ex: Pastilhas desgastadas, correia ressecada, óleo contaminado..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#f97316]"
+                          className="w-4 h-4 rounded text-[#f97316] focus:ring-0 accent-[#f97316]"
                         />
-                      </div>
-
-                      {/* Acessórios Obrigatórios (Estepe, Macaco, Chave, Triângulo) */}
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                            <ShieldCheck className="w-3.5 h-3.5 text-[#f97316]" />
-                            Acessórios do Veículo
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleToggleChecklistAll}
-                            className="text-[11px] font-bold text-[#f97316] hover:underline"
-                          >
-                            {hasSpareWheel && hasJack && hasLugWrench && hasTriangle ? 'Desmarcar Todos' : 'Marcar Todos'}
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-700">
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={hasSpareWheel}
-                              onChange={(e) => setHasSpareWheel(e.target.checked)}
-                              disabled={isReadOnly}
-                              className="rounded text-[#f97316] focus:ring-0"
-                            />
-                            Estepe
-                          </label>
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={hasJack}
-                              onChange={(e) => setHasJack(e.target.checked)}
-                              disabled={isReadOnly}
-                              className="rounded text-[#f97316] focus:ring-0"
-                            />
-                            Macaco
-                          </label>
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={hasLugWrench}
-                              onChange={(e) => setHasLugWrench(e.target.checked)}
-                              disabled={isReadOnly}
-                              className="rounded text-[#f97316] focus:ring-0"
-                            />
-                            Chave de Roda
-                          </label>
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={hasTriangle}
-                              onChange={(e) => setHasTriangle(e.target.checked)}
-                              disabled={isReadOnly}
-                              className="rounded text-[#f97316] focus:ring-0"
-                            />
-                            Triângulo
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Laudo Interativo de Lataria com Pinos */}
-                      <div className="pt-2">
-                        <span className="block text-xs font-bold text-slate-700 mb-2">
-                          Laudo Visual de Avarias de Lataria (Pinos de Danos)
-                        </span>
-                        <CarDamageCanvas damagePoints={damagePoints} onChange={setDamagePoints} readOnly={isReadOnly} />
-                      </div>
+                        Estepe
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-slate-900">
+                        <input
+                          type="checkbox"
+                          checked={hasJack}
+                          onChange={(e) => setHasJack(e.target.checked)}
+                          disabled={isReadOnly}
+                          className="w-4 h-4 rounded text-[#f97316] focus:ring-0 accent-[#f97316]"
+                        />
+                        Macaco
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-slate-900">
+                        <input
+                          type="checkbox"
+                          checked={hasLugWrench}
+                          onChange={(e) => setHasLugWrench(e.target.checked)}
+                          disabled={isReadOnly}
+                          className="w-4 h-4 rounded text-[#f97316] focus:ring-0 accent-[#f97316]"
+                        />
+                        Chave de Roda
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-slate-900">
+                        <input
+                          type="checkbox"
+                          checked={hasTriangle}
+                          onChange={(e) => setHasTriangle(e.target.checked)}
+                          disabled={isReadOnly}
+                          className="w-4 h-4 rounded text-[#f97316] focus:ring-0 accent-[#f97316]"
+                        />
+                        Triângulo
+                      </label>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Mecânico Responsável & Data de Entrada */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        <Wrench className="w-3.5 h-3.5 text-[#f97316]" />
+                        Mecânico Responsável
+                      </label>
+                      <select
+                        value={mechanicId}
+                        onChange={(e) => setMechanicId(e.target.value)}
+                        disabled={isReadOnly}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#f97316] focus:bg-white transition-all"
+                      >
+                        {mechanics.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name} (Comissão: {m.commissionRate}%)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-[#f97316]" />
+                        Data de Entrada no Pátio
+                      </label>
+                      <input
+                        type="date"
+                        value={entryDate}
+                        onChange={(e) => setEntryDate(e.target.value)}
+                        disabled={isReadOnly}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-slate-900 focus:outline-none focus:border-[#f97316] focus:bg-white transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Diagnóstico Técnico Prévio da Oficina */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-[#f97316]" />
+                      Diagnóstico Técnico Prévio da Oficina
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={technicalDiagnostic}
+                      onChange={(e) => setTechnicalDiagnostic(e.target.value)}
+                      disabled={isReadOnly}
+                      placeholder="Ex: Pastilhas desgastadas, correia ressecada, vazamento no cárter..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#f97316] focus:bg-white transition-all resize-none"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* BARRA FIXA DE AÇÃO NO RODAPÉ ESTILO LOVABLE */}
+{/* BARRA FIXA DE AÇÃO NO RODAPÉ ESTILO LOVABLE */}
               <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-6 p-4 bg-[#faf8f5]/95 backdrop-blur-md border-t border-slate-200/80 z-20">
                 {formatPlate(plateInput).length < 7 ? (
                   <div className="w-full bg-[#eef2f6] text-[#557086] font-black text-sm tracking-wider uppercase py-4 rounded-2xl text-center select-none shadow-xs cursor-not-allowed">
@@ -1835,93 +1829,91 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* ABA 2: SERVIÇOS & PEÇAS (Onde o Mecânico passa 80% do tempo) */}
+          {/* ABA 2: SERVIÇOS & PEÇAS (Estilo Lovable - Limpo, Elegante e Operacional) */}
           {/* ========================================================================= */}
           {activeTab === 'itens' && (
-            <div className="space-y-5 animate-in fade-in duration-150">
-              {/* Barra de Resumo Parcial Rápido com Detalhamento do Desconto */}
-              <div className="bg-slate-950/80 p-3 sm:p-4 rounded-xl border border-slate-800 space-y-2.5">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-center">
-                  <div className="bg-slate-900/70 p-2 sm:p-2.5 rounded-lg border border-slate-800">
-                    <span className="text-[11px] text-slate-400 block font-medium">Mão de Obra ({services.length})</span>
-                    <span className="font-mono text-xs sm:text-sm font-bold text-white">
-                      R$ {formatCurrency(servicesTotal)}
-                    </span>
-                  </div>
-                  <div className="bg-slate-900/70 p-2 sm:p-2.5 rounded-lg border border-slate-800">
-                    <span className="text-[11px] text-slate-400 block font-medium">
-                      Peças {partsSupplyMode === 'cliente_todas' ? '(Cliente)' : `(${parts.length})`}
-                    </span>
-                    <span className="font-mono text-xs sm:text-sm font-bold text-white">
-                      {partsSupplyMode === 'cliente_todas' ? 'R$ 0,00' : `R$ ${partsTotal.toFixed(2)}`}
-                    </span>
-                  </div>
-                  <div className="bg-slate-900/70 p-2 sm:p-2.5 rounded-lg border border-slate-800">
-                    <span className="text-[11px] text-slate-300 block font-semibold">Subtotal Bruto</span>
-                    <span className="font-mono text-xs sm:text-sm font-bold text-slate-200">
-                      R$ {formatCurrency(grossTotal)}
-                    </span>
-                  </div>
-                  <div className="bg-amber-500/10 p-2 sm:p-2.5 rounded-lg border border-amber-500/40 text-center">
-                    <span className="text-[11px] text-amber-400 block font-bold uppercase tracking-wider">
-                      Total da O.S.
-                    </span>
-                    <span className="font-mono text-sm sm:text-base font-black text-amber-400">
-                      R$ {formatCurrency(netTotal)}
-                    </span>
-                  </div>
+            <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 pb-28 text-slate-900 animate-in fade-in duration-150">
+              {/* Barra de Resumo Parcial Rápido em 4 Cards Brancos */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs">
+                  <span className="text-[11px] text-slate-500 block font-semibold mb-0.5">Mão de Obra ({services.length})</span>
+                  <span className="font-mono text-sm sm:text-base font-black text-slate-900">
+                    R$ {formatCurrency(servicesTotal)}
+                  </span>
                 </div>
-
-                {/* Banner Transparente de Desconto para esclarecer qualquer divergência entre Subtotal e Fechamento */}
-                {discount > 0 ? (
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-red-500/10 border border-red-500/30 px-3 py-2 rounded-lg text-xs text-red-200">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse shrink-0"></span>
-                      <span>
-                        Desconto Aplicado: <strong className="font-mono text-red-400">- R$ {formatCurrency(discount)}</strong>
-                        <span className="text-slate-400 mx-1.5">•</span>
-                        <span>(Subtotal Bruto: <strong>R$ {formatCurrency(grossTotal)}</strong> ➔ Valor Final Fechamento: <strong className="text-amber-300">R$ {formatCurrency(netTotal)}</strong>)</span>
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('fechamento')}
-                      className="text-[11px] text-amber-400 hover:text-amber-300 underline font-bold shrink-0"
-                    >
-                      Editar Desconto na Aba 3
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
-                    <span>Sem desconto comercial aplicado. O subtotal bruto corresponde ao total da O.S.</span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('fechamento')}
-                      className="text-slate-400 hover:text-amber-400 transition-colors"
-                    >
-                      + Aplicar Desconto
-                    </button>
-                  </div>
-                )}
+                <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs">
+                  <span className="text-[11px] text-slate-500 block font-semibold mb-0.5">
+                    Peças {partsSupplyMode === 'cliente_todas' ? '(Cliente)' : `(${parts.length})`}
+                  </span>
+                  <span className="font-mono text-sm sm:text-base font-black text-slate-900">
+                    {partsSupplyMode === 'cliente_todas' ? 'R$ 0,00' : `R$ ${partsTotal.toFixed(2)}`}
+                  </span>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs">
+                  <span className="text-[11px] text-slate-500 block font-semibold mb-0.5">Subtotal Bruto</span>
+                  <span className="font-mono text-sm sm:text-base font-black text-slate-700">
+                    R$ {formatCurrency(grossTotal)}
+                  </span>
+                </div>
+                <div className="bg-[#f97316]/10 border border-[#f97316]/30 rounded-2xl p-3.5 shadow-xs text-center">
+                  <span className="text-[11px] text-[#f97316] block font-bold uppercase tracking-wider mb-0.5">
+                    Total da O.S.
+                  </span>
+                  <span className="font-mono text-base sm:text-lg font-black text-[#f97316]">
+                    R$ {formatCurrency(netTotal)}
+                  </span>
+                </div>
               </div>
+
+              {/* Banner Transparente de Desconto */}
+              {discount > 0 ? (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-red-50 border border-red-200 px-4 py-2.5 rounded-xl text-xs text-red-700 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></span>
+                    <span>
+                      Desconto Aplicado: <strong className="font-mono text-red-600">- R$ {formatCurrency(discount)}</strong>
+                      <span className="text-slate-400 mx-1.5">•</span>
+                      <span>(Subtotal Bruto: <strong>R$ {formatCurrency(grossTotal)}</strong> ➔ Valor Final: <strong className="text-[#f97316]">R$ {formatCurrency(netTotal)}</strong>)</span>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('fechamento')}
+                    className="text-[11px] text-[#f97316] hover:underline font-bold shrink-0 cursor-pointer"
+                  >
+                    Editar Desconto na Aba 3
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                  <span>Sem desconto comercial aplicado. O subtotal bruto corresponde ao total da O.S.</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('fechamento')}
+                    className="text-slate-600 hover:text-[#f97316] font-medium transition-colors cursor-pointer"
+                  >
+                    + Aplicar Desconto
+                  </button>
+                </div>
+              )}
 
               {/* Ação Direta do Mecânico no Pátio (1 Toque) */}
               {(status === 'em_andamento' || status === 'aprovado') && (
-                <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-900 p-3 sm:p-4 rounded-xl border border-emerald-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+                <div className="bg-emerald-50 border border-emerald-200 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-300">
                       <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-emerald-400 uppercase tracking-wide">
+                        <span className="text-xs font-black text-emerald-800 uppercase tracking-wide">
                           Ação Direta do Mecânico no Pátio
                         </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
                           {status === 'em_andamento' ? '4. Em Execução' : '3. Aprovado'}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-300 mt-0.5">
+                      <p className="text-xs text-slate-600 mt-0.5">
                         Terminou o serviço no carro? Marque como pronto em 1 toque sem precisar transitar por abas financeiras.
                       </p>
                     </div>
@@ -1938,7 +1930,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       });
                       alert('✅ Sucesso! Veículo marcado como "5. Pronto para Retirada no Pátio". O cliente já pode vir buscar!');
                     }}
-                    className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02] active:scale-95 shrink-0"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all hover:scale-[1.02] active:scale-95 shrink-0 cursor-pointer"
                     title="Avança a O.S. diretamente para Pronto para Retirada"
                   >
                     <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
@@ -1948,22 +1940,27 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               )}
 
               {/* Bloco 1: Serviços Mecânicos (Mão de Obra) */}
-              <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Wrench className="w-4 h-4 text-amber-400" />
-                    Mão de Obra & Serviços Mecânicos
-                  </h4>
-                  <span className="text-xs font-bold text-amber-400">
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-[#f97316] text-white flex items-center justify-center text-xs font-black shrink-0 shadow-xs">
+                      <Wrench className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">Mão de Obra & Serviços Mecânicos</h4>
+                      <p className="text-[11px] text-slate-500">Adicione os serviços que serão executados na oficina</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-[#f97316] font-mono bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-200">
                     Subtotal: R$ {formatCurrency(servicesTotal)}
                   </span>
                 </div>
 
                 {/* Combos Rápidos de Serviços Pré-Cadastrados */}
                 <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    Combos Rápidos & Serviços Pré-Cadastrados (1 Clique):
+                  <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#f97316]" />
+                    Combos Rápidos & Serviços Frequentes (1 Clique):
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {availableServices.slice(0, 8).map((srv) => (
@@ -1973,12 +1970,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         onClick={() => {
                           handleAddService(srv.id, srv.name, srv.standardPrice);
                         }}
-                        className="px-2.5 py-1 bg-slate-900 hover:bg-amber-500/20 text-slate-200 hover:text-amber-300 rounded-lg text-xs font-semibold border border-slate-700/80 hover:border-amber-500/40 transition-colors flex items-center gap-1.5"
+                        className="px-3 py-1.5 bg-slate-50 hover:bg-orange-50 text-slate-800 hover:text-[#f97316] rounded-xl text-xs font-semibold border border-slate-200 hover:border-[#f97316]/50 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
                         title={`Adicionar "${srv.name}" com valor sugerido de R$ ${srv.standardPrice.toFixed(2)}`}
                       >
-                        <Plus className="w-3 h-3 text-amber-400" />
+                        <Plus className="w-3.5 h-3.5 text-[#f97316]" />
                         <span>{srv.name}</span>
-                        <span className="font-mono text-[11px] text-amber-400/90 font-bold">
+                        <span className="font-mono text-[11px] text-[#f97316] font-bold">
                           R$ {srv.standardPrice.toFixed(0)}
                         </span>
                       </button>
@@ -1998,7 +1995,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       }
                       e.target.value = '';
                     }}
-                    className="w-full bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-lg px-3 py-1.5 text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 hover:border-[#f97316]/50 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#f97316] focus:bg-white cursor-pointer transition-all"
                   >
                     <option value="">📋 Escolher do Catálogo Completo de Serviços da Oficina ({availableServices.length} cadastrados)...</option>
                     {availableServices.map((s) => (
@@ -2030,7 +2027,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                             handleAddService();
                           }
                         }}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#f97316] focus:bg-white transition-all"
                       />
                       {serviceSearch && (
                         <button
@@ -2040,7 +2037,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                             setSelectedServiceId('');
                             setServicePriceInput('');
                           }}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -2066,16 +2063,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               handleAddService();
                             }
                           }}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-2 py-2 text-xs sm:text-sm text-white font-mono font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500 text-right"
-                          title="Valor individual deste serviço (ou deixe vazio para o padrão)"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-2.5 py-2.5 text-xs sm:text-sm text-slate-900 font-mono font-bold placeholder-slate-400 focus:outline-none focus:border-[#f97316] focus:bg-white text-right transition-all"
+                          title="Valor individual deste serviço"
                         />
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleAddService()}
-                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 py-2 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 shrink-0 transition-colors shadow-sm"
-                        title="Adicionar serviço com o valor individual informado"
+                        className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shrink-0 transition-all shadow-sm cursor-pointer active:scale-95"
                       >
                         <Plus className="w-4 h-4 stroke-[2.5]" />
                         Adicionar
@@ -2085,14 +2081,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
                   {/* Dropdown de Sugestões de Serviços */}
                   {isServiceDropdownOpen && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto z-40 divide-y divide-slate-800">
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto z-40 divide-y divide-slate-100">
                       {serviceSearch.trim() && (
                         <div
                           onMouseDown={(e) => {
                             e.preventDefault();
                             handleAddService(undefined, serviceSearch.trim());
                           }}
-                          className="p-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 cursor-pointer flex items-center justify-between text-xs font-bold border-b border-slate-800 transition-colors"
+                          className="p-3 bg-orange-50 hover:bg-orange-100 text-[#f97316] cursor-pointer flex items-center justify-between text-xs font-bold border-b border-orange-100 transition-colors"
                         >
                           <span className="flex items-center gap-1.5 truncate pr-2">
                             <Plus className="w-3.5 h-3.5 shrink-0" />
@@ -2119,12 +2115,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               setServicePriceInput(s.standardPrice.toString());
                               setIsServiceDropdownOpen(false);
                             }}
-                            className={`p-2.5 hover:bg-slate-800 cursor-pointer flex items-center justify-between text-xs transition-colors ${
-                              selectedServiceId === s.id ? 'bg-amber-500/20 border-l-4 border-amber-500' : ''
+                            className={`p-2.5 hover:bg-slate-50 cursor-pointer flex items-center justify-between text-xs transition-colors ${
+                              selectedServiceId === s.id ? 'bg-orange-50/80 border-l-4 border-[#f97316]' : ''
                             }`}
                           >
-                            <span className="font-semibold text-white truncate pr-2">{s.name}</span>
-                            <span className="font-mono font-bold text-amber-400 shrink-0">
+                            <span className="font-semibold text-slate-800 truncate pr-2">{s.name}</span>
+                            <span className="font-mono font-bold text-[#f97316] shrink-0">
                               R$ {formatCurrency(s.standardPrice)}
                             </span>
                           </div>
@@ -2135,19 +2131,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
 
                 {/* Lista de Serviços Adicionados */}
-                <div className="divide-y divide-slate-800/80 max-h-52 overflow-y-auto bg-slate-900/40 rounded-lg p-2 border border-slate-800/60">
+                <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto bg-slate-50 rounded-xl p-2 border border-slate-200">
                   {services.length === 0 ? (
-                    <div className="py-4 text-center text-xs text-slate-500 italic">
+                    <div className="py-4 text-center text-xs text-slate-400 italic">
                       Nenhum serviço mecânico adicionado ainda.
                     </div>
                   ) : (
                     services.map((item) => (
-                      <div key={item.id} className="py-2.5 flex items-center justify-between text-xs gap-3">
+                      <div key={item.id} className="py-2.5 px-2 flex items-center justify-between text-xs gap-3">
                         <div className="flex-1 min-w-0 pr-2">
-                          <div className="font-bold text-slate-100 truncate">{item.description}</div>
-                          <div className="text-slate-400 text-[11px] flex items-center gap-2">
+                          <div className="font-bold text-slate-900 truncate">{item.description}</div>
+                          <div className="text-slate-500 text-[11px] flex items-center gap-2 mt-0.5">
                             {item.price === 0 && servicesTotal > 0 ? (
-                              <span className="text-amber-400 font-medium bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px]">
+                              <span className="text-[#f97316] font-medium bg-orange-100/60 border border-orange-200 px-1.5 py-0.5 rounded text-[10px]">
                                 Incluso no Pacote Global
                               </span>
                             ) : (
@@ -2156,7 +2152,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 focus-within:border-amber-500">
+                          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-1 focus-within:border-[#f97316] shadow-xs">
                             <span className="text-slate-400 text-xs font-bold">R$</span>
                             <input
                               type="number"
@@ -2165,14 +2161,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               value={item.price > 0 ? item.price : ''}
                               placeholder="0,00"
                               onChange={(e) => handleUpdateServicePrice(item.id, parseFloat(e.target.value) || 0)}
-                              className="w-20 sm:w-24 bg-transparent text-xs sm:text-sm font-mono font-bold text-white text-right focus:outline-none placeholder-slate-500"
-                              title="Valor individual deste serviço (ou deixe vazio para compor o pacote global)"
+                              className="w-20 sm:w-24 bg-transparent text-xs sm:text-sm font-mono font-bold text-slate-900 text-right focus:outline-none placeholder-slate-400"
+                              title="Valor individual deste serviço"
                             />
                           </div>
                           <button
                             type="button"
                             onClick={() => handleRemoveService(item.id)}
-                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                             title="Remover serviço"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -2184,19 +2180,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
 
                 {/* Ajuste do Total dos Serviços (Mão de Obra) */}
-                <div className="bg-slate-900/90 border border-amber-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-inner">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                      <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
                         Total da Mão de Obra (Serviços):
                       </span>
                       {services.length > 0 && (
-                        <span className="text-[10px] text-slate-300 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700 font-bold">
+                        <span className="text-[10px] text-slate-600 bg-white px-2 py-0.5 rounded-full border border-slate-200 font-bold">
                           {services.length} {services.length === 1 ? 'serviço' : 'serviços'}
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-500">
                       {sumServices === 0 && servicesTotal > 0
                         ? 'Valor global de mão de obra definido. Os serviços são mantidos no pacote sem diluição individual.'
                         : services.length > 1
@@ -2208,8 +2204,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 bg-slate-800 border-2 border-amber-500/70 rounded-lg px-2.5 py-1 focus-within:border-amber-400 shadow-sm">
-                      <span className="text-xs font-bold text-amber-400">R$</span>
+                    <div className="flex items-center gap-1.5 bg-white border-2 border-[#f97316] rounded-xl px-2.5 py-1 focus-within:ring-2 focus-within:ring-[#f97316]/30 shadow-xs">
+                      <span className="text-xs font-bold text-[#f97316]">R$</span>
                       <input
                         type="number"
                         step="0.01"
@@ -2232,7 +2228,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                             setIsEditingTotalServices(false);
                           }
                         }}
-                        className="w-28 sm:w-32 bg-transparent text-sm sm:text-base font-black text-white text-right font-mono focus:outline-none"
+                        className="w-28 sm:w-32 bg-transparent text-sm sm:text-base font-black text-slate-900 text-right font-mono focus:outline-none"
                         title="Digite o valor total da mão de obra"
                       />
                     </div>
@@ -2243,7 +2239,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           handleApplyTotalServices(totalServicesInput);
                           setIsEditingTotalServices(false);
                         }}
-                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1.5 rounded-lg text-xs shadow-sm"
+                        className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs cursor-pointer"
                       >
                         ✓ Ok
                       </button>
@@ -2254,11 +2250,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
               {/* Alerta de Itens sem Valor de Venda Definido */}
               {partsSupplyMode !== 'cliente_todas' && zeroPriceParts.length > 0 && (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-300 animate-in fade-in">
-                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-900 shadow-xs animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold text-amber-200">Atenção aos itens com valor R$ 0,00:</span>
-                    <p className="text-[11px] text-amber-300/80 mt-0.5">
+                    <span className="font-bold text-amber-900">Atenção aos itens com valor R$ 0,00:</span>
+                    <p className="text-[11px] text-amber-800 mt-0.5">
                       Há {zeroPriceParts.length} peça(s) adicionada(s) sem preço de venda. Preencha o valor unitário de cada item ou ajuste o Total de Peças para evitar enviar orçamento zerado por engano.
                     </p>
                   </div>
@@ -2266,28 +2262,35 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               )}
 
               {/* Bloco 2: Peças & Insumos Utilizados */}
-              <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-3.5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-amber-400" />
-                    <h4 className="text-sm font-bold text-white">Peças & Insumos</h4>
-                    {partsSupplyMode === 'cliente_todas' && (
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 font-bold flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Cliente Forneceu Todas
-                      </span>
-                    )}
-                    {partsSupplyMode === 'cliente_parcial' && (
-                      <span className="text-[10px] bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded-full border border-sky-500/30 font-bold flex items-center gap-1">
-                        <Split className="w-3 h-3" />
-                        Fornecimento Parcial
-                      </span>
-                    )}
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-[#f97316] text-white flex items-center justify-center text-xs font-black shrink-0 shadow-xs">
+                      <Package className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-slate-900">Peças & Insumos</h4>
+                        {partsSupplyMode === 'cliente_todas' && (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300 font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Cliente Forneceu Todas
+                          </span>
+                        )}
+                        {partsSupplyMode === 'cliente_parcial' && (
+                          <span className="text-[10px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full border border-sky-300 font-bold flex items-center gap-1">
+                            <Split className="w-3 h-3" />
+                            Fornecimento Parcial
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500">Defina as peças da oficina ou registre as trazidas pelo cliente</p>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs font-bold text-amber-400">
+                    <span className="text-xs font-black font-mono px-2.5 py-1 rounded-lg border bg-orange-50 text-[#f97316] border-orange-200">
                       {partsSupplyMode === 'cliente_todas' ? (
-                        <span className="text-emerald-400 font-mono">Total Peças: R$ 0,00</span>
+                        <span className="text-emerald-700">Total Peças: R$ 0,00</span>
                       ) : (
                         <span>Subtotal: R$ {formatCurrency(partsTotal)}</span>
                       )}
@@ -2296,9 +2299,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
 
                 {/* Seletor Rápido de Fornecimento de Peças */}
-                <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-2.5">
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-300">Origem das Peças & Insumos:</span>
+                    <span className="font-bold text-slate-800">Origem das Peças & Insumos:</span>
                     <span className="text-[11px] text-slate-500">Clique para alternar o modo</span>
                   </div>
 
@@ -2307,13 +2310,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setPartsSupplyMode('oficina')}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 ${
+                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 cursor-pointer ${
                         partsSupplyMode === 'oficina'
-                          ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm ring-1 ring-amber-500/30'
-                          : 'bg-slate-800/60 border-slate-700/70 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                          ? 'bg-orange-50 border-[#f97316] text-[#f97316] shadow-xs ring-1 ring-[#f97316]/30'
+                          : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      <Store className="w-4 h-4 shrink-0 text-amber-400" />
+                      <Store className="w-4 h-4 shrink-0 text-[#f97316]" />
                       <div className="min-w-0">
                         <div className="truncate font-black">Oficina Fornece</div>
                         <div className="text-[10px] opacity-75 font-normal truncate">Catálogo & estoque próprio</div>
@@ -2324,13 +2327,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setPartsSupplyMode('cliente_parcial')}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 ${
+                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 cursor-pointer ${
                         partsSupplyMode === 'cliente_parcial'
-                          ? 'bg-sky-500/20 border-sky-500 text-sky-300 shadow-sm ring-1 ring-sky-500/30'
-                          : 'bg-slate-800/60 border-slate-700/70 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                          ? 'bg-sky-50 border-sky-500 text-sky-700 shadow-xs ring-1 ring-sky-500/30'
+                          : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      <Split className="w-4 h-4 shrink-0 text-sky-400" />
+                      <Split className="w-4 h-4 shrink-0 text-sky-600" />
                       <div className="min-w-0">
                         <div className="truncate font-black">Cliente Parcialmente</div>
                         <div className="text-[10px] opacity-75 font-normal truncate">Lançar peças faltantes</div>
@@ -2341,13 +2344,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setPartsSupplyMode('cliente_todas')}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 ${
+                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 cursor-pointer ${
                         partsSupplyMode === 'cliente_todas'
-                          ? 'bg-emerald-500/25 border-emerald-500 text-emerald-300 shadow-sm ring-1 ring-emerald-500/30'
-                          : 'bg-slate-800/60 border-slate-700/70 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                          ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-xs ring-1 ring-emerald-500/30'
+                          : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
                       <div className="min-w-0">
                         <div className="truncate font-black">Cliente Forneceu Todas</div>
                         <div className="text-[10px] opacity-75 font-normal truncate">Sem custo de peças (Avançar)</div>
@@ -2355,16 +2358,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     </button>
                   </div>
 
-                  {/* Banner & Ação Direta se 'cliente_todas' */}
+                  {/* Banner se 'cliente_todas' */}
                   {partsSupplyMode === 'cliente_todas' && (
-                    <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3.5 space-y-3 mt-1 animate-in fade-in duration-150">
+                    <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 space-y-3 mt-1 animate-in fade-in duration-150">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-xs font-black text-emerald-400">
-                            <CheckCircle2 className="w-4 h-4 shrink-0" />
+                          <div className="flex items-center gap-1.5 text-xs font-black text-emerald-800">
+                            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
                             <span>Cliente forneceu 100% das peças e insumos!</span>
                           </div>
-                          <p className="text-[11px] text-emerald-200/90 leading-relaxed">
+                          <p className="text-[11px] text-emerald-700 leading-relaxed">
                             Nenhum valor de peças será cobrado na O.S. (Total de Peças: <strong>R$ 0,00</strong>). A oficina cobra e garante apenas a mão de obra de montagem e instalação.
                           </p>
                         </div>
@@ -2372,20 +2375,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           type="button"
                           onClick={() => setActiveTab('fechamento')}
                           disabled={isFinalized}
-                          className={`font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 shadow-lg transition-all ${
+                          className={`font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 shadow-sm transition-all cursor-pointer ${
                             isFinalized
-                              ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/60 shadow-none opacity-60'
-                              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 active:scale-95'
+                              ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none opacity-60'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
                           }`}
-                          title={isFinalized ? 'Esta O.S. já foi finalizada' : 'Avançar diretamente para o fechamento da O.S.'}
                         >
                           <span>Avançar para Fechamento</span>
                           <ChevronRight className="w-4 h-4 stroke-[3]" />
                         </button>
                       </div>
 
-                      <div className="pt-2 border-t border-emerald-800/40">
-                        <label className="text-[10px] font-bold text-emerald-300 block mb-1">
+                      <div className="pt-2 border-t border-emerald-200">
+                        <label className="text-[10px] font-bold text-emerald-900 block mb-1">
                           Anotação das peças trazidas (para constar na O.S. e recibo):
                         </label>
                         <input
@@ -2393,7 +2395,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           placeholder="Ex: 4L Óleo Sintético 5W30 Motul + Filtro Mann trazidos pelo cliente no porta-malas..."
                           value={clientProvidedPartsNotes}
                           onChange={(e) => setClientProvidedPartsNotes(e.target.value)}
-                          className="w-full bg-slate-950/70 border border-emerald-600/50 rounded-lg px-3 py-1.5 text-xs text-emerald-100 placeholder-emerald-400/50 focus:outline-none focus:border-emerald-400"
+                          className="w-full bg-white border border-emerald-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder-emerald-600/50 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                     </div>
@@ -2401,16 +2403,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
                   {/* Banner se 'cliente_parcial' */}
                   {partsSupplyMode === 'cliente_parcial' && (
-                    <div className="bg-sky-950/30 border border-sky-500/40 rounded-xl p-3.5 space-y-2 mt-1 animate-in fade-in duration-150">
-                      <div className="flex items-start gap-2 text-xs text-sky-200">
-                        <Split className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                    <div className="bg-sky-50 border border-sky-300 rounded-xl p-3.5 space-y-2 mt-1 animate-in fade-in duration-150">
+                      <div className="flex items-start gap-2 text-xs text-sky-800">
+                        <Split className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
                         <div>
-                          <span className="font-bold text-white">Fornecimento Parcial de Peças:</span> O cliente trouxe parte dos materiais.
+                          <span className="font-bold text-sky-950">Fornecimento Parcial de Peças:</span> O cliente trouxe parte dos materiais.
                           Insira abaixo <strong>apenas as peças faltantes</strong> que a oficina irá fornecer e cobrar na O.S.
                         </div>
                       </div>
                       <div className="pt-1">
-                        <label className="text-[10px] font-bold text-sky-300 block mb-1">
+                        <label className="text-[10px] font-bold text-sky-900 block mb-1">
                           O que o cliente já trouxe? (para resguardo da oficina):
                         </label>
                         <input
@@ -2418,14 +2420,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           placeholder="Ex: Cliente trouxe pastilhas dianteiras; oficina fornece discos e fluído de freio..."
                           value={clientProvidedPartsNotes}
                           onChange={(e) => setClientProvidedPartsNotes(e.target.value)}
-                          className="w-full bg-slate-950/70 border border-sky-600/50 rounded-lg px-3 py-1.5 text-xs text-sky-100 placeholder-sky-400/50 focus:outline-none focus:border-sky-400"
+                          className="w-full bg-white border border-sky-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder-sky-600/50 focus:outline-none focus:border-sky-500"
                         />
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Seletor & Inclusão de Peças (Ativo quando a oficina fornece ou faltam peças) */}
+                {/* Seletor & Inclusão de Peças */}
                 {partsSupplyMode !== 'cliente_todas' && (
                   <>
                     {/* Seletor Suspenso do Estoque Físico de Peças */}
@@ -2442,7 +2444,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           }
                           e.target.value = '';
                         }}
-                        className="w-full bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-lg px-3 py-1.5 text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500 cursor-pointer"
+                        className="w-full bg-slate-50 border border-slate-200 hover:border-[#f97316]/50 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#f97316] focus:bg-white cursor-pointer transition-all"
                       >
                         <option value="">📦 Escolher do Estoque Físico da Oficina ({availableParts.length} itens cadastrados)...</option>
                         {availableParts.map((p) => (
@@ -2478,7 +2480,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                                 handleAddPart();
                               }
                             }}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#f97316] focus:bg-white transition-all"
                           />
                           {partSearch && (
                             <button
@@ -2488,7 +2490,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                                 setSelectedPartId('');
                                 setPartPriceInput('');
                               }}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -2503,7 +2505,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               min="1"
                               value={partQty}
                               onChange={(e) => setPartQty(Math.max(1, Number(e.target.value)))}
-                              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-xs sm:text-sm text-white text-center font-bold font-mono focus:outline-none focus:border-amber-500"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-xs sm:text-sm text-slate-900 text-center font-bold font-mono focus:outline-none focus:border-[#f97316] focus:bg-white transition-all"
                               title="Quantidade a adicionar"
                             />
                           </div>
@@ -2525,16 +2527,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                                   handleAddPart();
                                 }
                               }}
-                              className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-2 py-2 text-xs sm:text-sm text-white font-mono font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500 text-right"
-                              title="Valor unitário da peça (ou deixe vazio para o preço de catálogo)"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-2.5 py-2.5 text-xs sm:text-sm text-slate-900 font-mono font-bold placeholder-slate-400 focus:outline-none focus:border-[#f97316] focus:bg-white text-right transition-all"
+                              title="Valor unitário da peça"
                             />
                           </div>
 
                           <button
                             type="button"
                             onClick={() => handleAddPart()}
-                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 py-2 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 shrink-0 transition-colors shadow-sm"
-                            title="Adicionar peça com quantidade e valor informados"
+                            className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shrink-0 transition-all shadow-sm cursor-pointer active:scale-95"
                           >
                             <Plus className="w-4 h-4 stroke-[2.5]" />
                             Adicionar
@@ -2544,14 +2545,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
                       {/* Dropdown de Sugestões de Peças com Estoque e Venda */}
                       {isPartDropdownOpen && (
-                        <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto z-40 divide-y divide-slate-800">
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto z-40 divide-y divide-slate-100">
                           {partSearch.trim() && (
                             <div
                               onMouseDown={(e) => {
                                 e.preventDefault();
                                 handleAddPart(undefined, partSearch.trim());
                               }}
-                              className="p-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 cursor-pointer flex items-center justify-between text-xs font-bold border-b border-slate-800 transition-colors"
+                              className="p-3 bg-orange-50 hover:bg-orange-100 text-[#f97316] cursor-pointer flex items-center justify-between text-xs font-bold border-b border-orange-100 transition-colors"
                             >
                               <span className="flex items-center gap-1.5 truncate pr-2">
                                 <Plus className="w-3.5 h-3.5 shrink-0" />
@@ -2578,25 +2579,25 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                                   setPartPriceInput(p.sellPrice.toString());
                                   setIsPartDropdownOpen(false);
                                 }}
-                                className={`p-2.5 hover:bg-slate-800 cursor-pointer flex items-center justify-between text-xs transition-colors ${
-                                  selectedPartId === p.id ? 'bg-amber-500/20 border-l-4 border-amber-500' : ''
+                                className={`p-2.5 hover:bg-slate-50 cursor-pointer flex items-center justify-between text-xs transition-colors ${
+                                  selectedPartId === p.id ? 'bg-orange-50/80 border-l-4 border-[#f97316]' : ''
                                 }`}
                               >
                                 <div>
-                                  <span className="font-semibold text-white">{p.description}</span>
-                                  <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
-                                    <span className="font-mono text-amber-400/90 font-bold">Cód: {p.code}</span>
+                                  <span className="font-semibold text-slate-800">{p.description}</span>
+                                  <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                    <span className="font-mono text-[#f97316] font-bold">Cód: {p.code}</span>
                                     {p.brand && <span>• {p.brand}</span>}
                                     {p.location && (
-                                      <span className="text-amber-300 font-medium bg-amber-500/10 px-1 rounded">
+                                      <span className="text-slate-600 font-medium bg-slate-100 px-1 rounded">
                                         Loc: {p.location}
                                       </span>
                                     )}
                                     <span
                                       className={
                                         p.currentStock <= p.minStock
-                                          ? 'text-red-400 font-bold'
-                                          : 'text-slate-400'
+                                          ? 'text-red-500 font-bold'
+                                          : 'text-slate-500'
                                       }
                                     >
                                       • Estoque: {p.currentStock} {p.unit || 'un'}
@@ -2604,7 +2605,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                                   </div>
                                 </div>
                                 <div className="text-right ml-2 shrink-0">
-                                  <span className="font-mono font-bold text-amber-400 text-xs sm:text-sm">
+                                  <span className="font-mono font-bold text-[#f97316] text-xs sm:text-sm">
                                     R$ {formatCurrency(p.sellPrice)}
                                   </span>
                                 </div>
@@ -2616,9 +2617,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     </div>
 
                     {/* Lista de Peças Adicionadas */}
-                    <div className="divide-y divide-slate-800/80 max-h-56 overflow-y-auto bg-slate-900/40 rounded-lg p-2 border border-slate-800/60">
+                    <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto bg-slate-50 rounded-xl p-2 border border-slate-200">
                       {parts.length === 0 ? (
-                        <div className="py-4 text-center text-xs text-slate-500 italic">
+                        <div className="py-4 text-center text-xs text-slate-400 italic">
                           {partsSupplyMode === 'cliente_parcial'
                             ? 'Nenhuma peça faltante lançada ainda. Adicione as peças que a oficina fornecerá.'
                             : 'Nenhuma peça ou insumo adicionado ainda.'}
@@ -2631,45 +2632,45 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           const isBelowMin = stockItem ? stockItem.currentStock <= stockItem.minStock && !isOutOfStock : false;
 
                           return (
-                            <div key={item.id} className="py-2.5 px-3 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2.5 bg-slate-900/60 hover:bg-slate-900/90 rounded-lg border border-slate-800/80 transition-colors">
+                            <div key={item.id} className="py-2.5 px-3 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2.5 bg-white hover:bg-slate-50/80 rounded-xl border border-slate-200 shadow-xs transition-colors my-1">
                               <div className="flex-1 min-w-0 pr-2 space-y-1">
-                                <div className="font-bold text-slate-100 truncate flex items-center gap-2">
+                                <div className="font-bold text-slate-900 truncate flex items-center gap-2">
                                   <span className="truncate">{item.description}</span>
                                   {stockItem?.location && (
-                                    <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 shrink-0 font-normal">
+                                    <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 shrink-0 font-normal">
                                       Loc: {stockItem.location}
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-slate-400 text-[11px] flex items-center gap-2 flex-wrap">
-                                  <span className="font-mono text-slate-500">Cód: {item.code}</span>
+                                <div className="text-slate-500 text-[11px] flex items-center gap-2 flex-wrap">
+                                  <span className="font-mono text-slate-600">Cód: {item.code}</span>
                                   <span>•</span>
                                   <span>Subtotal: R$ {formatCurrency(item.total)}</span>
                                   <span>•</span>
                                   {stockItem ? (
                                     isOutOfStock ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-500/20 text-red-400 border border-red-500/50 flex items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-100 text-red-700 border border-red-300 flex items-center gap-1">
                                         <AlertTriangle className="w-3 h-3 stroke-[2.5]" />
                                         <span>SEM ESTOQUE FÍSICO (0 un no pátio)</span>
                                       </span>
                                     ) : isQtyExceeded ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-500/20 text-red-400 border border-red-500/50 flex items-center gap-1 animate-pulse">
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-100 text-red-700 border border-red-300 flex items-center gap-1 animate-pulse">
                                         <AlertTriangle className="w-3 h-3 stroke-[2.5]" />
                                         <span>Qtd ({item.quantity}) excede saldo físico ({stockItem.currentStock} {stockItem.unit || 'un'})</span>
                                       </span>
                                     ) : isBelowMin ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
                                         <span>⚠️ Estoque Baixo: {stockItem.currentStock} {stockItem.unit || 'un'}</span>
-                                        <span className="text-slate-400">(mín: {stockItem.minStock})</span>
+                                        <span className="text-slate-500">(mín: {stockItem.minStock})</span>
                                       </span>
                                     ) : (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                                         <Check className="w-3 h-3 stroke-[2.5]" />
                                         <span>Saldo: {stockItem.currentStock} {stockItem.unit || 'un'} disponíveis</span>
                                       </span>
                                     )
                                   ) : (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
                                       Item avulso / sob encomenda
                                     </span>
                                   )}
@@ -2678,23 +2679,23 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
                               <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                                 {/* Controles de Quantidade Rápida [-] [Qtd] [+] */}
-                                <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
+                                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5 shadow-xs">
                                   <button
                                     type="button"
                                     onClick={() => handleUpdatePartQty(item.id, item.quantity - 1)}
                                     disabled={item.quantity <= 1}
-                                    className="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent rounded transition-colors"
+                                    className="w-7 h-7 flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors cursor-pointer"
                                     title="Diminuir quantidade"
                                   >
                                     <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                                   </button>
-                                  <span className="font-mono font-bold text-white text-xs px-2 min-w-[28px] text-center">
+                                  <span className="font-mono font-bold text-slate-900 text-xs px-2 min-w-[28px] text-center">
                                     {item.quantity}
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => handleUpdatePartQty(item.id, item.quantity + 1)}
-                                    className="w-7 h-7 flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-slate-800 rounded transition-colors"
+                                    className="w-7 h-7 flex items-center justify-center text-[#f97316] hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors cursor-pointer"
                                     title="Aumentar quantidade"
                                   >
                                     <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -2702,7 +2703,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                                 </div>
 
                                 {/* Input Editável de Valor Unitário */}
-                                <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 focus-within:border-amber-500">
+                                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-1 focus-within:border-[#f97316] shadow-xs">
                                   <span className="text-slate-400 text-xs font-bold">R$</span>
                                   <input
                                     type="number"
@@ -2710,13 +2711,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                                     min="0"
                                     value={item.unitPrice}
                                     onChange={(e) => handleUpdatePartUnitPrice(item.id, parseFloat(e.target.value) || 0)}
-                                    className="w-16 sm:w-20 bg-transparent text-xs sm:text-sm font-mono font-bold text-white text-right focus:outline-none"
+                                    className="w-16 sm:w-20 bg-transparent text-xs sm:text-sm font-mono font-bold text-slate-900 text-right focus:outline-none"
                                     title="Clique para alterar o valor unitário desta peça"
                                   />
                                 </div>
 
                                 {/* Subtotal da Peça */}
-                                <span className="font-mono font-bold text-white text-xs sm:text-sm min-w-[70px] text-right">
+                                <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm min-w-[70px] text-right">
                                   R$ {formatCurrency(item.total)}
                                 </span>
 
@@ -2724,7 +2725,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleRemovePart(item.id)}
-                                  className="p-1 text-slate-500 hover:text-red-400 transition-colors"
+                                  className="p-1 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
                                   title="Remover peça"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -2736,20 +2737,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       )}
                     </div>
 
-                    {/* Barra de Ajuste do Total de Peças & Insumos (Distribuição Proporcional) */}
-                    <div className="bg-slate-900/90 border border-amber-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-inner">
+                    {/* Barra de Ajuste do Total de Peças & Insumos */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
                             Total de Peças & Insumos:
                           </span>
                           {parts.length > 0 && (
-                            <span className="text-[10px] text-slate-300 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700 font-bold">
+                            <span className="text-[10px] text-slate-600 bg-white px-2 py-0.5 rounded-full border border-slate-200 font-bold">
                               {parts.length} {parts.length === 1 ? 'item' : 'itens'}
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-slate-400">
+                        <p className="text-[11px] text-slate-500">
                           {parts.length > 1
                             ? 'Você pode alterar o valor total do lote de peças (o sistema distribui proporcionalmente).'
                             : parts.length === 1
@@ -2759,8 +2760,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 bg-slate-800 border-2 border-amber-500/70 rounded-lg px-2.5 py-1 focus-within:border-amber-400 shadow-sm">
-                          <span className="text-xs font-bold text-amber-400">R$</span>
+                        <div className="flex items-center gap-1.5 bg-white border-2 border-[#f97316] rounded-xl px-2.5 py-1 focus-within:ring-2 focus-within:ring-[#f97316]/30 shadow-xs">
+                          <span className="text-xs font-bold text-[#f97316]">R$</span>
                           <input
                             type="number"
                             step="0.01"
@@ -2783,7 +2784,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                                 setIsEditingTotalParts(false);
                               }
                             }}
-                            className="w-28 sm:w-32 bg-transparent text-sm sm:text-base font-black text-white text-right font-mono focus:outline-none"
+                            className="w-28 sm:w-32 bg-transparent text-sm sm:text-base font-black text-slate-900 text-right font-mono focus:outline-none"
                             title="Digite o valor total das peças & insumos"
                           />
                         </div>
@@ -2794,7 +2795,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               handleApplyTotalParts(totalPartsInput);
                               setIsEditingTotalParts(false);
                             }}
-                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1.5 rounded-lg text-xs shadow-sm"
+                            className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs cursor-pointer"
                           >
                             ✓ Ok
                           </button>
@@ -2805,113 +2806,119 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 )}
               </div>
 
-              {/* Botões de Navegação Entre Abas */}
-              <div className="flex items-center justify-between pt-2">
+              {/* BARRA FIXA DE AÇÃO NO RODAPÉ ESTILO LOVABLE - ABA 2 */}
+              <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-6 p-4 bg-[#faf8f5]/95 backdrop-blur-md border-t border-slate-200/80 z-20 flex items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setActiveTab('diagnostico')}
-                  className="px-3 py-2 text-slate-400 hover:text-slate-200 text-xs font-semibold flex items-center gap-1 transition-colors"
+                  className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  <span>Voltar para Diagnóstico</span>
+                  <span>Voltar ao Diagnóstico</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setActiveTab('fechamento')}
                   disabled={isFinalized}
-                  className={`px-4 py-2 font-bold text-xs sm:text-sm rounded-xl flex items-center gap-1.5 transition-all shadow-sm ${
+                  className={`flex-1 max-w-sm font-black text-xs sm:text-sm tracking-wider uppercase py-3.5 rounded-2xl text-center shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     isFinalized
-                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/60 shadow-none opacity-60'
-                      : 'bg-amber-500 hover:bg-amber-400 text-slate-950 hover:scale-[1.02] active:scale-95'
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                      : 'bg-[#f97316] hover:bg-[#ea580c] text-white shadow-orange-500/25 active:scale-[0.99]'
                   }`}
-                  title={isFinalized ? 'Esta O.S. já foi finalizada' : undefined}
                 >
-                  <span>{isQuotationStage ? 'Avançar para Proposta & Envio' : 'Avançar para Fechamento & Pagamento'}</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <span>{isQuotationStage ? 'AVANÇAR PARA PROPOSTA & ENVIO' : 'AVANÇAR PARA FECHAMENTO & PAGAMENTO'}</span>
+                  <ChevronRight className="w-5 h-5 stroke-[3]" />
                 </button>
               </div>
             </div>
           )}
 
           {/* ========================================================================= */}
-          {/* ABA 3: PROPOSTA & ORÇAMENTO (se orcamento/aguardando) OU FECHAMENTO & PAGAMENTO */}
+          {/* ABA 3: PROPOSTA & ORÇAMENTO / FECHAMENTO & PAGAMENTO (Estilo Lovable) */}
           {/* ========================================================================= */}
           {activeTab === 'fechamento' && (
-            <div className="space-y-5 animate-in fade-in duration-150">
+            <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 pb-28 text-slate-900 animate-in fade-in duration-150">
               {/* Alerta de Itens Sem Preço no Orçamento */}
               {isQuotationStage && partsSupplyMode !== 'cliente_todas' && zeroPriceParts.length > 0 && (
-                <div className="bg-amber-500/10 border border-amber-500/40 rounded-xl p-3.5 flex items-start gap-3 text-xs text-amber-300 animate-in fade-in">
-                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-900 shadow-xs animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <span className="font-bold text-amber-200">Existem peças lançadas sem valor de venda:</span>
-                    <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                    <span className="font-bold text-amber-950">Existem peças lançadas sem valor de venda:</span>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
                       Há {zeroPriceParts.length} peça(s) com valor <strong>R$ 0,00</strong>. Se a oficina fornecerá esses itens, volte à aba 2 e defina os valores para não enviar proposta incompleta ao cliente.
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Card de Resumo Financeiro da OS */}
-              <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/20 p-5 rounded-2xl border border-amber-500/30 shadow-lg space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <DollarSign className="w-4 h-4" />
-                    {isQuotationStage ? 'Resumo da Proposta de Orçamento' : 'Resumo do Valor a Cobrar'}
-                  </h4>
+              {/* Card de Resumo Financeiro da OS Estilo Lovable */}
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-[#f97316] text-white flex items-center justify-center text-xs font-black shrink-0 shadow-xs">
+                      <DollarSign className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">
+                        {isQuotationStage ? 'Resumo da Proposta de Orçamento' : 'Resumo do Valor a Cobrar'}
+                      </h4>
+                      <p className="text-[11px] text-slate-500">Valores consolidados de peças, mão de obra e descontos</p>
+                    </div>
+                  </div>
 
-                  {/* Botão Único Unificado: Modo Dono / DRE */}
+                  {/* Botão Modo Dono / DRE */}
                   <button
                     type="button"
                     onClick={() => setShowProfitDetails(!showProfitDetails)}
-                    className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1.5 transition-colors font-medium shadow-sm"
+                    className="text-xs px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5 transition-colors font-bold shadow-xs cursor-pointer"
                     title="Alternar proteção de margem de lucro e custo de peças"
                   >
                     {showProfitDetails ? (
                       <>
-                        <EyeOff className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Ocultar Rentabilidade da Oficina</span>
+                        <EyeOff className="w-3.5 h-3.5 text-[#f97316]" />
+                        <span>Ocultar Rentabilidade</span>
                       </>
                     ) : (
                       <>
                         <Eye className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Ver Rentabilidade & DRE (Modo Dono)</span>
+                        <span>Ver Rentabilidade & DRE</span>
                       </>
                     )}
                   </button>
                 </div>
 
-                {/* 4 Blocos Principais de Cobrança com Formatação Monetária Brasileira */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-4 border-b border-slate-800 text-xs">
-                  <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">
-                    <span className="text-slate-400 block text-[11px] mb-1">
+                {/* 4 Blocos Principais de Cobrança */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block text-[11px] mb-1 font-semibold">
                       Total Peças {partsSupplyMode === 'cliente_todas' ? '(Cliente)' : ''}:
                     </span>
-                    <span className="font-mono text-sm sm:text-base text-slate-200 font-bold">
+                    <span className="font-mono text-sm sm:text-base text-slate-900 font-bold">
                       {partsSupplyMode === 'cliente_todas' ? 'R$ 0,00' : `R$ ${formatCurrency(partsTotal)}`}
                     </span>
                   </div>
-                  <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">
-                    <span className="text-slate-400 block text-[11px] mb-1">Mão de Obra:</span>
-                    <span className="font-mono text-sm sm:text-base text-slate-200 font-bold">
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block text-[11px] mb-1 font-semibold">Mão de Obra:</span>
+                    <span className="font-mono text-sm sm:text-base text-slate-900 font-bold">
                       R$ {formatCurrency(servicesTotal)}
                     </span>
                   </div>
-                  <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">
-                    <span className="text-slate-400 block text-[11px] mb-1">Desconto (R$):</span>
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block text-[11px] mb-1 font-semibold">Desconto (R$):</span>
                     <input
                       type="number"
                       min="0"
                       value={discount}
                       onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))}
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white font-mono font-bold focus:outline-none focus:border-amber-500"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-[#f97316]"
                     />
                   </div>
-                  <div className="bg-amber-500/10 p-3 rounded-xl border border-amber-500/40">
-                    <span className="text-amber-400 block text-[11px] font-bold mb-0.5 uppercase tracking-wide">
+                  <div className="bg-[#f97316]/10 p-3.5 rounded-xl border border-[#f97316]/30">
+                    <span className="text-[#f97316] block text-[11px] font-bold mb-0.5 uppercase tracking-wide">
                       {isQuotationStage ? 'Total da Proposta:' : 'Total a Cobrar:'}
                     </span>
-                    <span className="font-mono text-lg sm:text-xl font-black text-amber-400">
+                    <span className="font-mono text-base sm:text-lg font-black text-[#f97316]">
                       R$ {formatCurrency(netTotal)}
                     </span>
                   </div>
@@ -2919,37 +2926,37 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
                 {/* DRE e Rentabilidade da Oficina (Protegido por Padrão) */}
                 {showProfitDetails ? (
-                  <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-3 animate-in fade-in duration-200">
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 animate-in fade-in duration-200">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-200 flex items-center gap-1.5">
-                        <Eye className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                        <Eye className="w-3.5 h-3.5 text-[#f97316]" />
                         DRE Operacional da Ordem de Serviço (Modo Dono)
                       </span>
-                      <span className="text-[11px] text-slate-400">Visível apenas com autorização</span>
+                      <span className="text-[11px] text-slate-500">Visível apenas com autorização</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
-                        <span className="text-slate-400 block text-[11px]">Custo Real das Peças:</span>
-                        <span className="font-mono text-sm text-red-400 font-bold">
+                      <div className="bg-white p-3 rounded-xl border border-slate-200">
+                        <span className="text-slate-500 block text-[11px]">Custo Real das Peças:</span>
+                        <span className="font-mono text-sm text-red-600 font-bold">
                           - R$ {formatCurrency(partsCostTotal)}
                         </span>
                       </div>
-                      <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
-                        <span className="text-slate-400 block text-[11px]">Comissão do Mecânico:</span>
-                        <span className="font-mono text-sm text-red-400 font-bold">
+                      <div className="bg-white p-3 rounded-xl border border-slate-200">
+                        <span className="text-slate-500 block text-[11px]">Comissão do Mecânico:</span>
+                        <span className="font-mono text-sm text-red-600 font-bold">
                           - R$ {formatCurrency(mechanicsCommissionTotal)}
                         </span>
                       </div>
-                      <div className="bg-emerald-500/10 p-3 rounded-lg border border-emerald-500/30">
-                        <span className="text-emerald-400 font-bold block text-[11px]">
+                      <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-300">
+                        <span className="text-emerald-800 font-bold block text-[11px]">
                           LUCRO REAL DA OFICINA:
                         </span>
                         <div className="flex items-center justify-between mt-0.5">
-                          <span className="font-mono text-base font-black text-white">
+                          <span className="font-mono text-base font-black text-emerald-900">
                             R$ {formatCurrency(netProfit)}
                           </span>
-                          <span className="text-xs font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">
+                          <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200">
                             {profitMarginPercent.toFixed(1)}% margem
                           </span>
                         </div>
@@ -2957,38 +2964,36 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs text-slate-400">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs text-slate-500">
                     <div className="flex items-center gap-2">
-                      <Lock className="w-3.5 h-3.5 text-slate-500" />
+                      <Lock className="w-3.5 h-3.5 text-slate-400" />
                       <span>Dados de custo de peças e lucro da oficina protegidos nesta tela.</span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* ============================================================= */}
-              {/* CARD DE AÇÃO DINÂMICO 1: ETAPA DE ORÇAMENTO (STATUS 1 OU 2) */}
-              {/* ============================================================= */}
+              {/* CARD DE AÇÃO 1: ETAPA DE ORÇAMENTO (STATUS 1 OU 2) */}
               {isQuotationStage ? (
-                <div className="bg-slate-950/70 p-5 rounded-2xl border border-sky-500/30 space-y-4 shadow-lg">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                     <div>
-                      <span className="text-xs font-bold text-sky-400 uppercase tracking-wider block">
+                      <span className="text-xs font-bold text-sky-600 uppercase tracking-wider block">
                         Etapa Comercial • Proposta
                       </span>
-                      <h4 className="text-base font-black text-white flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-sky-400" />
+                      <h4 className="text-base font-black text-slate-900 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-sky-600" />
                         Pronto para enviar ao cliente?
                       </h4>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5">
                         Envie a proposta técnica pelo WhatsApp ou autorize o serviço caso já tenha sido combinada no balcão/telefone.
                       </p>
                     </div>
                     <div className="shrink-0">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
                         status === 'aguardando_aprovacao'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-sky-100 text-sky-800 border border-sky-300'
                       }`}>
                         <Clock className="w-3.5 h-3.5" />
                         {status === 'aguardando_aprovacao' ? '2. Aguardando Aprovação' : '1. Orçamento'}
@@ -3004,14 +3009,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         type="button"
                         onClick={handleSendQuotationWhatsAppPng}
                         disabled={isGeneratingQuotationPng}
-                        className="flex items-center justify-center gap-2 px-3 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                        title="Gera imagem PNG da proposta oficial e envia no WhatsApp do cliente com o texto: Para darmos início aos serviços, responda com AUTORIZADO"
+                        className="flex items-center justify-center gap-2 px-3 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                        title="Gera imagem PNG da proposta oficial e envia no WhatsApp do cliente"
                       >
                         <MessageCircle className="w-4 h-4 stroke-[2.5]" />
-                        <span>{isGeneratingQuotationPng ? 'Gerando PNG...' : 'Enviar no WhatsApp (PNG)'}</span>
+                        <span>{isGeneratingQuotationPng ? 'Gerando PNG...' : 'Enviar no WhatsApp'}</span>
                       </button>
                     ) : (
-                      <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-center text-xs text-slate-500 italic">
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-400 italic">
                         Cadastre telefone para envio via WhatsApp
                       </div>
                     )}
@@ -3021,10 +3026,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       type="button"
                       onClick={handleDownloadQuotationPng}
                       disabled={isGeneratingQuotationPng}
-                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors disabled:opacity-50"
-                      title="Baixar imagem em PNG da proposta para guardar ou enviar"
+                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors disabled:opacity-50 cursor-pointer"
+                      title="Baixar imagem em PNG da proposta"
                     >
-                      <Download className="w-4 h-4 text-slate-400" />
+                      <Download className="w-4 h-4 text-slate-500" />
                       <span>Baixar PNG</span>
                     </button>
 
@@ -3039,8 +3044,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           origin: { y: 0.6 },
                         });
                       }}
-                      className="flex items-center justify-center gap-2 px-3 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                      title="Cliente aprovou presencialmente ou por telefone. Avança o status direto para 3. Aprovado / Peças"
+                      className="flex items-center justify-center gap-2 px-3 py-3 bg-[#f97316] hover:bg-[#ea580c] text-white font-black text-xs rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                      title="Avança o status direto para 3. Aprovado / Peças"
                     >
                       <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
                       <span>Aprovar Orçamento</span>
@@ -3050,10 +3055,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => onPrintReceipt(getOrderDataSnapshot())}
-                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
-                      title="Imprime a proposta de orçamento em formato oficial"
+                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer"
+                      title="Imprime a proposta de orçamento"
                     >
-                      <Printer className="w-4 h-4 text-slate-400" />
+                      <Printer className="w-4 h-4 text-slate-500" />
                       <span>Imprimir Orçamento</span>
                     </button>
 
@@ -3061,17 +3066,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <button
                       type="button"
                       onClick={handleCopyOrderMessage}
-                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer"
                       title="Copiar texto do orçamento técnico"
                     >
                       {copiedMsg ? (
                         <>
-                          <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
-                          <span className="text-emerald-400 font-bold">Copiado!</span>
+                          <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
+                          <span className="text-emerald-700 font-bold">Copiado!</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-4 h-4 text-slate-400" />
+                          <Copy className="w-4 h-4 text-slate-500" />
                           <span>Copiar Texto</span>
                         </>
                       )}
@@ -3079,20 +3084,18 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </div>
                 </div>
               ) : (
-                /* ============================================================= */
-                /* CARD DE AÇÃO DINÂMICO 2: ETAPA DE FECHAMENTO & PAGAMENTO */
-                /* ============================================================= */
-                <div className="bg-slate-950/70 p-5 rounded-2xl border border-emerald-500/30 space-y-4 shadow-lg">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                /* CARD DE AÇÃO 2: ETAPA DE FECHAMENTO & PAGAMENTO */
+                <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                     <div>
-                      <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block">
+                      <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider block">
                         Etapa de Entrega & Quitação
                       </span>
-                      <h4 className="text-base font-black text-white flex items-center gap-2">
-                        <DollarSign className="w-5 h-5 text-emerald-400" />
+                      <h4 className="text-base font-black text-slate-900 flex items-center gap-2">
+                        <DollarSign className="w-5 h-5 text-emerald-600" />
                         Pronto para entregar o veículo?
                       </h4>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5">
                         {isPaid
                           ? `O.S. quitada via ${paymentMethod.toUpperCase()}. Imprima o recibo oficial ou envie o comprovante ao cliente.`
                           : 'Finalize a O.S. e receba em 1 toque (Pix, Cartão, Dinheiro ou Fiado).'}
@@ -3100,12 +3103,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     </div>
                     <div className="shrink-0">
                       {isPaid ? (
-                        <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-bold flex items-center gap-1.5">
+                        <span className="px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-xs font-bold flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4" />
                           Quitada ({paymentMethod.toUpperCase()})
                         </span>
                       ) : (
-                        <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-xs font-bold flex items-center gap-1.5">
+                        <span className="px-3 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-xs font-bold flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5" />
                           Aguardando Recebimento
                         </span>
@@ -3115,19 +3118,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
                   {/* Grid de Ações Principais de Fechamento */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {/* Botão 1: Finalizar e Receber Agora (se não estiver paga) */}
+                    {/* Botão 1: Finalizar e Receber Agora */}
                     {!isPaid && (
                       <button
                         type="button"
                         onClick={() => setIsCheckoutOpen(true)}
-                        className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                       >
                         <DollarSign className="w-4 h-4 stroke-[3]" />
                         <span>Finalizar e Receber Agora</span>
                       </button>
                     )}
 
-                    {/* Botão 2: WhatsApp (Conforme o Status da O.S.) */}
+                    {/* Botão 2: WhatsApp */}
                     {currentClient?.phone && currentVehicle && (
                       <button
                         type="button"
@@ -3137,7 +3140,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           const msg = WhatsAppService.getMessageForOrder(orderData, currentClient, currentVehicle, currentMechanicName);
                           WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
                         }}
-                        className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-colors"
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 hover:bg-slate-100 text-emerald-700 border border-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                         title={WhatsAppService.getWhatsAppActionTitle(status)}
                       >
                         <MessageCircle className="w-4 h-4" />
@@ -3149,10 +3152,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => onPrintReceipt(getOrderDataSnapshot())}
-                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer"
                       title="Imprime o Recibo com termo de garantia legal de 90 dias"
                     >
-                      <Printer className="w-4 h-4" />
+                      <Printer className="w-4 h-4 text-slate-500" />
                       <span>Imprimir Recibo</span>
                     </button>
 
@@ -3160,16 +3163,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <button
                       type="button"
                       onClick={handleCopyOrderMessage}
-                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer"
                     >
                       {copiedMsg ? (
                         <>
-                          <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
-                          <span className="text-emerald-400 font-bold">Copiado!</span>
+                          <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
+                          <span className="text-emerald-700 font-bold">Copiado!</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-4 h-4 text-slate-400" />
+                          <Copy className="w-4 h-4 text-slate-500" />
                           <span>Copiar Dados</span>
                         </>
                       )}
@@ -3178,60 +3181,34 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
               )}
 
-              {/* Botão Voltar para a Aba 2 */}
-              <div className="flex justify-start pt-2">
+              {/* BARRA FIXA DE AÇÃO NO RODAPÉ ESTILO LOVABLE - ABA 3 */}
+              <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-6 p-4 bg-[#faf8f5]/95 backdrop-blur-md border-t border-slate-200/80 z-20 flex items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setActiveTab('itens')}
-                  className="px-3.5 py-2 text-slate-400 hover:text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors bg-slate-800/40 hover:bg-slate-800 rounded-lg border border-slate-700/50"
+                  className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  <span>Voltar para Serviços & Peças</span>
+                  <span>Voltar a Peças & Serviços</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="flex-1 max-w-sm bg-[#f97316] hover:bg-[#ea580c] text-white font-black text-xs sm:text-sm tracking-wider uppercase py-3.5 rounded-2xl text-center shadow-lg shadow-orange-500/25 transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
+                >
+                  <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
+                  <span>{isFinalized ? 'SALVAR ALTERAÇÕES' : isQuotationStage ? 'SALVAR PROPOSTA' : 'CONCLUIR E SALVAR O.S.'}</span>
                 </button>
               </div>
             </div>
           )}
         </div>
-
-        {/* Rodapé Global Fixo do Modal (Sem Botão Verde Duplicado) */}
-        <div className="px-5 py-3.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3">
-          <div>
-            {activeTab !== 'diagnostico' && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (activeTab === 'fechamento') setActiveTab('itens');
-                  else if (activeTab === 'itens') setActiveTab('diagnostico');
-                }}
-                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-slate-700"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Voltar</span>
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-lg transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="px-5 py-2.5 font-black text-xs sm:text-sm rounded-lg shadow-md transition-all bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Salvar Ordem de Serviço
-            </button>
-          </div>
-        </div>
       </>
     )}
   </div>
 
+  
 {/* Modal de Finalização / Checkout Rápido */}
       <QuickOrderCheckoutModal
         order={{
