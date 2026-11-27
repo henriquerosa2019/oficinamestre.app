@@ -42,6 +42,7 @@ import {
   EyeOff,
   Search,
   ClipboardList,
+  Send,
   ChevronRight,
   ChevronLeft,
   Lock,
@@ -278,15 +279,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   // Tags de relatos rápidos e opções de combustível estilo Lovable
   const QUICK_SYMPTOM_OPTIONS = [
     'Revisão',
-    'Troca de óleo',
+    'Troca de Óleo',
     'Freio',
     'Barulho',
     'Suspensão',
     'Motor falhando',
     'Ar-condicionado',
-    'Elétrica',
-    'Luz no painel',
-    'Pneu',
+    'Embreagem',
+    'Superaquecimento',
+    'Vazamento',
+    'Luz da Injeção',
+    'Bateria / Partida',
   ];
 
   const [selectedSymptomTags, setSelectedSymptomTags] = useState<string[]>(() => {
@@ -1250,2191 +1253,800 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-none sm:rounded-2xl w-full max-w-5xl h-[100dvh] sm:h-[92vh] max-h-[100dvh] sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        {/* Cabeçalho do Modal com Layout Espaçado e Elegante */}
-        <div className="px-3 sm:px-6 py-2.5 sm:py-3 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 sm:gap-3 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#201807] text-[#ffb000] border border-[#815300] flex items-center justify-center font-mono font-bold shrink-0 shadow-inner">
-              <Wrench className="w-5 h-5" />
+        <main className="os-shell w-full max-w-6xl h-[100dvh] sm:h-[94vh] max-h-[100dvh] sm:max-h-[94vh] flex flex-col rounded-none sm:rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          {/* TOPBAR ESTILO V0 AUTOMOTIVO */}
+          <header className="topbar">
+            <div className="brand-mark">
+              <Wrench size={20} />
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-xs font-black tracking-widest text-[#ff9817] uppercase block">
-                OFICINA MESTRE
-              </span>
-              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                <h3 className="text-base sm:text-xl font-black text-white truncate tracking-tight">
-                  {isFinalized ? `Prontuário da ${orderNumber}` : isEditing ? `Editar ${orderNumber}` : 'Nova OS'}
-                </h3>
-                <span className="text-[10px] bg-[#18243a] text-[#ffc21b] border border-[#2b3950] px-2.5 py-0.5 rounded-md font-mono font-bold shrink-0">
-                  {orderNumber}
-                </span>
-                {isFinalized && (
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-md font-black uppercase tracking-wider shrink-0 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Finalizada
-                  </span>
-                )}
+            <div className="brand">
+              <span>OFICINA MESTRE</span>
+              <div>
+                <h1>{isFinalized ? `Prontuário da ${orderNumber}` : isEditing ? `Editar ${orderNumber}` : 'Nova OS'}</h1>
+                <b>{orderNumber}</b>
               </div>
-              <p className="text-xs text-slate-400 truncate hidden sm:flex items-center gap-1.5">
-                <Car className="w-3.5 h-3.5 text-slate-500" />
-                <span className="text-[#a1b1c8] text-[11px] font-semibold">◈ &nbsp;Gestão de Pátio</span>
-                {currentVehicle && (
-                  <>
-                    <span className="text-slate-600">•</span>
-                    <span className="font-semibold text-slate-300">
-                      {currentVehicle.brand} {currentVehicle.model} • Placa {currentVehicle.plate}
-                    </span>
-                  </>
-                )}
-                {currentClient && (
-                  <>
-                    <span className="text-slate-600">•</span>
-                    <span className="text-slate-400">{currentClient.name}</span>
-                  </>
-                )}
-              </p>
+              <small>❖ &nbsp;Gestão de Pátio</small>
             </div>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0 ml-auto">
-            {/* Bloco de Telemetria Compacto em Grade 2 Colunas (Estilo OFICINA RICO) */}
-            <div className="hidden sm:grid grid-cols-2 text-right px-3 py-1.5 bg-[#111a2d] border border-[#202c42] rounded-xl shadow-inner gap-x-3 gap-y-0.5 text-[11px] min-w-[290px]">
-              <div className="flex items-center justify-between gap-1.5">
-                <span className="text-[#9bacbf]">Entrada:</span>
-                <b className="text-slate-200 font-mono font-bold">{warrantyInfo.formattedEntryDate}</b>
-              </div>
-              <div className="flex items-center justify-between gap-1.5">
-                <span className="text-[#9bacbf]">Garantia:</span>
-                <strong className="text-amber-400 font-mono font-bold">
-                  {warrantyInfo.hasServiceDate ? warrantyInfo.formattedExpiryDate : '90d pós aprov.'}
-                </strong>
-              </div>
-              {(serviceDate || order?.serviceDate) && (
-                <div className="flex items-center justify-between gap-1.5">
-                  <span className="text-[#9bacbf]">Aprovação:</span>
-                  <b className="text-slate-200 font-mono font-bold">{formatBrDate(serviceDate || order?.serviceDate)}</b>
-                </div>
-              )}
-              <div className="col-span-2 flex items-center justify-between gap-1.5 pt-0.5 border-t border-[#202c42]/80">
-                <span className="text-[#36d8b1] font-semibold flex items-center gap-1">
-                  ▣ &nbsp;Retorno:
-                </span>
-                <strong className="text-[#36d8b1] font-mono font-bold">
-                  {estimatedReturnDateFormatted}
-                </strong>
-              </div>
-              {isFinalized && (
-                <div className="col-span-2 flex items-center justify-between gap-1.5 pt-0.5 border-t border-slate-800/80">
-                  <span className="text-slate-400">Finalização:</span>
-                  <span className="text-emerald-400 font-mono font-bold">
-                    {formatBrDate(order?.finishedAt || order?.updatedAt || order?.serviceDate || order?.createdAt)}
-                  </span>
-                </div>
-              )}
+            <div className="vehicle-summary hidden md:flex">
+              <span>Entrada: <b>{formatBrDate(entryDate) || 'Hoje'}</b></span>
+              <span>Garantia: <strong>{warrantyDays}d pós aprov.</strong></span>
+              {estimatedReturnDateFormatted && <span className="return">❖ &nbsp;Retorno: <b>{estimatedReturnDateFormatted}</b></span>}
             </div>
-
-            {/* Seletor de Status da OS / Badge de Finalizada */}
-            {isFinalized ? (
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Status</span>
-                <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Finalizada / Paga
-                </span>
-              </div>
-            ) : (
-              <div className="flex flex-col items-end">
-                <span className="text-[9px] font-bold text-[#8a9bb5] uppercase tracking-wider mb-0.5">STATUS</span>
-                <select
-                  value={status}
-                  onChange={(e) => handleStatusChange(e.target.value as OrderStatus)}
-                  className="bg-[#121d32] border border-[#293750] text-xs rounded-xl px-2.5 py-1.5 font-bold text-[#ffb600] focus:outline-none focus:border-[#ff9817] shadow-sm cursor-pointer"
-                >
-                  <option value="orcamento">1. Orçamento</option>
-                  <option value="aguardando_aprovacao">2. Aguardando Aprovação</option>
-                  <option value="aprovado">3. Aprovado / Peças</option>
-                  <option value="em_andamento">4. Em Execução no Pátio</option>
-                  <option value="pronto">5. Pronto para Retirada</option>
-                  <option value="finalizado">6. Finalizada / Paga</option>
-                  <option value="cancelado">Cancelada</option>
-                </select>
-              </div>
-            )}
-
-            <button
-              onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors ml-1"
-              title="Fechar janela"
-            >
-              <X className="w-5 h-5" />
+            <label className="status">
+              STATUS
+              <select value={status} onChange={(e) => handleStatusChange(e.target.value as OrderStatus)}>
+                <option value="orcamento">1. Orçamento</option>
+                <option value="aprovado">2. Aprovado</option>
+                <option value="em_andamento">3. Em Execução</option>
+                <option value="pronto">4. Pronto</option>
+                <option value="finalizado">5. Finalizada</option>
+              </select>
+            </label>
+            <button className="icon-button" aria-label="Fechar ordem" onClick={onClose}>
+              <X size={19} />
             </button>
-          </div>
-        </div>
+          </header>
 
-        {isFinalized ? (
-          <>
-            {/* Visualização de Prontuário / Recibo Completo para O.S. Finalizada com Rolagem Fluida */}
-            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto p-4 sm:p-6 bg-slate-950/70 flex flex-col items-center">
-              {/* Banner Superior Informativo */}
-              <div className="w-[780px] max-w-full mb-3 flex items-center justify-between gap-3 px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span className="font-bold text-slate-200">Prontuário & Recibo Documental Concluído</span>
-                  <span className="text-slate-500">•</span>
-                  <span className="text-emerald-400 font-medium">Garantia Ativa até {warrantyInfo.formattedExpiryDate}</span>
-                </div>
-                <div className="text-[11px] text-slate-400 font-mono">
-                  Previsão de Retorno: <strong className="text-emerald-400">{estimatedReturnDateFormatted}</strong>
-                </div>
-              </div>
-
-              {/* Folha do Recibo Oficial com Altura Total e sem Cortes */}
-              <div className="bg-white shadow-2xl rounded-xl overflow-hidden border border-slate-300 max-w-full my-1 mb-8 shrink-0">
-                <ReceiptDocument
-                  ref={finalizedReceiptRef}
-                  order={order || getOrderDataSnapshot()}
-                  client={currentClient}
-                  vehicle={currentVehicle}
-                  mechanic={currentMechanic}
-                  isQuotation={false}
-                  estimatedReturnDate={estimatedReturnDateFormatted}
-                />
-              </div>
-            </div>
-
-            {/* Rodapé Especial para O.S. Finalizada */}
-            <div className="px-5 sm:px-6 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3 flex-wrap shrink-0">
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Documento oficial concluído e registrado no histórico do veículo.</span>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                {currentClient?.phone && (
-                  <button
-                    type="button"
-                    onClick={handleSendWhatsAppReceipt}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-colors shadow-sm"
-                    title="Enviar comprovante e resumo da OS para o WhatsApp do cliente"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>Enviar no WhatsApp</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleCopyOrderMessage}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition-colors border border-slate-700"
-                  title="Copiar texto do recibo para a área de transferência"
-                >
-                  {copiedMsg ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
-                      <span className="text-emerald-400 font-bold">Copiado!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Copiar Texto</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleDownloadFinalizedPng}
-                  disabled={isGeneratingFinalizedPng}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition-colors border border-slate-700 disabled:opacity-50"
-                  title="Baixar imagem em PNG deste recibo"
-                >
-                  <Download className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{isGeneratingFinalizedPng ? 'Baixando...' : 'Baixar PNG'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onPrintReceipt(order || getOrderDataSnapshot())}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md hover:scale-[1.02] active:scale-[0.98]"
-                  title="Imprimir Recibo Oficial da O.S."
-                >
-                  <Printer className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Imprimir Recibo</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white rounded-xl transition-colors bg-slate-900 border border-slate-800 ml-1"
-                >
-                  Fechar
-                </button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Barra de 3 Abas Rápidas no Topo - Estilo Lovable */}
-            <div className="bg-slate-950 px-2 sm:px-6 pt-2 sm:pt-3 pb-0 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-3 overflow-x-auto shrink-0">
-          <div className="flex items-center gap-1.5 sm:gap-3">
+          {/* STEP NAV TABS ESTILO V0 */}
+          <nav className="step-nav" aria-label="Etapas da ordem de serviço">
             <button
               type="button"
+              className={`step-tab ${activeTab === 'diagnostico' ? 'active' : ''} ${activeTab !== 'diagnostico' ? 'done' : ''}`}
               onClick={() => setActiveTab('diagnostico')}
-              className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
-                activeTab === 'diagnostico'
-                  ? 'bg-[#faf8f5] text-slate-900 border-[#f97316] shadow-sm font-black'
-                  : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40'
-              }`}
             >
-              <ClipboardList className={`w-4 h-4 ${activeTab === 'diagnostico' ? 'text-[#f97316]' : 'text-slate-400'}`} />
+              <ClipboardList size={16} />
               <span>1. Diagnóstico & Entrada</span>
             </button>
-
             <button
               type="button"
+              className={`step-tab ${activeTab === 'itens' ? 'active' : ''} ${activeTab === 'fechamento' ? 'done' : ''}`}
               onClick={() => setActiveTab('itens')}
-              className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
-                activeTab === 'itens'
-                  ? 'bg-[#faf8f5] text-slate-900 border-[#f97316] shadow-sm font-black'
-                  : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40'
-              }`}
             >
-              <Wrench className={`w-4 h-4 ${activeTab === 'itens' ? 'text-[#f97316]' : 'text-slate-400'}`} />
+              <Wrench size={16} />
               <span>2. Serviços & Peças</span>
-              {services.length + parts.length > 0 && (
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                    activeTab === 'itens' ? 'bg-[#f97316] text-white' : 'bg-slate-800 text-slate-300'
-                  }`}
-                >
-                  {services.length + parts.length}
-                </span>
-              )}
             </button>
-
             <button
               type="button"
+              className={`step-tab ${activeTab === 'fechamento' ? 'active' : ''}`}
               onClick={() => setActiveTab('fechamento')}
-              className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-t-xl transition-all border-b-2 ${
-                activeTab === 'fechamento'
-                  ? 'bg-[#faf8f5] text-slate-900 border-[#f97316] shadow-sm font-black'
-                  : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40'
-              }`}
             >
-              {isQuotationStage ? (
-                <FileText className={`w-4 h-4 ${activeTab === 'fechamento' ? 'text-[#f97316]' : 'text-sky-400'}`} />
-              ) : (
-                <DollarSign className={`w-4 h-4 ${activeTab === 'fechamento' ? 'text-[#f97316]' : 'text-emerald-400'}`} />
-              )}
-              <span>{isQuotationStage ? '3. Proposta & Orçamento' : '3. Fechamento & Pagamento'}</span>
-              <span
-                className={`px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold ${
-                  activeTab === 'fechamento'
-                    ? 'bg-[#f97316]/15 text-[#f97316]'
-                    : 'bg-slate-800/80 text-slate-300'
-                }`}
-              >
-                R$ {formatCurrency(netTotal)}
-              </span>
+              <FileText size={16} />
+              <span>3. Proposta & Orçamento</span>
+              <b>R$ {formatCurrency(netTotal)}</b>
             </button>
-          </div>
-        </div>
+          </nav>
 
-        {/* Corpo do Modal - Conteúdo Dinâmico por Aba em Fundo Off-White #faf8f5 */}
-        <div className="overflow-y-auto flex-1 bg-[#faf8f5] text-slate-900">
-          {/* ========================================================================= */}
-          {/* ABA 1: DIAGNÓSTICO & ENTRADA */}
-          {/* ========================================================================= */}
-          {activeTab === 'diagnostico' && (
-            <div className="max-w-xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 pb-28 text-slate-900 animate-in fade-in duration-150">
-              {/* PASSO 1: PLACA */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-full bg-[#f97316] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
-                    1
+          {/* ÁREA DE CONTEÚDO COM ROLAGEM SUAVE */}
+          <section className="content-area overflow-y-auto flex-1">
+            {/* ETAPA 1: DIAGNÓSTICO & ENTRADA */}
+            {activeTab === 'diagnostico' && (
+              <div className="panel entry-panel">
+                <div className="panel-heading">
+                  <div>
+                    <ClipboardList size={18} />
+                    <h2>Diagnóstico & Entrada</h2>
                   </div>
-                  <h4 className="text-base font-black text-slate-900 tracking-tight">
+                  <span>Etapa 1 de 3</span>
+                </div>
+                <p className="subcopy">Confira os dados recebidos e registre o diagnóstico inicial do veículo.</p>
+                <div className="form-grid">
+                  <label>
                     Placa
-                  </h4>
-                  {plateFoundMatch && (
-                    <span className="ml-auto text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      Veículo Cadastrado
-                    </span>
-                  )}
-                </div>
-
-                {/* CARD DA PLACA EXATO ESTILO LOVABLE */}
-                <div className="bg-white rounded-2xl border-[3px] border-[#f97316] p-4 sm:p-5 shadow-xs flex items-center justify-center transition-all">
-                  <input
-                    type="text"
-                    value={formatPlate(plateInput)}
-                    onChange={(e) => handlePlateChange(e.target.value)}
-                    placeholder="A B C 1 D 2 3"
-                    maxLength={7}
-                    disabled={isReadOnly}
-                    autoFocus={!isEditing}
-                    className="w-full text-center font-mono font-black text-3xl sm:text-4xl tracking-[0.25em] text-slate-700 placeholder-slate-300 uppercase bg-transparent focus:outline-none selection:bg-orange-100"
-                  />
-                </div>
-
-                {/* MODELO DO VEÍCULO */}
-                <div>
-                  <input
-                    type="text"
-                    value={quickModel}
-                    onChange={(e) => setQuickModel(e.target.value)}
-                    disabled={isReadOnly}
-                    placeholder="Modelo (ex: Gol 1.6 prata)"
-                    className="w-full bg-white border border-slate-200 focus:border-[#f97316] rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 font-medium focus:outline-none transition-colors shadow-xs"
-                  />
-                </div>
-              </div>
-
-              {/* PASSO 2: CLIENTE */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-full bg-[#f97316] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
-                    2
-                  </div>
-                  <h4 className="text-base font-black text-slate-900 tracking-tight">
-                    Cliente
-                  </h4>
-                  {plateFoundMatch?.client && (
-                    <span className="ml-auto text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full">
-                      Cliente Vinculado
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={quickClientName}
-                    onChange={(e) => {
-                      setQuickClientName(e.target.value);
-                      setClientInputValue(e.target.value);
-                    }}
-                    disabled={isReadOnly}
-                    placeholder="Nome do cliente"
-                    className="w-full bg-white border border-slate-200 focus:border-[#f97316] rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 font-medium focus:outline-none transition-colors shadow-xs"
-                  />
-
-                  <input
-                    type="text"
-                    value={quickClientPhone}
-                    onChange={(e) => setQuickClientPhone(e.target.value)}
-                    disabled={isReadOnly}
-                    placeholder="WhatsApp (opcional)"
-                    className="w-full bg-white border border-slate-200 focus:border-[#f97316] rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 font-medium focus:outline-none transition-colors shadow-xs font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* PASSO 3: O QUE O CLIENTE RELATOU? */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-full bg-[#f97316] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
-                    3
-                  </div>
-                  <h4 className="text-base font-black text-slate-900 tracking-tight">
-                    O que o cliente relatou?
-                  </h4>
-                </div>
-
-                {/* 10 PÍLULAS DE TAGS RÁPIDAS */}
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {QUICK_SYMPTOM_OPTIONS.map((tag) => {
-                    const isSelected = selectedSymptomTags.includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        disabled={isReadOnly}
-                        onClick={() => toggleSymptomTag(tag)}
-                        className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all border shadow-xs select-none cursor-pointer ${
-                          isSelected
-                            ? 'bg-[#f97316] text-white border-[#f97316] shadow-sm'
-                            : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* TEXTAREA DETALHES */}
-                <div className="pt-1">
-                  <textarea
-                    rows={3}
-                    value={complaintDetails}
-                    onChange={(e) => handleDetailsChange(e.target.value)}
-                    disabled={isReadOnly}
-                    placeholder="Detalhes (opcional)"
-                    className="w-full bg-white border border-slate-200 focus:border-[#f97316] rounded-xl p-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition-colors shadow-xs resize-none"
-                  />
-                </div>
-              </div>
-
-              {/* PASSO 4: CHEGADA DO VEÍCULO */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-full bg-[#f97316] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
-                    4
-                  </div>
-                  <h4 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
-                    Chegada do veículo
-                    <span className="text-xs font-normal text-slate-400">opcional</span>
-                  </h4>
-                </div>
-
-                {/* KM NO PAINEL */}
-                <div>
-                  <input
-                    type="number"
-                    value={mileage || ''}
-                    onChange={(e) => setMileage(Number(e.target.value))}
-                    disabled={isReadOnly}
-                    placeholder="KM no painel"
-                    className="w-full bg-white border border-slate-200 focus:border-[#f97316] rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 font-medium focus:outline-none transition-colors shadow-xs"
-                  />
-                </div>
-
-                {/* SELETOR DE COMBUSTÍVEL EM 5 BOTÕES */}
-                <div className="pt-1">
-                  <label className="block text-xs font-semibold text-slate-500 mb-2">
-                    Combustível
+                    <input
+                      value={plateInput}
+                      onChange={(e) => handlePlateChange(e.target.value.toUpperCase())}
+                      placeholder="ABC1D23"
+                      maxLength={8}
+                    />
                   </label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {FUEL_OPTIONS.map((opt) => {
-                      const isSelected = fuelLevel === opt.value;
+                  <label>
+                    Veículo
+                    <input
+                      value={quickModel}
+                      onChange={(e) => setQuickModel(e.target.value)}
+                      placeholder="Gol 1.6 prata"
+                    />
+                  </label>
+                  <label>
+                    Cliente
+                    <input
+                      value={quickClientName}
+                      onChange={(e) => setQuickClientName(e.target.value)}
+                      placeholder="Mariana Costa"
+                    />
+                  </label>
+                  <label>
+                    WhatsApp
+                    <input
+                      value={quickClientPhone}
+                      onChange={(e) => setQuickClientPhone(formatPhone(e.target.value))}
+                      placeholder="(11) 99999-9999"
+                      type="tel"
+                    />
+                  </label>
+                  <label className="wide">
+                    Queixa relatada
+                    <textarea
+                      value={complaintDescription}
+                      onChange={(e) => setComplaintDescription(e.target.value)}
+                      placeholder="Revisão, barulho na suspensão"
+                      rows={3}
+                    />
+                  </label>
+                  <label>
+                    Quilometragem
+                    <input
+                      inputMode="numeric"
+                      value={mileage ? String(mileage) : ''}
+                      onChange={(e) => setMileage(Number(e.target.value.replace(/\D/g, '')))}
+                      placeholder="Ex.: 68.500 km"
+                    />
+                  </label>
+                  <label>
+                    Nível de combustível
+                    <select
+                      value={fuelLevel <= 15 ? 'Reserva' : fuelLevel <= 30 ? '1/4' : fuelLevel <= 55 ? '1/2' : fuelLevel <= 80 ? '3/4' : 'Cheio'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFuelLevel(val === 'Reserva' ? 10 : val === '1/4' ? 25 : val === '1/2' ? 50 : val === '3/4' ? 75 : 100);
+                      }}
+                    >
+                      <option value="Reserva">Reserva</option>
+                      <option value="1/4">1/4</option>
+                      <option value="1/2">1/2</option>
+                      <option value="3/4">3/4</option>
+                      <option value="Cheio">Cheio</option>
+                    </select>
+                  </label>
+                </div>
+
+                {/* SINTOMAS RECORRENTES (1 CLIQUE) */}
+                <div className="mt-4 pt-4 border-t border-[#1e2b43]">
+                  <label className="text-xs font-semibold text-[#8a9bb5] flex items-center gap-1.5 mb-2">
+                    <Sparkles className="w-3.5 h-3.5 text-[#ffab00]" />
+                    Sintomas Recorrentes (1 Clique):
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {QUICK_SYMPTOM_OPTIONS.map((symptom) => {
+                      const isSelected = complaintDescription.toLowerCase().includes(symptom.toLowerCase());
                       return (
                         <button
-                          key={opt.label}
+                          key={symptom}
                           type="button"
-                          disabled={isReadOnly}
-                          onClick={() => setFuelLevel(opt.value)}
-                          className={`py-3 rounded-xl text-center text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer ${
+                          onClick={() => toggleSymptomTag(symptom)}
+                          className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
                             isSelected
-                              ? 'bg-[#f97316] text-white shadow-md shadow-orange-500/20'
-                              : 'bg-white text-slate-800 border border-slate-200 hover:bg-slate-50'
+                              ? 'bg-[#ffab00]/20 text-[#ffab00] border-[#ffab00]'
+                              : 'bg-[#19243a] text-[#8a9bb5] border-[#1e2b43] hover:text-[#edf2fb] hover:border-[#32415a]'
                           }`}
                         >
-                          {opt.label}
+                          {isSelected ? '✓ ' : '+ '}
+                          {symptom}
                         </button>
                       );
                     })}
                   </div>
-                </div>
-              </div>
 
-                            {/* PASSO 5: VISTORIA DO VEÍCULO & AVARIAS DA LATARIA (DIRETAMENTE VISÍVEL COMO SOLICITADO) */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6 h-6 rounded-full bg-[#f97316] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
-                      5
-                    </div>
-                    <div>
-                      <span className="text-sm font-bold text-slate-900 block">Vistoria & Avarias da Lataria</span>
-                      <span className="text-[11px] text-slate-500">Clique na silhueta do veículo para marcar arranhões, amassados e trincas</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
-                  {/* Silhueta Vetorial do Carro com Pinos de Avarias */}
-                  <CarDamageCanvas damagePoints={damagePoints} onChange={setDamagePoints} readOnly={isReadOnly} />
-
-                  {/* Acessórios Obrigatórios (Estepe, Macaco, Chave, Triângulo) */}
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4 text-[#f97316]" />
-                        Checklist de Acessórios Obrigatórios
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleToggleChecklistAll}
-                        className="text-[11px] font-bold text-[#f97316] hover:underline cursor-pointer"
-                      >
-                        {hasSpareWheel && hasJack && hasLugWrench && hasTriangle ? 'Desmarcar Todos' : 'Marcar Todos'}
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-700">
-                      <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-slate-900">
-                        <input
-                          type="checkbox"
-                          checked={hasSpareWheel}
-                          onChange={(e) => setHasSpareWheel(e.target.checked)}
-                          disabled={isReadOnly}
-                          className="w-4 h-4 rounded text-[#f97316] focus:ring-0 accent-[#f97316]"
-                        />
-                        Estepe
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-slate-900">
-                        <input
-                          type="checkbox"
-                          checked={hasJack}
-                          onChange={(e) => setHasJack(e.target.checked)}
-                          disabled={isReadOnly}
-                          className="w-4 h-4 rounded text-[#f97316] focus:ring-0 accent-[#f97316]"
-                        />
-                        Macaco
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-slate-900">
-                        <input
-                          type="checkbox"
-                          checked={hasLugWrench}
-                          onChange={(e) => setHasLugWrench(e.target.checked)}
-                          disabled={isReadOnly}
-                          className="w-4 h-4 rounded text-[#f97316] focus:ring-0 accent-[#f97316]"
-                        />
-                        Chave de Roda
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-slate-900">
-                        <input
-                          type="checkbox"
-                          checked={hasTriangle}
-                          onChange={(e) => setHasTriangle(e.target.checked)}
-                          disabled={isReadOnly}
-                          className="w-4 h-4 rounded text-[#f97316] focus:ring-0 accent-[#f97316]"
-                        />
-                        Triângulo
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Mecânico Responsável & Data de Entrada */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                        <Wrench className="w-3.5 h-3.5 text-[#f97316]" />
-                        Mecânico Responsável
-                      </label>
-                      <select
-                        value={mechanicId}
-                        onChange={(e) => setMechanicId(e.target.value)}
-                        disabled={isReadOnly}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#f97316] focus:bg-white transition-all"
-                      >
-                        {mechanics.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name} (Comissão: {m.commissionRate}%)
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-[#f97316]" />
-                        Data de Entrada no Pátio
-                      </label>
-                      <input
-                        type="date"
-                        value={entryDate}
-                        onChange={(e) => setEntryDate(e.target.value)}
-                        disabled={isReadOnly}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-slate-900 focus:outline-none focus:border-[#f97316] focus:bg-white transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Diagnóstico Técnico Prévio da Oficina */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-[#f97316]" />
-                      Diagnóstico Técnico Prévio da Oficina
-                    </label>
+                  <label className="block text-xs font-semibold text-[#8a9bb5] mt-3">
+                    Diagnóstico Técnico do Mecânico
                     <textarea
-                      rows={2}
                       value={technicalDiagnostic}
                       onChange={(e) => setTechnicalDiagnostic(e.target.value)}
-                      disabled={isReadOnly}
-                      placeholder="Ex: Pastilhas desgastadas, correia ressecada, vazamento no cárter..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#f97316] focus:bg-white transition-all resize-none"
+                      placeholder="Ex: Folga axial nos pivôs da bandeja dianteira, vazamento no retentor do câmbio..."
+                      className="mt-1 w-full bg-[#19263b] text-[#edf2fb] border border-[#2b3d5b] rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-[#ffab00] outline-none"
+                      rows={2}
+                    />
+                  </label>
+                </div>
+
+                {/* CHECKLIST DE ITENS / ACESSÓRIOS */}
+                <div className="mt-4 pt-4 border-t border-[#1e2b43]">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-[#8a9bb5] uppercase tracking-wider">Acessórios / Itens Presentes</span>
+                    <button
+                      type="button"
+                      onClick={handleToggleChecklistAll}
+                      className="text-[11px] text-[#ffab00] hover:underline"
+                    >
+                      Alternar Todos
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { label: 'Estepe', val: hasSpareWheel, set: setHasSpareWheel },
+                      { label: 'Macaco', val: hasJack, set: setHasJack },
+                      { label: 'Chave de Roda', val: hasLugWrench, set: setHasLugWrench },
+                      { label: 'Triângulo', val: hasTriangle, set: setHasTriangle },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => item.set(!item.val)}
+                        className={`p-2 rounded-lg border text-xs font-bold flex items-center justify-between transition-all ${
+                          item.val
+                            ? 'bg-emerald-950/40 border-emerald-600/50 text-emerald-300'
+                            : 'bg-[#19243a] border-[#1e2b43] text-slate-400'
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                        <span>{item.val ? '✓ Sim' : '✕ Não'}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* IMAGEM DO CARRO PARA O MECÂNICO MARCAR AVARIAS (BLUEPRINT) */}
+                <div className="mt-4 pt-4 border-t border-[#1e2b43]">
+                  <CarDamageCanvas
+                    damagePoints={damagePoints}
+                    onChange={setDamagePoints}
+                    readOnly={isReadOnly}
+                  />
+                </div>
+
+                {/* MECÂNICO RESPONSÁVEL & DATA DE ENTRADA */}
+                <div className="mt-4 pt-4 border-t border-[#1e2b43] grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#8a9bb5] mb-1">Mecânico Responsável</label>
+                    <select
+                      value={mechanicId}
+                      onChange={(e) => setMechanicId(e.target.value)}
+                      className="w-full bg-[#19263b] text-[#edf2fb] border border-[#2b3d5b] rounded-lg p-2 text-xs"
+                    >
+                      {mechanics.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.commissionRate}% comissão)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#8a9bb5] mb-1">Data de Entrada</label>
+                    <input
+                      type="date"
+                      value={entryDate}
+                      onChange={(e) => setEntryDate(e.target.value)}
+                      className="w-full bg-[#19263b] text-[#edf2fb] border border-[#2b3d5b] rounded-lg p-2 text-xs"
                     />
                   </div>
                 </div>
               </div>
+            )}
 
-{/* BARRA FIXA DE AÇÃO NO RODAPÉ (OFICINA RICO / LOVABLE) */}
-              <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-6 p-4 bg-[#faf8f5]/95 backdrop-blur-md border-t border-slate-200/80 z-20">
-                {formatPlate(plateInput).length < 7 ? (
-                  <div className="w-full bg-[#eef2f6] text-[#557086] font-black text-sm tracking-wider uppercase py-4 rounded-2xl text-center select-none shadow-xs cursor-not-allowed">
-                    INFORME A PLACA
-                  </div>
-                ) : !quickClientName.trim() ? (
-                  <div className="w-full bg-[#eef2f6] text-[#557086] font-black text-sm tracking-wider uppercase py-4 rounded-2xl text-center select-none shadow-xs cursor-not-allowed">
-                    INFORME O CLIENTE
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      ensureQuickClientAndVehicle();
-                      setActiveTab('itens');
-                    }}
-                    className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-black text-sm tracking-wider uppercase py-4 rounded-2xl text-center shadow-lg shadow-orange-500/25 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
-                  >
-                    <span>AVANÇAR PARA PEÇAS & SERVIÇOS</span>
-                    <ChevronRight className="w-5 h-5 stroke-[3]" />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* ABA 2: SERVIÇOS & PEÇAS (Estilo Lovable - Limpo, Elegante e Operacional) */}
-          {/* ========================================================================= */}
-          {activeTab === 'itens' && (
-            <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 pb-28 text-slate-900 animate-in fade-in duration-150">
-              {/* Barra Resumo do Veículo & Cliente com Atalho de Desconto Comercial (Estilo OFICINA RICO) */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap text-xs">
-                    <span className="font-mono font-black text-[#f97316] bg-orange-50 border border-orange-200 px-2.5 py-0.5 rounded-lg">
-                      {formatPlate(plateInput) || currentVehicle?.plate || 'S/ PLACA'}
-                    </span>
-                    <span className="font-bold text-slate-900">
-                      {quickModel || (currentVehicle ? `${currentVehicle.brand} ${currentVehicle.model}` : 'Veículo')}
-                    </span>
-                    <span className="text-slate-400">•</span>
-                    <span className="text-slate-700 font-semibold">
-                      {quickClientName || currentClient?.name || 'Cliente'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Queixa relatada: <strong className="text-slate-700">{complaintDescription || 'Não especificada'}</strong>
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {discount > 0 ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-red-600 font-mono bg-red-50 border border-red-200 px-2.5 py-1 rounded-xl">
-                        - R$ {formatCurrency(discount)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setDiscount(0)}
-                        className="text-xs text-slate-500 hover:text-red-600 font-bold underline cursor-pointer"
-                      >
-                        Remover
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const val = prompt('Digite o valor do desconto comercial em R$:', '25');
-                        if (val) setDiscount(Math.max(0, parseFloat(val.replace(',', '.')) || 0));
-                      }}
-                      className="text-xs font-bold text-[#f97316] hover:bg-orange-50 border border-[#f97316]/30 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
-                    >
-                      + Aplicar Desconto
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Barra de Resumo Parcial Rápido em 4 Cards Brancos */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs">
-                  <span className="text-[11px] text-slate-500 block font-semibold mb-0.5">Mão de Obra ({services.length})</span>
-                  <span className="font-mono text-sm sm:text-base font-black text-slate-900">
-                    R$ {formatCurrency(servicesTotal)}
-                  </span>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs">
-                  <span className="text-[11px] text-slate-500 block font-semibold mb-0.5">
-                    Peças {partsSupplyMode === 'cliente_todas' ? '(Cliente)' : `(${parts.length})`}
-                  </span>
-                  <span className="font-mono text-sm sm:text-base font-black text-slate-900">
-                    {partsSupplyMode === 'cliente_todas' ? 'R$ 0,00' : `R$ ${partsTotal.toFixed(2)}`}
-                  </span>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs">
-                  <span className="text-[11px] text-slate-500 block font-semibold mb-0.5">Subtotal Bruto</span>
-                  <span className="font-mono text-sm sm:text-base font-black text-slate-700">
-                    R$ {formatCurrency(grossTotal)}
-                  </span>
-                </div>
-                <div className="bg-[#f97316]/10 border border-[#f97316]/30 rounded-2xl p-3.5 shadow-xs text-center">
-                  <span className="text-[11px] text-[#f97316] block font-bold uppercase tracking-wider mb-0.5">
-                    Total da O.S.
-                  </span>
-                  <span className="font-mono text-base sm:text-lg font-black text-[#f97316]">
-                    R$ {formatCurrency(netTotal)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Banner Transparente de Desconto */}
-              {discount > 0 ? (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-red-50 border border-red-200 px-4 py-2.5 rounded-xl text-xs text-red-700 shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></span>
+            {/* ETAPA 2: SERVIÇOS & PEÇAS */}
+            {activeTab === 'itens' && (
+              <>
+                {/* SUMMARY PANEL */}
+                <div className="panel summary-panel">
+                  <div className="summary-top">
                     <span>
-                      Desconto Aplicado: <strong className="font-mono text-red-600">- R$ {formatCurrency(discount)}</strong>
-                      <span className="text-slate-400 mx-1.5">•</span>
-                      <span>(Subtotal Bruto: <strong>R$ {formatCurrency(grossTotal)}</strong> ➔ Valor Final: <strong className="text-[#f97316]">R$ {formatCurrency(netTotal)}</strong>)</span>
+                      <b>{plateInput || 'SEM PLACA'}</b> &nbsp; {quickModel || (currentVehicle ? `${currentVehicle.brand} ${currentVehicle.model}` : 'Veículo')} <i>•</i> {quickClientName || (currentClient ? currentClient.name : 'Cliente')}
                     </span>
+                    <span>Queixa: {complaintDescription || 'Não informada'}</span>
                   </div>
+                  <p>
+                    {discount > 0 
+                      ? `Desconto comercial de R$ ${formatCurrency(discount)} aplicado.`
+                      : 'Sem desconto comercial aplicado. O subtotal bruto corresponde ao total da O.S.'}
+                  </p>
                   <button
                     type="button"
-                    onClick={() => setActiveTab('fechamento')}
-                    className="text-[11px] text-[#f97316] hover:underline font-bold shrink-0 cursor-pointer"
-                  >
-                    Editar Desconto na Aba 3
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
-                  <span>Sem desconto comercial aplicado. O subtotal bruto corresponde ao total da O.S.</span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('fechamento')}
-                    className="text-slate-600 hover:text-[#f97316] font-medium transition-colors cursor-pointer"
-                  >
-                    + Aplicar Desconto
-                  </button>
-                </div>
-              )}
-
-              {/* Ação Direta do Mecânico no Pátio (1 Toque) */}
-              {(status === 'em_andamento' || status === 'aprovado') && (
-                <div className="bg-emerald-50 border border-emerald-200 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-300">
-                      <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-emerald-800 uppercase tracking-wide">
-                          Ação Direta do Mecânico no Pátio
-                        </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                          {status === 'em_andamento' ? '4. Em Execução' : '3. Aprovado'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        Terminou o serviço no carro? Marque como pronto em 1 toque sem precisar transitar por abas financeiras.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
+                    className="discount-link"
                     onClick={() => {
-                      setStatus('pronto');
-                      confetti({
-                        particleCount: 70,
-                        spread: 60,
-                        origin: { y: 0.6 },
-                      });
-                      alert('✅ Sucesso! Veículo marcado como "5. Pronto para Retirada no Pátio". O cliente já pode vir buscar!');
+                      if (discount > 0) setDiscount(0);
+                      else {
+                        const val = prompt('Digite o valor do desconto (R$):', '25');
+                        if (val) setDiscount(Number(val.replace(',', '.')) || 0);
+                      }
                     }}
-                    className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all hover:scale-[1.02] active:scale-95 shrink-0 cursor-pointer"
-                    title="Avança a O.S. diretamente para Pronto para Retirada"
                   >
-                    <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                    <span>Concluir Serviço (Marcar Pronto)</span>
+                    {discount > 0 ? `Remover desconto (-R$ ${formatCurrency(discount)})` : '+ Aplicar Desconto'}
                   </button>
                 </div>
-              )}
 
-              {/* Bloco 1: Serviços Mecânicos (Mão de Obra) */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-[#f97316] text-white flex items-center justify-center text-xs font-black shrink-0 shadow-xs">
-                      <Wrench className="w-4 h-4" />
-                    </div>
+                {/* SERVICE PANEL */}
+                <div className="panel service-panel">
+                  <div className="panel-heading">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900">Mão de Obra & Serviços Mecânicos</h4>
-                      <p className="text-[11px] text-slate-500">Adicione os serviços que serão executados na oficina</p>
+                      <Wrench size={17} />
+                      <h2>Mão de Obra & Serviços Mecânicos</h2>
                     </div>
+                    <strong>Subtotal: R$ {formatCurrency(servicesTotal)}</strong>
                   </div>
-                  <span className="text-xs font-black text-[#f97316] font-mono bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-200">
-                    Subtotal: R$ {formatCurrency(servicesTotal)}
-                  </span>
-                </div>
 
-                {/* Combos Rápidos de Serviços Pré-Cadastrados */}
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#f97316]" />
-                    Combos Rápidos & Serviços Frequentes (1 Clique):
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
+                  <p className="section-label">
+                    <Sparkles size={14} /> Combos Rápidos & Serviços Pré-Cadastrados (1 Clique):
+                  </p>
+                  <div className="quick-list">
                     {DEFAULT_QUICK_SERVICES.map((item) => (
                       <button
                         key={item.name}
                         type="button"
-                        onClick={() => {
-                          handleAddService(undefined, item.name, item.value);
-                        }}
-                        className="px-3 py-1.5 bg-slate-50 hover:bg-orange-50 text-slate-800 hover:text-[#f97316] rounded-xl text-xs font-semibold border border-slate-200 hover:border-[#f97316]/50 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-                        title={`Adicionar "${item.name}" com valor sugerido de R$ ${item.value.toFixed(2)}`}
+                        onClick={() => handleAddService(undefined, item.name, item.value)}
                       >
-                        <Plus className="w-3.5 h-3.5 text-[#f97316]" />
-                        <span>{item.name}</span>
-                        <span className="font-mono text-[11px] text-[#f97316] font-bold">
-                          R$ {item.value}
-                        </span>
+                        <Plus size={13} /> {item.name} <b>R$ {formatCurrency(item.value)}</b>
                       </button>
                     ))}
                   </div>
-                </div>
 
-                {/* Seletor Suspenso do Catálogo Geral de Serviços */}
-                <div>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      if (!e.target.value) return;
-                      const found = availableServices.find((s) => s.id === e.target.value);
-                      if (found) {
-                        handleAddService(found.id, found.name, found.standardPrice);
-                      }
-                      e.target.value = '';
-                    }}
-                    className="w-full bg-slate-50 border border-slate-200 hover:border-[#f97316]/50 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#f97316] focus:bg-white cursor-pointer transition-all"
-                  >
-                    <option value="">📋 Escolher do Catálogo Completo de Serviços da Oficina ({availableServices.length} cadastrados)...</option>
-                    {availableServices.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} — R$ {s.standardPrice.toFixed(2)} ({s.category || 'Geral'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  <label className="catalog-select">
+                    <span>▤ &nbsp;Escolher do Catálogo Completo de Serviços da Oficina ({availableServices.length} cadastrados)...</span>
+                    <select
+                      aria-label="Catálogo de serviços"
+                      value=""
+                      onChange={(e) => {
+                        const s = availableServices.find((x) => x.id === e.target.value);
+                        if (s) handleAddService(s.id);
+                      }}
+                    >
+                      <option value="" disabled></option>
+                      {availableServices.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} - R$ {formatCurrency(s.standardPrice)}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={15} />
+                  </label>
 
-                {/* Campo de Busca Digitável para Serviços + Valor Individual */}
-                <div className="relative">
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <div className="relative flex-1">
-                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <div className="add-row">
+                    <div className="search-field">
+                      <Search size={17} />
                       <input
-                        type="text"
-                        placeholder="Digite o serviço (ex: alinhamento, troca de óleo, freios)..."
                         value={serviceSearch}
-                        onChange={(e) => {
-                          setServiceSearch(e.target.value);
-                          setIsServiceDropdownOpen(true);
-                          setSelectedServiceId('');
-                        }}
-                        onFocus={() => setIsServiceDropdownOpen(true)}
+                        onChange={(e) => setServiceSearch(e.target.value)}
+                        placeholder="Digite o serviço (ex: alinhamento, troca de óleo, freios)..."
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
+                          if (e.key === 'Enter' && serviceSearch.trim()) {
                             e.preventDefault();
                             handleAddService();
+                            setServiceSearch('');
+                            setServicePriceInput('');
                           }
                         }}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#f97316] focus:bg-white transition-all"
                       />
-                      {serviceSearch && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setServiceSearch('');
-                            setSelectedServiceId('');
-                            setServicePriceInput('');
-                          }}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
                     </div>
-
-                    {/* Campo de Valor Individual do Serviço */}
-                    <div className="flex gap-2">
-                      <div className="relative w-28 sm:w-32 shrink-0">
-                        <span className="text-slate-400 text-xs absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none font-bold">
-                          R$
-                        </span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="Valor"
-                          value={servicePriceInput}
-                          onChange={(e) => setServicePriceInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddService();
-                            }
-                          }}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-2.5 py-2.5 text-xs sm:text-sm text-slate-900 font-mono font-bold placeholder-slate-400 focus:outline-none focus:border-[#f97316] focus:bg-white text-right transition-all"
-                          title="Valor individual deste serviço"
-                        />
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleAddService()}
-                        className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shrink-0 transition-all shadow-sm cursor-pointer active:scale-95"
-                      >
-                        <Plus className="w-4 h-4 stroke-[2.5]" />
-                        Adicionar
-                      </button>
-                    </div>
+                    <label className="price-input">
+                      <span>R$</span>
+                      <input
+                        inputMode="decimal"
+                        value={servicePriceInput}
+                        onChange={(e) => setServicePriceInput(e.target.value.replace(/[^\d,.]/g, ''))}
+                        placeholder="Valor"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="add-button"
+                      onClick={() => {
+                        if (serviceSearch.trim()) {
+                          handleAddService();
+                          setServiceSearch('');
+                          setServicePriceInput('');
+                        }
+                      }}
+                    >
+                      <Plus size={17} /> Adicionar
+                    </button>
                   </div>
 
-                  {/* Dropdown de Sugestões de Serviços */}
-                  {isServiceDropdownOpen && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto z-40 divide-y divide-slate-100">
-                      {serviceSearch.trim() && (
-                        <div
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            handleAddService(undefined, serviceSearch.trim());
-                          }}
-                          className="p-3 bg-orange-50 hover:bg-orange-100 text-[#f97316] cursor-pointer flex items-center justify-between text-xs font-bold border-b border-orange-100 transition-colors"
-                        >
-                          <span className="flex items-center gap-1.5 truncate pr-2">
-                            <Plus className="w-3.5 h-3.5 shrink-0" />
-                            <span className="truncate">Adicionar como serviço avulso: "{serviceSearch.trim()}"</span>
-                          </span>
-                          <span className="font-mono text-xs shrink-0">
-                            {servicePriceInput ? `R$ ${parseFloat(servicePriceInput.replace(',', '.')).toFixed(2)}` : '(definir valor)'}
-                          </span>
-                        </div>
-                      )}
-
-                      {filteredServices.length === 0 && !serviceSearch.trim() ? (
-                        <div className="p-3 text-xs text-slate-400 text-center">
-                          Nenhum serviço cadastrado.
-                        </div>
-                      ) : (
-                        filteredServices.map((s) => (
-                          <div
-                            key={s.id}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setSelectedServiceId(s.id);
-                              setServiceSearch(s.name);
-                              setServicePriceInput(s.standardPrice.toString());
-                              setIsServiceDropdownOpen(false);
-                            }}
-                            className={`p-2.5 hover:bg-slate-50 cursor-pointer flex items-center justify-between text-xs transition-colors ${
-                              selectedServiceId === s.id ? 'bg-orange-50/80 border-l-4 border-[#f97316]' : ''
-                            }`}
-                          >
-                            <span className="font-semibold text-slate-800 truncate pr-2">{s.name}</span>
-                            <span className="font-mono font-bold text-[#f97316] shrink-0">
-                              R$ {formatCurrency(s.standardPrice)}
+                  {/* LISTA DE SERVIÇOS ADICIONADOS */}
+                  {services.length === 0 ? (
+                    <div className="empty-state">Nenhum serviço mecânico adicionado ainda.</div>
+                  ) : (
+                    <div className="line-list">
+                      {services.map((item) => (
+                        <div className="line-item" key={item.id}>
+                          <div className="flex-1 min-w-0 pr-2">
+                            <span className="font-semibold text-[#edf2fb] block truncate">{item.description}</span>
+                            <span className="text-[11px] text-[#7284a1]">
+                              Mecânico: {mechanics.find((m) => m.id === (item.mechanicId || mechanicId))?.name || 'Geral'}
                             </span>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Lista de Serviços Adicionados */}
-                <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto bg-slate-50 rounded-xl p-2 border border-slate-200">
-                  {services.length === 0 ? (
-                    <div className="py-4 text-center text-xs text-slate-400 italic">
-                      Nenhum serviço mecânico adicionado ainda.
-                    </div>
-                  ) : (
-                    services.map((item) => (
-                      <div key={item.id} className="py-2.5 px-2 flex items-center justify-between text-xs gap-3">
-                        <div className="flex-1 min-w-0 pr-2">
-                          <div className="font-bold text-slate-900 truncate">{item.description}</div>
-                          <div className="text-slate-500 text-[11px] flex items-center gap-2 mt-0.5">
-                            {item.price === 0 && servicesTotal > 0 ? (
-                              <span className="text-[#f97316] font-medium bg-orange-100/60 border border-orange-200 px-1.5 py-0.5 rounded text-[10px]">
-                                Incluso no Pacote Global
-                              </span>
-                            ) : (
-                              <span>Comissão ({item.commissionRate}%): R$ {formatCurrency(item.commissionValue)}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-1 focus-within:border-[#f97316] shadow-xs">
-                            <span className="text-slate-400 text-xs font-bold">R$</span>
+                          <div className="flex items-center gap-2">
                             <input
                               type="number"
-                              step="0.01"
-                              min="0"
-                              value={item.price > 0 ? item.price : ''}
-                              placeholder="0,00"
-                              onChange={(e) => handleUpdateServicePrice(item.id, parseFloat(e.target.value) || 0)}
-                              className="w-20 sm:w-24 bg-transparent text-xs sm:text-sm font-mono font-bold text-slate-900 text-right focus:outline-none placeholder-slate-400"
-                              title="Valor individual deste serviço"
+                              inputMode="decimal"
+                              value={item.price}
+                              onChange={(e) => handleUpdateServicePrice(item.id, Number(e.target.value))}
+                              className="w-24 bg-[#19263b] text-right text-xs font-bold text-[#edf2fb] border border-[#2b3d5b] rounded px-2 py-1"
                             />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveService(item.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                            title="Remover serviço"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Ajuste do Total dos Serviços (Mão de Obra) */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                        Total da Mão de Obra (Serviços):
-                      </span>
-                      {services.length > 0 && (
-                        <span className="text-[10px] text-slate-600 bg-white px-2 py-0.5 rounded-full border border-slate-200 font-bold">
-                          {services.length} {services.length === 1 ? 'serviço' : 'serviços'}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-500">
-                      {sumServices === 0 && servicesTotal > 0
-                        ? 'Valor global de mão de obra definido. Os serviços são mantidos no pacote sem diluição individual.'
-                        : services.length > 1
-                        ? 'Você pode alterar o valor total do pacote (o sistema distribui entre os serviços com valor).'
-                        : services.length === 1
-                        ? 'Altere o valor individual acima ou ajuste o total aqui.'
-                        : 'Digite o valor total de mão de obra para criar o pacote de serviços.'}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 bg-white border-2 border-[#f97316] rounded-xl px-2.5 py-1 focus-within:ring-2 focus-within:ring-[#f97316]/30 shadow-xs">
-                      <span className="text-xs font-bold text-[#f97316]">R$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0,00"
-                        value={isEditingTotalServices ? totalServicesInput : (servicesTotal > 0 ? servicesTotal.toFixed(2) : '')}
-                        onFocus={() => {
-                          setIsEditingTotalServices(true);
-                          setTotalServicesInput(servicesTotal > 0 ? servicesTotal.toFixed(2) : '');
-                        }}
-                        onChange={(e) => setTotalServicesInput(e.target.value)}
-                        onBlur={() => {
-                          handleApplyTotalServices(totalServicesInput);
-                          setIsEditingTotalServices(false);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleApplyTotalServices(totalServicesInput);
-                            setIsEditingTotalServices(false);
-                          }
-                        }}
-                        className="w-28 sm:w-32 bg-transparent text-sm sm:text-base font-black text-slate-900 text-right font-mono focus:outline-none"
-                        title="Digite o valor total da mão de obra"
-                      />
-                    </div>
-                    {isEditingTotalServices && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleApplyTotalServices(totalServicesInput);
-                          setIsEditingTotalServices(false);
-                        }}
-                        className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs cursor-pointer"
-                      >
-                        ✓ Ok
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Alerta de Itens sem Valor de Venda Definido */}
-              {partsSupplyMode !== 'cliente_todas' && zeroPriceParts.length > 0 && (
-                <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-900 shadow-xs animate-in fade-in">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold text-amber-900">Atenção aos itens com valor R$ 0,00:</span>
-                    <p className="text-[11px] text-amber-800 mt-0.5">
-                      Há {zeroPriceParts.length} peça(s) adicionada(s) sem preço de venda. Preencha o valor unitário de cada item ou ajuste o Total de Peças para evitar enviar orçamento zerado por engano.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Bloco 2: Peças & Insumos Utilizados */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-[#f97316] text-white flex items-center justify-center text-xs font-black shrink-0 shadow-xs">
-                      <Package className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-slate-900">Peças & Insumos</h4>
-                        {partsSupplyMode === 'cliente_todas' && (
-                          <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300 font-bold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Cliente Forneceu Todas
-                          </span>
-                        )}
-                        {partsSupplyMode === 'cliente_parcial' && (
-                          <span className="text-[10px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full border border-sky-300 font-bold flex items-center gap-1">
-                            <Split className="w-3 h-3" />
-                            Fornecimento Parcial
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-500">Defina as peças da oficina ou registre as trazidas pelo cliente</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-black font-mono px-2.5 py-1 rounded-lg border bg-orange-50 text-[#f97316] border-orange-200">
-                      {partsSupplyMode === 'cliente_todas' ? (
-                        <span className="text-emerald-700">Total Peças: R$ 0,00</span>
-                      ) : (
-                        <span>Subtotal: R$ {formatCurrency(partsTotal)}</span>
-                      )}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Seletor Rápido de Fornecimento de Peças */}
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-800">Origem das Peças & Insumos:</span>
-                    <span className="text-[11px] text-slate-500">Clique para alternar o modo</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {/* Opção 1: Oficina Fornece */}
-                    <button
-                      type="button"
-                      onClick={() => setPartsSupplyMode('oficina')}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 cursor-pointer ${
-                        partsSupplyMode === 'oficina'
-                          ? 'bg-orange-50 border-[#f97316] text-[#f97316] shadow-xs ring-1 ring-[#f97316]/30'
-                          : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Store className="w-4 h-4 shrink-0 text-[#f97316]" />
-                      <div className="min-w-0">
-                        <div className="truncate font-black">Oficina Fornece</div>
-                        <div className="text-[10px] opacity-75 font-normal truncate">Catálogo & estoque próprio</div>
-                      </div>
-                    </button>
-
-                    {/* Opção 2: Cliente Forneceu Parcialmente */}
-                    <button
-                      type="button"
-                      onClick={() => setPartsSupplyMode('cliente_parcial')}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 cursor-pointer ${
-                        partsSupplyMode === 'cliente_parcial'
-                          ? 'bg-sky-50 border-sky-500 text-sky-700 shadow-xs ring-1 ring-sky-500/30'
-                          : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Split className="w-4 h-4 shrink-0 text-sky-600" />
-                      <div className="min-w-0">
-                        <div className="truncate font-black">Cliente Parcialmente</div>
-                        <div className="text-[10px] opacity-75 font-normal truncate">Lançar peças faltantes</div>
-                      </div>
-                    </button>
-
-                    {/* Opção 3: Cliente Forneceu Todas as Peças */}
-                    <button
-                      type="button"
-                      onClick={() => setPartsSupplyMode('cliente_todas')}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-center gap-2.5 cursor-pointer ${
-                        partsSupplyMode === 'cliente_todas'
-                          ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-xs ring-1 ring-emerald-500/30'
-                          : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                      }`}
-                    >
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                      <div className="min-w-0">
-                        <div className="truncate font-black">Cliente Forneceu Todas</div>
-                        <div className="text-[10px] opacity-75 font-normal truncate">Sem custo de peças (Avançar)</div>
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* Banner se 'cliente_todas' */}
-                  {partsSupplyMode === 'cliente_todas' && (
-                    <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 space-y-3 mt-1 animate-in fade-in duration-150">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-xs font-black text-emerald-800">
-                            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                            <span>Cliente forneceu 100% das peças e insumos!</span>
-                          </div>
-                          <p className="text-[11px] text-emerald-700 leading-relaxed">
-                            Nenhum valor de peças será cobrado na O.S. (Total de Peças: <strong>R$ 0,00</strong>). A oficina cobra e garante apenas a mão de obra de montagem e instalação.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('fechamento')}
-                          disabled={isFinalized}
-                          className={`font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 shadow-sm transition-all cursor-pointer ${
-                            isFinalized
-                              ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none opacity-60'
-                              : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
-                          }`}
-                        >
-                          <span>Avançar para Fechamento</span>
-                          <ChevronRight className="w-4 h-4 stroke-[3]" />
-                        </button>
-                      </div>
-
-                      <div className="pt-2 border-t border-emerald-200">
-                        <label className="text-[10px] font-bold text-emerald-900 block mb-1">
-                          Anotação das peças trazidas (para constar na O.S. e recibo):
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Ex: 4L Óleo Sintético 5W30 Motul + Filtro Mann trazidos pelo cliente no porta-malas..."
-                          value={clientProvidedPartsNotes}
-                          onChange={(e) => setClientProvidedPartsNotes(e.target.value)}
-                          className="w-full bg-white border border-emerald-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder-emerald-600/50 focus:outline-none focus:border-emerald-500"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Banner se 'cliente_parcial' */}
-                  {partsSupplyMode === 'cliente_parcial' && (
-                    <div className="bg-sky-50 border border-sky-300 rounded-xl p-3.5 space-y-2 mt-1 animate-in fade-in duration-150">
-                      <div className="flex items-start gap-2 text-xs text-sky-800">
-                        <Split className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
-                        <div>
-                          <span className="font-bold text-sky-950">Fornecimento Parcial de Peças:</span> O cliente trouxe parte dos materiais.
-                          Insira abaixo <strong>apenas as peças faltantes</strong> que a oficina irá fornecer e cobrar na O.S.
-                        </div>
-                      </div>
-                      <div className="pt-1">
-                        <label className="text-[10px] font-bold text-sky-900 block mb-1">
-                          O que o cliente já trouxe? (para resguardo da oficina):
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Ex: Cliente trouxe pastilhas dianteiras; oficina fornece discos e fluído de freio..."
-                          value={clientProvidedPartsNotes}
-                          onChange={(e) => setClientProvidedPartsNotes(e.target.value)}
-                          className="w-full bg-white border border-sky-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder-sky-600/50 focus:outline-none focus:border-sky-500"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Seletor & Inclusão de Peças */}
-                {partsSupplyMode !== 'cliente_todas' && (
-                  <>
-                    {/* Seletor Suspenso do Estoque Físico de Peças */}
-                    <div>
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          if (!e.target.value) return;
-                          const found = availableParts.find((p) => p.id === e.target.value);
-                          if (found) {
-                            setSelectedPartId(found.id);
-                            setPartSearch(`${found.description} (Cód: ${found.code})`);
-                            setPartPriceInput(found.sellPrice.toString());
-                          }
-                          e.target.value = '';
-                        }}
-                        className="w-full bg-slate-50 border border-slate-200 hover:border-[#f97316]/50 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#f97316] focus:bg-white cursor-pointer transition-all"
-                      >
-                        <option value="">📦 Escolher do Estoque Físico da Oficina ({availableParts.length} itens cadastrados)...</option>
-                        {availableParts.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.description} (Cód: {p.code}) — Saldo: {p.currentStock} {p.unit || 'un'} {p.currentStock <= p.minStock ? '⚠️' : '✓'} | R$ {p.sellPrice.toFixed(2)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="relative">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        {/* Busca Digitável */}
-                        <div className="relative flex-1">
-                          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                          <input
-                            type="text"
-                            placeholder={
-                              partsSupplyMode === 'cliente_parcial'
-                                ? 'Digite a peça FALTANTE da oficina (ou insumo avulso)...'
-                                : 'Digite a peça (ex: óleo, filtro, pastilha) ou insumo avulso...'
-                            }
-                            value={partSearch}
-                            onChange={(e) => {
-                              setPartSearch(e.target.value);
-                              setIsPartDropdownOpen(true);
-                              setSelectedPartId('');
-                            }}
-                            onFocus={() => setIsPartDropdownOpen(true)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleAddPart();
-                              }
-                            }}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#f97316] focus:bg-white transition-all"
-                          />
-                          {partSearch && (
                             <button
                               type="button"
-                              onClick={() => {
-                                setPartSearch('');
-                                setSelectedPartId('');
-                                setPartPriceInput('');
-                              }}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                              onClick={() => handleRemoveService(item.id)}
+                              aria-label={`Remover ${item.description}`}
+                              className="text-red-400 hover:text-red-300 p-1"
                             >
-                              <X className="w-3.5 h-3.5" />
+                              <X size={14} />
                             </button>
-                          )}
-                        </div>
-
-                        {/* Quantidade Inicial + Valor Unitário Individual + Botão Adicionar */}
-                        <div className="flex gap-2">
-                          <div className="w-16 sm:w-20 shrink-0">
-                            <input
-                              type="number"
-                              min="1"
-                              value={partQty}
-                              onChange={(e) => setPartQty(Math.max(1, Number(e.target.value)))}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-xs sm:text-sm text-slate-900 text-center font-bold font-mono focus:outline-none focus:border-[#f97316] focus:bg-white transition-all"
-                              title="Quantidade a adicionar"
-                            />
                           </div>
-
-                          <div className="relative w-28 sm:w-32 shrink-0">
-                            <span className="text-slate-400 text-xs absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none font-bold">
-                              R$
-                            </span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              placeholder="Unitário"
-                              value={partPriceInput}
-                              onChange={(e) => setPartPriceInput(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleAddPart();
-                                }
-                              }}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-2.5 py-2.5 text-xs sm:text-sm text-slate-900 font-mono font-bold placeholder-slate-400 focus:outline-none focus:border-[#f97316] focus:bg-white text-right transition-all"
-                              title="Valor unitário da peça"
-                            />
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleAddPart()}
-                            className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shrink-0 transition-all shadow-sm cursor-pointer active:scale-95"
-                          >
-                            <Plus className="w-4 h-4 stroke-[2.5]" />
-                            Adicionar
-                          </button>
                         </div>
-                      </div>
-
-                      {/* Dropdown de Sugestões de Peças com Estoque e Venda */}
-                      {isPartDropdownOpen && (
-                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto z-40 divide-y divide-slate-100">
-                          {partSearch.trim() && (
-                            <div
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                handleAddPart(undefined, partSearch.trim());
-                              }}
-                              className="p-3 bg-orange-50 hover:bg-orange-100 text-[#f97316] cursor-pointer flex items-center justify-between text-xs font-bold border-b border-orange-100 transition-colors"
-                            >
-                              <span className="flex items-center gap-1.5 truncate pr-2">
-                                <Plus className="w-3.5 h-3.5 shrink-0" />
-                                <span className="truncate">Adicionar como peça/insumo avulso: "{partSearch.trim()}"</span>
-                              </span>
-                              <span className="font-mono text-xs shrink-0">
-                                {partPriceInput ? `R$ ${parseFloat(partPriceInput.replace(',', '.')).toFixed(2)}/un` : '(definir unitário)'}
-                              </span>
-                            </div>
-                          )}
-
-                          {filteredParts.length === 0 && !partSearch.trim() ? (
-                            <div className="p-3 text-xs text-slate-400 text-center">
-                              Nenhuma peça cadastrada no estoque.
-                            </div>
-                          ) : (
-                            filteredParts.slice(0, 15).map((p) => (
-                              <div
-                                key={p.id}
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  setSelectedPartId(p.id);
-                                  setPartSearch(`${p.description} (Cód: ${p.code})`);
-                                  setPartPriceInput(p.sellPrice.toString());
-                                  setIsPartDropdownOpen(false);
-                                }}
-                                className={`p-2.5 hover:bg-slate-50 cursor-pointer flex items-center justify-between text-xs transition-colors ${
-                                  selectedPartId === p.id ? 'bg-orange-50/80 border-l-4 border-[#f97316]' : ''
-                                }`}
-                              >
-                                <div>
-                                  <span className="font-semibold text-slate-800">{p.description}</span>
-                                  <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
-                                    <span className="font-mono text-[#f97316] font-bold">Cód: {p.code}</span>
-                                    {p.brand && <span>• {p.brand}</span>}
-                                    {p.location && (
-                                      <span className="text-slate-600 font-medium bg-slate-100 px-1 rounded">
-                                        Loc: {p.location}
-                                      </span>
-                                    )}
-                                    <span
-                                      className={
-                                        p.currentStock <= p.minStock
-                                          ? 'text-red-500 font-bold'
-                                          : 'text-slate-500'
-                                      }
-                                    >
-                                      • Estoque: {p.currentStock} {p.unit || 'un'}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="text-right ml-2 shrink-0">
-                                  <span className="font-mono font-bold text-[#f97316] text-xs sm:text-sm">
-                                    R$ {formatCurrency(p.sellPrice)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      )}
+                      ))}
                     </div>
+                  )}
 
-                    {/* Lista de Peças Adicionadas */}
-                    <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto bg-slate-50 rounded-xl p-2 border border-slate-200">
-                      {parts.length === 0 ? (
-                        <div className="py-4 text-center text-xs text-slate-400 italic">
-                          {partsSupplyMode === 'cliente_parcial'
-                            ? 'Nenhuma peça faltante lançada ainda. Adicione as peças que a oficina fornecerá.'
-                            : 'Nenhuma peça ou insumo adicionado ainda.'}
-                        </div>
-                      ) : (
-                        parts.map((item) => {
-                          const stockItem = availableParts.find((p) => p.id === item.partId || p.code === item.code);
-                          const isOutOfStock = stockItem ? stockItem.currentStock <= 0 : false;
-                          const isQtyExceeded = stockItem ? item.quantity > stockItem.currentStock : false;
-                          const isBelowMin = stockItem ? stockItem.currentStock <= stockItem.minStock && !isOutOfStock : false;
+                  {/* TOTAL DA MÃO DE OBRA */}
+                  <label className="labor-total">
+                    <span>
+                      <b>TOTAL DA MÃO DE OBRA (SERVIÇOS):</b>
+                      <small>Digite o valor total de mão de obra para criar o pacote de serviços.</small>
+                    </span>
+                    <div>
+                      <b>R$</b>
+                      <input
+                        inputMode="decimal"
+                        value={customServicesTotal !== null ? customServicesTotal : (sumServices > 0 ? sumServices : '')}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value.replace(',', '.'));
+                          setCustomServicesTotal(!isNaN(v) ? v : null);
+                        }}
+                        placeholder="0,00"
+                      />
+                    </div>
+                  </label>
+                </div>
 
-                          return (
-                            <div key={item.id} className="py-2.5 px-3 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2.5 bg-white hover:bg-slate-50/80 rounded-xl border border-slate-200 shadow-xs transition-colors my-1">
-                              <div className="flex-1 min-w-0 pr-2 space-y-1">
-                                <div className="font-bold text-slate-900 truncate flex items-center gap-2">
-                                  <span className="truncate">{item.description}</span>
-                                  {stockItem?.location && (
-                                    <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 shrink-0 font-normal">
-                                      Loc: {stockItem.location}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-slate-500 text-[11px] flex items-center gap-2 flex-wrap">
-                                  <span className="font-mono text-slate-600">Cód: {item.code}</span>
-                                  <span>•</span>
-                                  <span>Subtotal: R$ {formatCurrency(item.total)}</span>
-                                  <span>•</span>
-                                  {stockItem ? (
-                                    isOutOfStock ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-100 text-red-700 border border-red-300 flex items-center gap-1">
-                                        <AlertTriangle className="w-3 h-3 stroke-[2.5]" />
-                                        <span>SEM ESTOQUE FÍSICO (0 un no pátio)</span>
-                                      </span>
-                                    ) : isQtyExceeded ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-100 text-red-700 border border-red-300 flex items-center gap-1 animate-pulse">
-                                        <AlertTriangle className="w-3 h-3 stroke-[2.5]" />
-                                        <span>Qtd ({item.quantity}) excede saldo físico ({stockItem.currentStock} {stockItem.unit || 'un'})</span>
-                                      </span>
-                                    ) : isBelowMin ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
-                                        <span>⚠️ Estoque Baixo: {stockItem.currentStock} {stockItem.unit || 'un'}</span>
-                                        <span className="text-slate-500">(mín: {stockItem.minStock})</span>
-                                      </span>
-                                    ) : (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-                                        <Check className="w-3 h-3 stroke-[2.5]" />
-                                        <span>Saldo: {stockItem.currentStock} {stockItem.unit || 'un'} disponíveis</span>
-                                      </span>
-                                    )
-                                  ) : (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                                      Item avulso / sob encomenda
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
+                {/* PARTS PANEL */}
+                <div className="panel parts-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <Sparkles size={17} />
+                      <h2>Peças & Materiais</h2>
+                    </div>
+                    <strong>Subtotal: R$ {formatCurrency(partsTotal)}</strong>
+                  </div>
 
-                              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                                {/* Controles de Quantidade Rápida [-] [Qtd] [+] */}
-                                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5 shadow-xs">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdatePartQty(item.id, item.quantity - 1)}
-                                    disabled={item.quantity <= 1}
-                                    className="w-7 h-7 flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors cursor-pointer"
-                                    title="Diminuir quantidade"
+                  {/* MODO DE FORNECIMENTO DE PEÇAS */}
+                  <div className="mb-3 flex items-center justify-between p-2.5 rounded-lg bg-[#11192e] border border-[#1e2b43] flex-wrap gap-2">
+                    <span className="text-xs font-bold text-[#8a9bb5]">Quem fornece as peças?</span>
+                    <div className="flex items-center gap-1.5">
+                      {[
+                        { id: 'oficina', label: 'Oficina Fornece' },
+                        { id: 'cliente', label: 'Cliente Forneceu' },
+                        { id: 'misto', label: 'Misto' },
+                      ].map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setPartsSupplyMode(m.id as any)}
+                          className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-all ${
+                            partsSupplyMode === m.id
+                              ? 'bg-[#ffab00] text-slate-950 font-bold shadow-sm'
+                              : 'bg-[#19243a] text-[#8a9bb5] hover:text-white border border-[#2b3d5b]'
+                          }`}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="section-label">Adicione peças utilizadas no reparo.</p>
+
+                  <label className="catalog-select mb-3">
+                    <span>▤ &nbsp;Buscar no Estoque ({availableParts.length} itens)...</span>
+                    <select
+                      aria-label="Catálogo de peças"
+                      value=""
+                      onChange={(e) => {
+                        const p = availableParts.find((part) => part.id === e.target.value);
+                        if (p) handleAddPart(p.id);
+                      }}
+                    >
+                      <option value="" disabled></option>
+                      {availableParts.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.code} - {p.description} (Estoque: {p.currentStock}) - R$ {formatCurrency(p.sellPrice)}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={15} />
+                  </label>
+
+                  <div className="add-row">
+                    <div className="search-field">
+                      <Search size={17} />
+                      <input
+                        value={partSearch}
+                        onChange={(e) => setPartSearch(e.target.value)}
+                        placeholder="Nome da peça (ex: filtro de óleo, pastilha)..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && partSearch.trim()) {
+                            e.preventDefault();
+                            handleAddPart();
+                            setPartSearch('');
+                            setPartPriceInput('');
+                          }
+                        }}
+                      />
+                    </div>
+                    <label className="price-input">
+                      <span>R$</span>
+                      <input
+                        inputMode="decimal"
+                        value={partPriceInput}
+                        onChange={(e) => setPartPriceInput(e.target.value.replace(/[^\d,.]/g, ''))}
+                        placeholder="Valor Unit."
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="add-button"
+                      onClick={() => {
+                        if (partSearch.trim()) {
+                          handleAddPart();
+                          setPartSearch('');
+                          setPartPriceInput('');
+                        }
+                      }}
+                    >
+                      <Plus size={17} /> Adicionar
+                    </button>
+                  </div>
+
+                  {/* LISTA DE PEÇAS ADICIONADAS */}
+                  {parts.length === 0 ? (
+                    <div className="empty-state">Nenhuma peça adicionada ainda.</div>
+                  ) : (
+                    <div className="line-list">
+                      {parts.map((item) => {
+                        const stockItem = availableParts.find((p) => p.id === item.partId || p.code === item.code);
+                        return (
+                          <div className="line-item" key={item.id}>
+                            <div className="flex-1 min-w-0 pr-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-[#edf2fb] truncate">{item.description}</span>
+                                {stockItem && (
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                                      stockItem.currentStock <= 0
+                                        ? 'bg-red-950/80 text-red-400 border border-red-700'
+                                        : 'bg-[#19243a] text-slate-400'
+                                    }`}
                                   >
-                                    <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
-                                  </button>
-                                  <span className="font-mono font-bold text-slate-900 text-xs px-2 min-w-[28px] text-center">
-                                    {item.quantity}
+                                    Estoque: {stockItem.currentStock}
                                   </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdatePartQty(item.id, item.quantity + 1)}
-                                    className="w-7 h-7 flex items-center justify-center text-[#f97316] hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors cursor-pointer"
-                                    title="Aumentar quantidade"
-                                  >
-                                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                                  </button>
-                                </div>
-
-                                {/* Input Editável de Valor Unitário */}
-                                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-1 focus-within:border-[#f97316] shadow-xs">
-                                  <span className="text-slate-400 text-xs font-bold">R$</span>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={item.unitPrice}
-                                    onChange={(e) => handleUpdatePartUnitPrice(item.id, parseFloat(e.target.value) || 0)}
-                                    className="w-16 sm:w-20 bg-transparent text-xs sm:text-sm font-mono font-bold text-slate-900 text-right focus:outline-none"
-                                    title="Clique para alterar o valor unitário desta peça"
-                                  />
-                                </div>
-
-                                {/* Subtotal da Peça */}
-                                <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm min-w-[70px] text-right">
-                                  R$ {formatCurrency(item.total)}
-                                </span>
-
-                                {/* Botão de Exclusão */}
+                                )}
+                              </div>
+                              <span className="text-[11px] text-[#7284a1]">
+                                Cód: {item.code || 'S/N'} • R$ {formatCurrency(item.unitPrice)} un.
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center bg-[#19263b] rounded border border-[#2b3d5b]">
                                 <button
                                   type="button"
-                                  onClick={() => handleRemovePart(item.id)}
-                                  className="p-1 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                                  title="Remover peça"
+                                  onClick={() => handleUpdatePartQty(item.id, Math.max(1, item.quantity - 1))}
+                                  className="px-2 py-1 text-slate-400 hover:text-white"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  -
+                                </button>
+                                <span className="px-2 text-xs font-bold text-white font-mono">{item.quantity}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePartQty(item.id, item.quantity + 1)}
+                                  className="px-2 py-1 text-slate-400 hover:text-white"
+                                >
+                                  +
                                 </button>
                               </div>
+                              <b className="text-xs font-bold text-[#ffab00] w-20 text-right">
+                                R$ {formatCurrency(item.total)}
+                              </b>
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePart(item.id)}
+                                aria-label={`Remover ${item.description}`}
+                                className="text-red-400 hover:text-red-300 p-1"
+                              >
+                                <X size={14} />
+                              </button>
                             </div>
-                          );
-                        })
-                      )}
-                    </div>
-
-                    {/* Barra de Ajuste do Total de Peças & Insumos */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                            Total de Peças & Insumos:
-                          </span>
-                          {parts.length > 0 && (
-                            <span className="text-[10px] text-slate-600 bg-white px-2 py-0.5 rounded-full border border-slate-200 font-bold">
-                              {parts.length} {parts.length === 1 ? 'item' : 'itens'}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-slate-500">
-                          {parts.length > 1
-                            ? 'Você pode alterar o valor total do lote de peças (o sistema distribui proporcionalmente).'
-                            : parts.length === 1
-                            ? 'Altere o valor unitário acima ou ajuste o total aqui.'
-                            : 'Digite o valor total de peças para criar um lançamento consolidado.'}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 bg-white border-2 border-[#f97316] rounded-xl px-2.5 py-1 focus-within:ring-2 focus-within:ring-[#f97316]/30 shadow-xs">
-                          <span className="text-xs font-bold text-[#f97316]">R$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="0,00"
-                            value={isEditingTotalParts ? totalPartsInput : (partsTotal > 0 ? partsTotal.toFixed(2) : '')}
-                            onFocus={() => {
-                              setIsEditingTotalParts(true);
-                              setTotalPartsInput(partsTotal > 0 ? partsTotal.toFixed(2) : '');
-                            }}
-                            onChange={(e) => setTotalPartsInput(e.target.value)}
-                            onBlur={() => {
-                              handleApplyTotalParts(totalPartsInput);
-                              setIsEditingTotalParts(false);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleApplyTotalParts(totalPartsInput);
-                                setIsEditingTotalParts(false);
-                              }
-                            }}
-                            className="w-28 sm:w-32 bg-transparent text-sm sm:text-base font-black text-slate-900 text-right font-mono focus:outline-none"
-                            title="Digite o valor total das peças & insumos"
-                          />
-                        </div>
-                        {isEditingTotalParts && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleApplyTotalParts(totalPartsInput);
-                              setIsEditingTotalParts(false);
-                            }}
-                            className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs cursor-pointer"
-                          >
-                            ✓ Ok
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* BARRA FIXA DE AÇÃO NO RODAPÉ ESTILO LOVABLE - ABA 2 */}
-              <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-6 p-4 bg-[#faf8f5]/95 backdrop-blur-md border-t border-slate-200/80 z-20 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('diagnostico')}
-                  className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span>Voltar ao Diagnóstico</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('fechamento')}
-                  disabled={isFinalized}
-                  className={`flex-1 max-w-sm font-black text-xs sm:text-sm tracking-wider uppercase py-3.5 rounded-2xl text-center shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    isFinalized
-                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                      : 'bg-[#f97316] hover:bg-[#ea580c] text-white shadow-orange-500/25 active:scale-[0.99]'
-                  }`}
-                >
-                  <span>{isQuotationStage ? 'AVANÇAR PARA PROPOSTA & ENVIO' : 'AVANÇAR PARA FECHAMENTO & PAGAMENTO'}</span>
-                  <ChevronRight className="w-5 h-5 stroke-[3]" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* ABA 3: PROPOSTA & ORÇAMENTO / FECHAMENTO & PAGAMENTO (Estilo Lovable) */}
-          {/* ========================================================================= */}
-          {activeTab === 'fechamento' && (
-            <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 pb-28 text-slate-900 animate-in fade-in duration-150">
-              {/* Banner de Identificação da Proposta & Validade (Estilo OFICINA RICO) */}
-              <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <small className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
-                    CLIENTE
-                  </small>
-                  <b className="text-sm font-black text-slate-900 block truncate">
-                    {quickClientName || currentClient?.name || 'Cliente da O.S.'}
-                  </b>
-                  <span className="text-xs text-slate-500 font-mono">
-                    {quickClientPhone || currentClient?.phone || 'Telefone não informado'}
-                  </span>
-                </div>
-                <div>
-                  <small className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
-                    VEÍCULO
-                  </small>
-                  <b className="text-sm font-black text-slate-900 block truncate">
-                    {quickModel || (currentVehicle ? `${currentVehicle.brand} ${currentVehicle.model}` : 'Veículo')}
-                  </b>
-                  <span className="text-xs text-[#f97316] font-mono font-bold">
-                    Placa: {formatPlate(plateInput) || currentVehicle?.plate || '---'}
-                  </span>
-                </div>
-                <div>
-                  <small className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
-                    VALIDADE DA PROPOSTA
-                  </small>
-                  <select
-                    value={proposalValidity}
-                    onChange={(e) => setProposalValidity(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#f97316] cursor-pointer"
-                  >
-                    <option value="3 dias">3 dias</option>
-                    <option value="7 dias">7 dias</option>
-                    <option value="15 dias">15 dias</option>
-                    <option value="30 dias">30 dias</option>
-                  </select>
-                </div>
-              </div>
-              {/* Alerta de Itens Sem Preço no Orçamento */}
-              {isQuotationStage && partsSupplyMode !== 'cliente_todas' && zeroPriceParts.length > 0 && (
-                <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-900 shadow-xs animate-in fade-in">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <div className="space-y-0.5">
-                    <span className="font-bold text-amber-950">Existem peças lançadas sem valor de venda:</span>
-                    <p className="text-[11px] text-amber-800 leading-relaxed">
-                      Há {zeroPriceParts.length} peça(s) com valor <strong>R$ 0,00</strong>. Se a oficina fornecerá esses itens, volte à aba 2 e defina os valores para não enviar proposta incompleta ao cliente.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Card de Resumo Financeiro da OS Estilo Lovable */}
-              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-[#f97316] text-white flex items-center justify-center text-xs font-black shrink-0 shadow-xs">
-                      <DollarSign className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900">
-                        {isQuotationStage ? 'Resumo da Proposta de Orçamento' : 'Resumo do Valor a Cobrar'}
-                      </h4>
-                      <p className="text-[11px] text-slate-500">Valores consolidados de peças, mão de obra e descontos</p>
-                    </div>
-                  </div>
-
-                  {/* Botão Modo Dono / DRE */}
-                  <button
-                    type="button"
-                    onClick={() => setShowProfitDetails(!showProfitDetails)}
-                    className="text-xs px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5 transition-colors font-bold shadow-xs cursor-pointer"
-                    title="Alternar proteção de margem de lucro e custo de peças"
-                  >
-                    {showProfitDetails ? (
-                      <>
-                        <EyeOff className="w-3.5 h-3.5 text-[#f97316]" />
-                        <span>Ocultar Rentabilidade</span>
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Ver Rentabilidade & DRE</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* 4 Blocos Principais de Cobrança */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                    <span className="text-slate-500 block text-[11px] mb-1 font-semibold">
-                      Total Peças {partsSupplyMode === 'cliente_todas' ? '(Cliente)' : ''}:
-                    </span>
-                    <span className="font-mono text-sm sm:text-base text-slate-900 font-bold">
-                      {partsSupplyMode === 'cliente_todas' ? 'R$ 0,00' : `R$ ${formatCurrency(partsTotal)}`}
-                    </span>
-                  </div>
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                    <span className="text-slate-500 block text-[11px] mb-1 font-semibold">Mão de Obra:</span>
-                    <span className="font-mono text-sm sm:text-base text-slate-900 font-bold">
-                      R$ {formatCurrency(servicesTotal)}
-                    </span>
-                  </div>
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                    <span className="text-slate-500 block text-[11px] mb-1 font-semibold">Desconto (R$):</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={discount}
-                      onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-[#f97316]"
-                    />
-                  </div>
-                  <div className="bg-[#f97316]/10 p-3.5 rounded-xl border border-[#f97316]/30">
-                    <span className="text-[#f97316] block text-[11px] font-bold mb-0.5 uppercase tracking-wide">
-                      {isQuotationStage ? 'Total da Proposta:' : 'Total a Cobrar:'}
-                    </span>
-                    <span className="font-mono text-base sm:text-lg font-black text-[#f97316]">
-                      R$ {formatCurrency(netTotal)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* DRE e Rentabilidade da Oficina (Protegido por Padrão) */}
-                {showProfitDetails ? (
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                        <Eye className="w-3.5 h-3.5 text-[#f97316]" />
-                        DRE Operacional da Ordem de Serviço (Modo Dono)
-                      </span>
-                      <span className="text-[11px] text-slate-500">Visível apenas com autorização</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      <div className="bg-white p-3 rounded-xl border border-slate-200">
-                        <span className="text-slate-500 block text-[11px]">Custo Real das Peças:</span>
-                        <span className="font-mono text-sm text-red-600 font-bold">
-                          - R$ {formatCurrency(partsCostTotal)}
-                        </span>
-                      </div>
-                      <div className="bg-white p-3 rounded-xl border border-slate-200">
-                        <span className="text-slate-500 block text-[11px]">Comissão do Mecânico:</span>
-                        <span className="font-mono text-sm text-red-600 font-bold">
-                          - R$ {formatCurrency(mechanicsCommissionTotal)}
-                        </span>
-                      </div>
-                      <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-300">
-                        <span className="text-emerald-800 font-bold block text-[11px]">
-                          LUCRO REAL DA OFICINA:
-                        </span>
-                        <div className="flex items-center justify-between mt-0.5">
-                          <span className="font-mono text-base font-black text-emerald-900">
-                            R$ {formatCurrency(netProfit)}
-                          </span>
-                          <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200">
-                            {profitMarginPercent.toFixed(1)}% margem
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs text-slate-500">
-                    <div className="flex items-center gap-2">
-                      <Lock className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Dados de custo de peças e lucro da oficina protegidos nesta tela.</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Itens Consolidados da Proposta & Orçamento (Estilo OFICINA RICO) */}
-              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-[#f97316]" />
-                    Itens da Proposta & Orçamento ({services.length + parts.length})
-                  </h4>
-                  <span className="text-xs font-mono font-bold text-slate-500">
-                    Subtotal Bruto: R$ {formatCurrency(grossTotal)}
-                  </span>
-                </div>
-                <div className="divide-y divide-slate-100 text-xs">
-                  {services.map((s, idx) => (
-                    <div key={`srv-${idx}`} className="py-2.5 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                          Serviço
-                        </span>
-                        <span className="font-semibold text-slate-800">{s.description}</span>
-                      </div>
-                      <span className="font-mono font-bold text-slate-900">R$ {formatCurrency(s.price)}</span>
-                    </div>
-                  ))}
-                  {parts.map((p, idx) => (
-                    <div key={`prt-${idx}`} className="py-2.5 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                          Peça ({p.quantity}x)
-                        </span>
-                        <span className="font-semibold text-slate-800">{p.description}</span>
-                      </div>
-                      <span className="font-mono font-bold text-slate-900">
-                        {partsSupplyMode === 'cliente_todas' ? 'Fornecido pelo Cliente' : `R$ ${formatCurrency(p.total)}`}
-                      </span>
-                    </div>
-                  ))}
-                  {services.length === 0 && parts.length === 0 && (
-                    <div className="py-4 text-center text-slate-400 italic text-xs">
-                      Nenhum item adicionado à proposta. Volte à etapa 2 para incluir serviços e peças.
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
-              </div>
+              </>
+            )}
 
-              {/* Observações para o Cliente (Condições, Garantia e Prazos) */}
-              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-2">
-                <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-[#f97316]" />
-                  Observações para o Cliente
-                </label>
-                <textarea
-                  rows={2}
-                  value={customerNotes}
-                  onChange={(e) => setCustomerNotes(e.target.value)}
-                  placeholder="Condições comerciais, forma de pagamento, prazo estimado de entrega ou recomendações técnicas..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#f97316] resize-none"
-                />
-              </div>
-
-              {/* CARD DE AÇÃO 1: ETAPA DE ORÇAMENTO (STATUS 1 OU 2) */}
-              {isQuotationStage ? (
-                <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                    <div>
-                      <span className="text-xs font-bold text-sky-600 uppercase tracking-wider block">
-                        Etapa Comercial • Proposta
-                      </span>
-                      <h4 className="text-base font-black text-slate-900 flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-sky-600" />
-                        Pronto para enviar ao cliente?
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Envie a proposta técnica pelo WhatsApp ou autorize o serviço caso já tenha sido combinada no balcão/telefone.
-                      </p>
-                    </div>
-                    <div className="shrink-0">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
-                        status === 'aguardando_aprovacao'
-                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                          : 'bg-sky-100 text-sky-800 border border-sky-300'
-                      }`}>
-                        <Clock className="w-3.5 h-3.5" />
-                        {status === 'aguardando_aprovacao' ? '2. Aguardando Aprovação' : '1. Orçamento'}
-                      </span>
-                    </div>
+            {/* ETAPA 3: PROPOSTA & ORÇAMENTO */}
+            {activeTab === 'fechamento' && (
+              <div className="panel proposal-panel">
+                <div className="panel-heading">
+                  <div>
+                    <FileText size={18} />
+                    <h2>Proposta & Orçamento</h2>
                   </div>
+                  <span>Etapa 3 de 3</span>
+                </div>
+                <p className="subcopy">Revise os itens e prepare o orçamento para aprovação do cliente.</p>
 
-                  {/* Grid de Ações Principais da Proposta */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
-                    {/* Botão 1: Enviar Orçamento no WhatsApp (PNG) */}
-                    {currentClient?.phone && currentVehicle ? (
-                      <button
-                        type="button"
-                        onClick={handleSendQuotationWhatsAppPng}
-                        disabled={isGeneratingQuotationPng}
-                        className="flex items-center justify-center gap-2 px-3 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-                        title="Gera imagem PNG da proposta oficial e envia no WhatsApp do cliente"
-                      >
-                        <MessageCircle className="w-4 h-4 stroke-[2.5]" />
-                        <span>{isGeneratingQuotationPng ? 'Gerando PNG...' : 'Enviar no WhatsApp'}</span>
-                      </button>
-                    ) : (
-                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-400 italic">
-                        Cadastre telefone para envio via WhatsApp
-                      </div>
-                    )}
-
-                    {/* Botão 2: Baixar Imagem PNG */}
-                    <button
-                      type="button"
-                      onClick={handleDownloadQuotationPng}
-                      disabled={isGeneratingQuotationPng}
-                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors disabled:opacity-50 cursor-pointer"
-                      title="Baixar imagem em PNG da proposta"
+                <div className="proposal-client">
+                  <div>
+                    <small>CLIENTE</small>
+                    <b>{quickClientName || (currentClient ? currentClient.name : 'Cliente')}</b>
+                  </div>
+                  <div>
+                    <small>VEÍCULO</small>
+                    <b>{quickModel || (currentVehicle ? `${currentVehicle.brand} ${currentVehicle.model}` : 'Veículo')} · {plateInput || 'SEM PLACA'}</b>
+                  </div>
+                  <div>
+                    <small>VALIDADE DA PROPOSTA</small>
+                    <select
+                      value={proposalValidity}
+                      onChange={(e) => setProposalValidity(e.target.value as any)}
                     >
-                      <Download className="w-4 h-4 text-slate-500" />
-                      <span>Baixar PNG</span>
-                    </button>
-
-                    {/* Botão 3: Aprovação Manual pelo Mecânico */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleStatusChange('aprovado');
-                        confetti({
-                          particleCount: 70,
-                          spread: 60,
-                          origin: { y: 0.6 },
-                        });
-                      }}
-                      className="flex items-center justify-center gap-2 px-3 py-3 bg-[#f97316] hover:bg-[#ea580c] text-white font-black text-xs rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                      title="Avança o status direto para 3. Aprovado / Peças"
-                    >
-                      <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                      <span>Aprovar Orçamento</span>
-                    </button>
-
-                    {/* Botão 4: Imprimir Orçamento */}
-                    <button
-                      type="button"
-                      onClick={() => onPrintReceipt(getOrderDataSnapshot())}
-                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer"
-                      title="Imprime a proposta de orçamento"
-                    >
-                      <Printer className="w-4 h-4 text-slate-500" />
-                      <span>Imprimir Orçamento</span>
-                    </button>
-
-                    {/* Botão 5: Copiar Texto */}
-                    <button
-                      type="button"
-                      onClick={handleCopyOrderMessage}
-                      className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer"
-                      title="Copiar texto do orçamento técnico"
-                    >
-                      {copiedMsg ? (
-                        <>
-                          <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
-                          <span className="text-emerald-700 font-bold">Copiado!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4 text-slate-500" />
-                          <span>Copiar Texto</span>
-                        </>
-                      )}
-                    </button>
+                      <option value="3 dias">3 dias</option>
+                      <option value="7 dias">7 dias</option>
+                      <option value="15 dias">15 dias</option>
+                      <option value="30 dias">30 dias</option>
+                    </select>
                   </div>
                 </div>
-              ) : (
-                /* CARD DE AÇÃO 2: ETAPA DE FECHAMENTO & PAGAMENTO */
-                <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                    <div>
-                      <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider block">
-                        Etapa de Entrega & Quitação
-                      </span>
-                      <h4 className="text-base font-black text-slate-900 flex items-center gap-2">
-                        <DollarSign className="w-5 h-5 text-emerald-600" />
-                        Pronto para entregar o veículo?
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {isPaid
-                          ? `O.S. quitada via ${paymentMethod.toUpperCase()}. Imprima o recibo oficial ou envie o comprovante ao cliente.`
-                          : 'Finalize a O.S. e receba em 1 toque (Pix, Cartão, Dinheiro ou Fiado).'}
-                      </p>
-                    </div>
-                    <div className="shrink-0">
-                      {isPaid ? (
-                        <span className="px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-xs font-bold flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4" />
-                          Quitada ({paymentMethod.toUpperCase()})
-                        </span>
-                      ) : (
-                        <span className="px-3 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-xs font-bold flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" />
-                          Aguardando Recebimento
-                        </span>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Grid de Ações Principais de Fechamento */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {/* Botão 1: Finalizar e Receber Agora */}
-                    {!isPaid && (
+                <h3>Itens do orçamento</h3>
+                {services.length === 0 && parts.length === 0 ? (
+                  <div className="empty-state">Adicione serviços ou peças na etapa anterior.</div>
+                ) : (
+                  <div className="line-list">
+                    {services.map((item, idx) => (
+                      <div className="line-item" key={`serv-${item.id || idx}`}>
+                        <span>🔧 {item.description}</span>
+                        <b>R$ {formatCurrency(item.price)}</b>
+                      </div>
+                    ))}
+                    {parts.map((item, idx) => (
+                      <div className="line-item" key={`part-${item.id || idx}`}>
+                        <span>📦 {item.description} ({item.quantity}x)</span>
+                        <b>R$ {formatCurrency(item.total)}</b>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="totals">
+                  <div>
+                    <span>Serviços e peças</span>
+                    <b>R$ {formatCurrency(grossTotal)}</b>
+                  </div>
+                  <div>
+                    <span>Desconto</span>
+                    <b>− R$ {formatCurrency(discount)}</b>
+                  </div>
+                  <div>
+                    <span>Mão de obra</span>
+                    <b>R$ {formatCurrency(servicesTotal)}</b>
+                  </div>
+                  <div className="grand-total">
+                    <span>Total do orçamento</span>
+                    <b>R$ {formatCurrency(netTotal)}</b>
+                  </div>
+                </div>
+
+                <label className="notes-label">
+                  Observações para o cliente
+                  <textarea
+                    value={customerNotes}
+                    onChange={(e) => setCustomerNotes(e.target.value)}
+                    placeholder="Condições, prazo estimado ou recomendações..."
+                    rows={3}
+                  />
+                </label>
+
+                {/* SEÇÃO DRE E MARGEM DA OFICINA (MODO DONO) */}
+                <div className="mt-4 pt-3 border-t border-[#1e2b43]">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setShowProfitDetails(!showProfitDetails)}
+                      className="text-xs text-[#7284a1] hover:text-[#edf2fb] flex items-center gap-1.5"
+                    >
+                      {showProfitDetails ? <EyeOff size={14} /> : <Eye size={14} />}
+                      <span>{showProfitDetails ? 'Ocultar DRE / Margem da Oficina' : 'Ver DRE / Margem de Lucro da Oficina (Modo Dono)'}</span>
+                    </button>
+                    {isFinalized && (
                       <button
                         type="button"
                         onClick={() => setIsCheckoutOpen(true)}
-                        className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                        className="text-xs text-[#ffab00] hover:underline font-bold"
                       >
-                        <DollarSign className="w-4 h-4 stroke-[3]" />
-                        <span>Finalizar e Receber Agora</span>
+                        Editar Pagamento ({paymentMethod.toUpperCase()} · {isPaid ? 'Pago' : 'Pendente'})
                       </button>
                     )}
-
-                    {/* Botão 2: WhatsApp */}
-                    {currentClient?.phone && currentVehicle && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const orderData = getOrderDataSnapshot();
-                          const currentMechanicName = mechanics.find((m) => m.id === mechanicId)?.name;
-                          const msg = WhatsAppService.getMessageForOrder(orderData, currentClient, currentVehicle, currentMechanicName);
-                          WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
-                        }}
-                        className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 hover:bg-slate-100 text-emerald-700 border border-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                        title={WhatsAppService.getWhatsAppActionTitle(status)}
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>{WhatsAppService.getWhatsAppActionTitle(status)}</span>
-                      </button>
-                    )}
-
-                    {/* Botão 3: Imprimir Recibo Oficial */}
-                    <button
-                      type="button"
-                      onClick={() => onPrintReceipt(getOrderDataSnapshot())}
-                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer"
-                      title="Imprime o Recibo com termo de garantia legal de 90 dias"
-                    >
-                      <Printer className="w-4 h-4 text-slate-500" />
-                      <span>Imprimir Recibo</span>
-                    </button>
-
-                    {/* Botão 4: Copiar Dados */}
-                    <button
-                      type="button"
-                      onClick={handleCopyOrderMessage}
-                      className="flex items-center justify-center gap-2 px-3.5 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer"
-                    >
-                      {copiedMsg ? (
-                        <>
-                          <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
-                          <span className="text-emerald-700 font-bold">Copiado!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4 text-slate-500" />
-                          <span>Copiar Dados</span>
-                        </>
-                      )}
-                    </button>
                   </div>
+
+                  {showProfitDetails && (
+                    <div className="mt-2.5 p-3 rounded-lg bg-[#0c1325] border border-[#1e2b43] text-xs space-y-1.5">
+                      <div className="flex justify-between text-[#8a9bb5]">
+                        <span>Custo das Peças:</span>
+                        <span className="font-mono">R$ {formatCurrency(partsCostTotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-[#8a9bb5]">
+                        <span>Comissão do Mecânico ({currentMechanic?.name || 'Geral'} - {mechanicCommRate}%):</span>
+                        <span className="font-mono">R$ {formatCurrency(mechanicsCommissionTotal)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-[#ffab00] pt-1.5 border-t border-[#1e2b43]">
+                        <span>Lucro Líquido Estimado da Oficina:</span>
+                        <span className="font-mono">R$ {formatCurrency(netProfit)} ({profitMarginPercent}%)</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+            )}
+          </section>
 
-              {/* BARRA FIXA DE AÇÃO NO RODAPÉ ESTILO LOVABLE - ABA 3 */}
-              <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-6 p-4 bg-[#faf8f5]/95 backdrop-blur-md border-t border-slate-200/80 z-20 flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('itens')}
-                    className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    <span>Voltar</span>
-                  </button>
+          {/* RODAPÉ DE AÇÃO COM BOTÕES CONFORME ETAPA */}
+          <footer className={`bottom-bar ${activeTab === 'fechamento' ? 'proposal-footer' : ''}`}>
+            <div className="footer-left">
+              <button
+                type="button"
+                className="back-button"
+                onClick={() => {
+                  if (activeTab === 'fechamento') setActiveTab('itens');
+                  else if (activeTab === 'itens') setActiveTab('diagnostico');
+                }}
+                disabled={activeTab === 'diagnostico'}
+              >
+                <ChevronLeft size={17} /> Voltar
+              </button>
 
-                  <button
-                    type="button"
-                    onClick={() => onPrintReceipt(getOrderDataSnapshot())}
-                    className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                    title="Imprimir proposta"
-                  >
-                    <Printer className="w-4 h-4 text-slate-500" />
-                    <span>Imprimir</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleShareBudget}
-                    className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                    title="Enviar orçamento via WhatsApp ou Compartilhar"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Enviar Orçamento</span>
-                  </button>
-                </div>
-
+              {activeTab === 'fechamento' && (
                 <button
                   type="button"
+                  className="save-os-button"
                   onClick={handleSave}
-                  className="flex-1 max-w-sm bg-[#f97316] hover:bg-[#ea580c] text-white font-black text-xs sm:text-sm tracking-wider uppercase py-3.5 rounded-2xl text-center shadow-lg shadow-orange-500/25 transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
                 >
-                  <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
-                  <span>{isFinalized ? 'SALVAR ALTERAÇÕES' : isQuotationStage ? 'SALVAR PROPOSTA' : 'CONCLUIR E SALVAR O.S.'}</span>
+                  <Check size={16} /> Salvar Ordem de Serviço
                 </button>
-              </div>
+              )}
             </div>
-          )}
-        </div>
-      </>
-    )}
-  </div>
+
+            <div className="footer-actions">
+              {activeTab !== 'fechamento' ? (
+                <>
+                  <button
+                    type="button"
+                    className="cancel-button"
+                    onClick={onClose}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => {
+                      if (activeTab === 'diagnostico') setActiveTab('itens');
+                      else if (activeTab === 'itens') setActiveTab('fechamento');
+                    }}
+                  >
+                    Continuar <ChevronRight className="arrow-next" size={16} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="print-button"
+                    onClick={() => onPrintReceipt(getOrderDataSnapshot())}
+                  >
+                    <Printer size={16} /> Imprimir Orçamento
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={handleShareBudget}
+                  >
+                    <Send size={16} /> Enviar Orçamento
+                  </button>
+                </>
+              )}
+            </div>
+          </footer>
+        </main>
+
 
   
 {/* Modal de Finalização / Checkout Rápido */}

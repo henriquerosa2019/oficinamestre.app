@@ -51,14 +51,14 @@ export const CarDamageCanvas: React.FC<CarDamageCanvasProps> = ({ damagePoints, 
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+    <div className="bg-[#0a1122] border border-[#202e46] rounded-xl p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
-          <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-[#f97316]" />
+          <h4 className="text-sm font-bold text-[#edf2fb] flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-[#ffbd00]" />
             Checklist de Lataria & Avarias Externas
           </h4>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-[#91a1b9]">
             {readOnly
               ? 'Avarias registradas na recepção do veículo'
               : 'Clique sobre a silhueta do veículo para marcar riscos, amassados ou peças quebradas.'}
@@ -70,7 +70,7 @@ export const CarDamageCanvas: React.FC<CarDamageCanvasProps> = ({ damagePoints, 
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value as DamagePoint['type'])}
-              className="bg-slate-50 border border-slate-200 text-xs rounded-xl px-3 py-1.5 text-slate-800 font-semibold focus:outline-none focus:border-[#f97316]"
+              className="bg-[#19263b] border border-[#32415a] text-xs rounded-lg px-3 py-1.5 text-[#f1f5fb] font-semibold focus:outline-none focus:border-[#c48600]"
             >
               <option value="risco">🟡 Risco / Ralado</option>
               <option value="amassado">🔴 Amassado</option>
@@ -82,7 +82,7 @@ export const CarDamageCanvas: React.FC<CarDamageCanvasProps> = ({ damagePoints, 
               placeholder="Obs da avaria (opcional)"
               value={partNameInput}
               onChange={(e) => setPartNameInput(e.target.value)}
-              className="bg-slate-50 border border-slate-200 text-xs rounded-xl px-3 py-1.5 text-slate-800 w-40 focus:outline-none focus:border-[#f97316]"
+              className="bg-[#19263b] border border-[#32415a] text-xs rounded-lg px-3 py-1.5 text-[#f1f5fb] placeholder-[#8b9bb2] w-40 focus:outline-none focus:border-[#c48600]"
             />
           </div>
         )}
@@ -159,20 +159,20 @@ export const CarDamageCanvas: React.FC<CarDamageCanvasProps> = ({ damagePoints, 
           {damagePoints.map((point, index) => (
             <div
               key={point.id}
-              className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700"
+              className="flex items-center justify-between gap-2 bg-[#111a2d] border border-[#202c42] rounded-lg px-3 py-1.5 text-xs text-[#dce6f5]"
             >
               <div className="flex items-center gap-2 truncate">
                 <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${getTypeColor(point.type)}`}>
                   {index + 1}
                 </span>
-                <span className="font-bold capitalize text-slate-900">[{point.type}]</span>
-                <span className="truncate text-slate-600 font-medium">{point.partName}</span>
+                <span className="font-bold capitalize text-[#ffbd00]">[{point.type}]</span>
+                <span className="truncate text-[#edf2fb] font-medium">{point.partName}</span>
               </div>
               {!readOnly && (
                 <button
                   type="button"
                   onClick={(e) => handleRemovePoint(point.id, e)}
-                  className="text-slate-400 hover:text-red-500 p-0.5 rounded transition-colors"
+                  className="text-[#9badc5] hover:text-red-400 p-0.5 rounded transition-colors cursor-pointer"
                   title="Remover ponto"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -182,7 +182,7 @@ export const CarDamageCanvas: React.FC<CarDamageCanvasProps> = ({ damagePoints, 
           ))}
         </div>
       ) : (
-        <p className="mt-2 text-center text-xs text-slate-400 italic">
+        <p className="mt-2 text-center text-xs text-[#70819c] italic">
           Nenhuma avaria de lataria assinalada no checklist de entrada.
         </p>
       )}
