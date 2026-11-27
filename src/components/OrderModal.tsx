@@ -1382,22 +1382,41 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       placeholder="Ex.: 68.500 km"
                     />
                   </label>
-                  <label>
-                    Nível de combustível
-                    <select
-                      value={fuelLevel <= 15 ? 'Reserva' : fuelLevel <= 30 ? '1/4' : fuelLevel <= 55 ? '1/2' : fuelLevel <= 80 ? '3/4' : 'Cheio'}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFuelLevel(val === 'Reserva' ? 10 : val === '1/4' ? 25 : val === '1/2' ? 50 : val === '3/4' ? 75 : 100);
-                      }}
-                    >
-                      <option value="Reserva">Reserva</option>
-                      <option value="1/4">1/4</option>
-                      <option value="1/2">1/2</option>
-                      <option value="3/4">3/4</option>
-                      <option value="Cheio">Cheio</option>
-                    </select>
-                  </label>
+                  <div>
+                    <label className="block text-[#bac8d9] font-[650] text-[11px] mb-[7px]">
+                      Nível de combustível
+                    </label>
+                    <div className="grid grid-cols-5 gap-1.5 h-[42px]">
+                      {[
+                        { label: 'Reserva', value: 10 },
+                        { label: '1/4', value: 25 },
+                        { label: '1/2', value: 50 },
+                        { label: '3/4', value: 75 },
+                        { label: 'Cheio', value: 100 },
+                      ].map((opt) => {
+                        const isSelected =
+                          opt.label === 'Reserva' ? fuelLevel <= 15 :
+                          opt.label === '1/4' ? fuelLevel > 15 && fuelLevel <= 35 :
+                          opt.label === '1/2' ? fuelLevel > 35 && fuelLevel <= 65 :
+                          opt.label === '3/4' ? fuelLevel > 65 && fuelLevel <= 85 :
+                          fuelLevel > 85;
+                        return (
+                          <button
+                            key={opt.label}
+                            type="button"
+                            onClick={() => setFuelLevel(opt.value)}
+                            className={`h-full rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#ffab00] text-slate-950 font-black shadow-md ring-1 ring-[#ffab00]'
+                                : 'bg-[#19263b] text-[#8a9bb5] border border-[#32415a] hover:text-[#edf2fb] hover:border-[#4d6387]'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
 
                 {/* SINTOMAS RECORRENTES (1 CLIQUE) */}
