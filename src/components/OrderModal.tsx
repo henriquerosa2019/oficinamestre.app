@@ -63,6 +63,7 @@ import { ReceiptDocument } from './ReceiptDocument';
 import { QuotationImageService } from '../services/quotationImageService';
 import { getClientLatestVehicle, findClientByPhoneOrDoc } from '../utils/clientVehicleHelper';
 import confetti from 'canvas-confetti';
+import { MercosulPlateInput, formatPlate, isValidPlateFormat } from './MercosulPlateInput';
 
 interface OrderModalProps {
   order?: ServiceOrder | null;
@@ -102,8 +103,6 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   onSaveClient,
   onSaveVehicle,
 }) => {
-  if (!isOpen) return null;
-
   const isEditing = !!order;
 
   // Modo Somente Leitura: ativo se a OS estiver finalizada
@@ -243,6 +242,126 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [newVehModel, setNewVehModel] = useState('');
   const [newVehYear, setNewVehYear] = useState<number>(new Date().getFullYear());
   const [newVehMileage, setNewVehMileage] = useState<number>(50000);
+
+  // =========================================================================
+  // FLUXO DE ENTRADA ÁGIL ESTILO LOVABLE (Placa Mercosul + Cliente Rápido)
+  // =========================================================================
+  const initialPlate = order ? vehicles.find((v) => v.id === order.vehicleId)?.plate || '' : '';
+  const initialModel = order ? vehicles.find((v) => v.id === order.vehicleId)?.model || '' : '';
+  const initialClientName = order ? clients.find((c) => c.id === order.clientId)?.name || '' : '';
+  const initialClientPhone = order ? clients.find((c) => c.id === order.clientId)?.phone || '' : '';
+
+  const [plateInput, setPlateInput] = useState(initialPlate);
+  const [quickModel, setQuickModel] = useState(initialModel);
+  const [quickClientName, setQuickClientName] = useState(initialClientName);
+  const [quickClientPhone, setQuickClientPhone] = useState(initialClientPhone);
+  const [showAdvancedDetails, setShowAdvancedDetails] = useState(isEditing);
+  const [plateFoundMatch, setPlateFoundMatch] = useState<{ vehicle: Vehicle; client?: Client } | null>(null);
+
+  // Manipulador de digitação da Placa com busca automática inteligente
+  const handlePlateChange = (newPlate: string) => {
+    setPlateInput(newPlate);
+    const clean = formatPlate(newPlate);
+
+    if (clean.length === 7) {
+      // Procura veículo no banco de dados pela placa limpa
+      const matchedVeh = vehicles.find((v) => formatPlate(v.plate) === clean);
+      if (matchedVeh) {
+        setVehicleId(matchedVeh.id);
+        setQuickModel(matchedVeh.model);
+        if (matchedVeh.mileage) setMileage(matchedVeh.mileage);
+
+        const matchedCli = clients.find((c) => c.id === matchedVeh.clientId);
+        if (matchedCli) {
+          setClientId(matchedCli.id);
+          setQuickClientName(matchedCli.name);
+          setQuickClientPhone(matchedCli.phone);
+          setClientInputValue(matchedCli.name);
+          setPlateFoundMatch({ vehicle: matchedVeh, client: matchedCli });
+        } else {
+          setPlateFoundMatch({ vehicle: matchedVeh });
+        }
+      } else {
+        setPlateFoundMatch(null);
+      }
+    } else {
+      setPlateFoundMatch(null);
+    }
+  };
+
+  // Sincroniza se o veículo mudar externamente
+  useEffect(() => {
+    if (vehicleId) {
+      const v = vehicles.find((veh) => veh.id === vehicleId);
+      if (v && v.plate) {
+        setPlateInput(v.plate);
+        setQuickModel(v.model);
+      }
+    }
+  }, [vehicleId, vehicles]);
+
+  // Sincroniza se o cliente mudar externamente
+  useEffect(() => {
+    if (clientId) {
+      const c = clients.find((cli) => cli.id === clientId);
+      if (c) {
+        setQuickClientName(c.name);
+        setQuickClientPhone(c.phone);
+      }
+    }
+  }, [clientId, clients]);
+
+  // Assegura criação de cliente e veículo se digitados diretamente na entrada ágil
+  const ensureQuickClientAndVehicle = (): { targetClientId: string; targetVehicleId: string } => {
+    let targetClientId = clientId;
+    let targetVehicleId = vehicleId;
+
+    if (quickClientName.trim()) {
+      const existingCli = clients.find(
+        (c) =>
+          c.name.toLowerCase().trim() === quickClientName.toLowerCase().trim() ||
+          (quickClientPhone.trim() && c.phone.replace(/\D/g, '') === quickClientPhone.replace(/\D/g, ''))
+      );
+      if (existingCli) {
+        targetClientId = existingCli.id;
+      } else if (onSaveClient) {
+        const newCli: Client = {
+          id: 'cli-' + Date.now(),
+          name: quickClientName.trim(),
+          phone: quickClientPhone.trim(),
+          document: '',
+          createdAt: new Date().toISOString(),
+        };
+        onSaveClient(newCli);
+        targetClientId = newCli.id;
+        setClientId(targetClientId);
+      }
+    }
+
+    if (plateInput.trim()) {
+      const cleanP = formatPlate(plateInput);
+      const existingVeh = vehicles.find((v) => formatPlate(v.plate) === cleanP);
+      if (existingVeh) {
+        targetVehicleId = existingVeh.id;
+      } else if (onSaveVehicle && targetClientId) {
+        const newVeh: Vehicle = {
+          id: 'veh-' + Date.now(),
+          clientId: targetClientId,
+          plate: cleanP,
+          brand: 'Genérica',
+          model: quickModel.trim() || 'Veículo Cadastrado na OS',
+          year: new Date().getFullYear(),
+          mileage: Number(mileage) || 50000,
+          fuelType: 'flex',
+        };
+        onSaveVehicle(newVeh);
+        targetVehicleId = newVeh.id;
+        setVehicleId(targetVehicleId);
+      }
+    }
+
+    return { targetClientId, targetVehicleId };
+  };
 
   // Modo de Fornecimento de Peças & Insumos
   const [partsSupplyMode, setPartsSupplyMode] = useState<PartsSupplyMode>(
@@ -924,6 +1043,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       return;
     }
 
+    const { targetClientId, targetVehicleId } = ensureQuickClientAndVehicle();
+    const finalClientId = targetClientId || clientId || clients[0]?.id || '';
+    const finalVehicleId = targetVehicleId || vehicleId || vehicles[0]?.id || '';
+
     const isApprovedOrActive =
       status === 'aprovado' ||
       status === 'em_andamento' ||
@@ -935,8 +1058,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     const currentOrder: ServiceOrder = {
       id: order?.id || 'ord-' + Date.now(),
       orderNumber,
-      clientId,
-      vehicleId,
+      clientId: finalClientId,
+      vehicleId: finalVehicleId,
       mechanicId,
       status,
       complaintDescription,
@@ -1018,6 +1141,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     const msg = WhatsAppService.generateFinalizedMessage(orderData, currentClient, currentVehicle!);
     WhatsAppService.openWhatsAppChat(currentClient.phone, msg);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4">
@@ -1310,9 +1435,147 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           {/* ========================================================================= */}
           {activeTab === 'diagnostico' && (
             <div className="space-y-5 animate-in fade-in duration-150">
-              {/* Seção 1: Cliente, Veículo, Mecânico e Data de Entrada / Data do Serviço */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
-                {/* Campo Cliente com Identificação por Tel/CPF e Botão Novo (+) */}
+              {/* ========================================================================= */}
+              {/* FLUXO ÁGIL ESTILO LOVABLE: PASSO 1 (PLACA & MODELO) + PASSO 2 (CLIENTE) */}
+              {/* ========================================================================= */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* PASSO 1: VEÍCULO & PLACA */}
+                  <div className="bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-md shadow-amber-500/30">
+                            1
+                          </div>
+                          <span className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                            <Car className="w-4 h-4 text-amber-400" />
+                            Placa do Veículo
+                          </span>
+                        </div>
+
+                        {plateFoundMatch ? (
+                          <span className="text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Veículo Cadastrado
+                          </span>
+                        ) : formatPlate(plateInput).length === 7 ? (
+                          <span className="text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                            Novo Veículo
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {/* Placa Mercosul Destacada */}
+                      <div className="my-2 flex justify-center">
+                        <MercosulPlateInput
+                          value={plateInput}
+                          onChange={handlePlateChange}
+                          disabled={isReadOnly}
+                          autoFocus={!isEditing}
+                        />
+                      </div>
+
+                      {/* Modelo do Veículo */}
+                      <div className="mt-4">
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">
+                          Modelo <span className="text-slate-500 font-normal">(ex: Gol 1.6 prata, Onix 1.0...)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={quickModel}
+                          onChange={(e) => setQuickModel(e.target.value)}
+                          disabled={isReadOnly}
+                          placeholder="Informe a marca e modelo do carro"
+                          className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl px-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PASSO 2: CLIENTE & CONTATO */}
+                  <div className="bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-md shadow-amber-500/30">
+                            2
+                          </div>
+                          <span className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                            <User className="w-4 h-4 text-amber-400" />
+                            Cliente & Contato
+                          </span>
+                        </div>
+
+                        {plateFoundMatch?.client ? (
+                          <span className="text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                            Cliente Vinculado
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="space-y-3.5">
+                        {/* Nome do Cliente */}
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 mb-1">
+                            Nome do cliente
+                          </label>
+                          <input
+                            type="text"
+                            value={quickClientName}
+                            onChange={(e) => {
+                              setQuickClientName(e.target.value);
+                              setClientInputValue(e.target.value);
+                            }}
+                            disabled={isReadOnly}
+                            placeholder="Nome completo ou apelido do cliente"
+                            className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl px-3 py-2 text-xs sm:text-sm text-white font-medium placeholder-slate-500 focus:outline-none transition-colors"
+                          />
+                        </div>
+
+                        {/* WhatsApp do Cliente */}
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center justify-between">
+                            <span>WhatsApp <span className="text-slate-500 font-normal">(opcional)</span></span>
+                            {quickClientPhone && (
+                              <span className="text-[10px] text-emerald-400 font-mono">
+                                {formatPhone(quickClientPhone)}
+                              </span>
+                            )}
+                          </label>
+                          <div className="relative">
+                            <MessageCircle className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input
+                              type="text"
+                              value={quickClientPhone}
+                              onChange={(e) => setQuickClientPhone(e.target.value)}
+                              disabled={isReadOnly}
+                              placeholder="(21) 99999-9999"
+                              className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-white font-mono placeholder-slate-500 focus:outline-none transition-colors"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Botão de Toggle para Opções Avançadas */}
+                    <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvancedDetails(!showAdvancedDetails)}
+                        className="text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1.5 transition-colors"
+                      >
+                        <span>{showAdvancedDetails ? 'Ocultar opções avançadas' : 'Mais opções (Mecânico, Datas & Busca Avançada)'}</span>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAdvancedDetails ? 'rotate-180' : ''}`} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* DETALHES AVANÇADOS / TRADICIONAIS (EXPANSÍVEL) */}
+                {showAdvancedDetails && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-950/80 p-4 rounded-xl border border-slate-800 animate-in fade-in duration-200">
+                    {/* Campo Cliente com Identificação por Tel/CPF e Botão Novo (+) */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-slate-400 uppercase flex items-center gap-1.5">
@@ -1585,6 +1848,30 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   )}
                 </div>
               </div>
+            )}
+
+            {/* BOTÃO GUIADO ESTILO LOVABLE */}
+            <div className="pt-1">
+              {formatPlate(plateInput).length < 7 ? (
+                <div className="w-full bg-slate-900/80 border border-slate-800 rounded-xl py-3 text-center text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-2 select-none">
+                  <Car className="w-4 h-4 text-slate-600" />
+                  <span>Informe a placa do veículo (7 caracteres)</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    ensureQuickClientAndVehicle();
+                    setActiveTab('itens');
+                  }}
+                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider py-3 rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.005] active:scale-[0.995]"
+                >
+                  <span>Avançar para Serviços & Peças</span>
+                  <ChevronRight className="w-4 h-4 stroke-[3]" />
+                </button>
+              )}
+            </div>
+          </div>
 
               {/* Seção 2: Diagnóstico e Relato */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
