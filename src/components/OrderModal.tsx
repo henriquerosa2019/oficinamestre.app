@@ -1388,6 +1388,36 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       rows={3}
                     />
                   </label>
+
+                  {/* SINTOMAS RECORRENTES (1 CLIQUE) - LOGO ABAIXO DA QUEIXA */}
+                  <div className="wide -mt-1 pb-1">
+                    <label className="text-xs font-semibold text-[#8a9bb5] flex items-center gap-1.5 mb-2">
+                      <Sparkles className="w-3.5 h-3.5 text-[#ffab00]" />
+                      Sintomas Recorrentes (1 Clique):
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {QUICK_SYMPTOM_OPTIONS.map((symptom) => {
+                        const isSelected = complaintDescription.toLowerCase().includes(symptom.toLowerCase());
+                        return (
+                          <button
+                            key={symptom}
+                            type="button"
+                            onClick={() => toggleSymptomTag(symptom)}
+                            className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
+                              isSelected
+                                ? 'bg-[#ffab00]/20 text-[#ffab00] border-[#ffab00]'
+                                : 'bg-[#19263b] text-[#8a9bb5] border-[#1e2b43] hover:text-[#edf2fb] hover:border-[#32415a]'
+                            }`}
+                          >
+                            {isSelected ? '✓ ' : '+ '}
+                            {symptom}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* QUILOMETRAGEM E NÍVEL DE COMBUSTÍVEL */}
                   <label>
                     Quilometragem
                     <input
@@ -1480,34 +1510,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </div>
                 </div>
 
-                {/* SINTOMAS RECORRENTES (1 CLIQUE) */}
+                {/* DIAGNÓSTICO TÉCNICO DO MECÂNICO */}
                 <div className="mt-4 pt-4 border-t border-[#1e2b43]">
-                  <label className="text-xs font-semibold text-[#8a9bb5] flex items-center gap-1.5 mb-2">
-                    <Sparkles className="w-3.5 h-3.5 text-[#ffab00]" />
-                    Sintomas Recorrentes (1 Clique):
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {QUICK_SYMPTOM_OPTIONS.map((symptom) => {
-                      const isSelected = complaintDescription.toLowerCase().includes(symptom.toLowerCase());
-                      return (
-                        <button
-                          key={symptom}
-                          type="button"
-                          onClick={() => toggleSymptomTag(symptom)}
-                          className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
-                            isSelected
-                              ? 'bg-[#ffab00]/20 text-[#ffab00] border-[#ffab00]'
-                              : 'bg-[#19243a] text-[#8a9bb5] border-[#1e2b43] hover:text-[#edf2fb] hover:border-[#32415a]'
-                          }`}
-                        >
-                          {isSelected ? '✓ ' : '+ '}
-                          {symptom}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <label className="block text-xs font-semibold text-[#8a9bb5] mt-3">
+                  <label className="block text-xs font-semibold text-[#8a9bb5]">
                     Diagnóstico Técnico do Mecânico
                     <textarea
                       value={technicalDiagnostic}
