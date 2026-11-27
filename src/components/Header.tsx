@@ -56,6 +56,9 @@ export const Header: React.FC<HeaderProps> = ({
                 className="w-[54px] h-[54px] sm:w-[68px] sm:h-[68px] rounded-2xl object-contain bg-slate-950 border-2 border-amber-500/60 p-1 shadow-lg shadow-amber-500/25 shrink-0 transition-transform hover:scale-105"
               />
               <div className="min-w-0 flex flex-col justify-center">
+                <span className="text-[10px] font-black tracking-widest text-[#f97316] uppercase leading-none mb-0.5">
+                  OFICINA MESTRE
+                </span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-base sm:text-xl font-black tracking-tight text-white whitespace-nowrap">
                     Rico <span className="text-amber-400">Auto Mecânica</span>
@@ -367,6 +370,9 @@ export const Header: React.FC<HeaderProps> = ({
                   className="w-12 h-12 rounded-xl border-2 border-amber-500/50 object-contain bg-slate-950 p-1 shadow-md shadow-amber-500/20"
                 />
                 <div>
+                  <span className="text-[10px] font-black tracking-widest text-[#f97316] uppercase leading-none block mb-0.5">
+                    OFICINA MESTRE
+                  </span>
                   <h4 className="text-base font-black text-white">Rico <span className="text-amber-400">Auto Mecânica</span> Pro</h4>
                   <p className="text-[11px] text-amber-500/90 font-medium">Oficina do Rico • (21) 96463-2820</p>
                 </div>
