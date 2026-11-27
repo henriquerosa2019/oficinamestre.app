@@ -214,6 +214,8 @@ export interface ServiceOrder {
   serviceDate?: string; // Data da realização/aprovação do serviço (definida com a aprovação da O.S.)
   warrantyDays?: number; // Prazo de garantia em dias (padrão: 90 dias - Art. 26 CDC)
   warrantyExpiresAt?: string; // Data exata em que vence a garantia (YYYY-MM-DD ou ISO)
+  proposalValidity?: string; // Validade da proposta de orçamento (ex: 7 dias)
+  notes?: string; // Observações para o cliente
 
   createdAt: string;
   updatedAt: string;

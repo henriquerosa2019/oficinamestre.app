@@ -87,6 +87,17 @@ export const formatCurrency = (val: number): string => {
   return (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+export const DEFAULT_QUICK_SERVICES = [
+  { name: 'Troca de Óleo e Filtros', value: 70 },
+  { name: 'Alinhamento e Balanceamento 3D', value: 120 },
+  { name: 'Troca de Pastilhas de Freio Dianteiro', value: 90 },
+  { name: 'Troca de Correia Dentada e Tensor', value: 280 },
+  { name: 'Limpeza de Bicos e TBI', value: 130 },
+  { name: 'Revisão Preventiva Geral (Check 40 itens)', value: 250 },
+  { name: 'Troca de Discos e Pastilhas Dianteiras', value: 140 },
+  { name: 'Sangria e Troca de Fluido de Freio DOT 4', value: 90 },
+];
+
 export const OrderModal: React.FC<OrderModalProps> = ({
   order,
   isOpen,
@@ -164,6 +175,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         : '')
   );
   const [warrantyDays, setWarrantyDays] = useState<number>(order?.warrantyDays ?? 90);
+
+  // Validade da Proposta & Observações para o Cliente (do projeto OFICINA RICO)
+  const [proposalValidity, setProposalValidity] = useState<'3 dias' | '7 dias' | '15 dias' | '30 dias'>(
+    (order?.proposalValidity as any) || '7 dias'
+  );
+  const [customerNotes, setCustomerNotes] = useState<string>(order?.notes || '');
 
   // Modais de Cadastro Rápido de Cliente e Veículo
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
@@ -542,9 +559,42 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     serviceDate,
     warrantyDays,
     warrantyExpiresAt: warrantyInfo.expiryDateStr,
+    proposalValidity,
+    notes: customerNotes,
     createdAt: order?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
+
+  const handleShareBudget = async () => {
+    const vehName = quickModel || (currentVehicle ? `${currentVehicle.brand} ${currentVehicle.model}` : 'Veículo');
+    const plateStr = formatPlate(plateInput) || currentVehicle?.plate || '';
+    const message = `*OFICINA MESTRE* - Proposta de Orçamento ${orderNumber}\nVeículo: ${vehName} (${plateStr})\nTotal: R$ ${formatCurrency(netTotal)}\nValidade da Proposta: ${proposalValidity}\n${customerNotes ? `Observações: ${customerNotes}\n` : ''}Itens sujeitos à aprovação.`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Orçamento ${orderNumber} — Oficina Mestre`,
+          text: message,
+        });
+        return;
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          // segue para fallback
+        }
+      }
+    }
+
+    if (currentClient?.phone) {
+      WhatsAppService.openWhatsAppChat(currentClient.phone, message);
+    } else {
+      try {
+        await navigator.clipboard.writeText(message);
+        alert('Resumo do orçamento copiado para a área de transferência!');
+      } catch {
+        alert('Não foi possível compartilhar o orçamento.');
+      }
+    }
+  };
 
   const handleCopyOrderMessage = async () => {
     const orderData = getOrderDataSnapshot();
@@ -1204,18 +1254,18 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         {/* Cabeçalho do Modal com Layout Espaçado e Elegante */}
         <div className="px-3 sm:px-6 py-2.5 sm:py-3 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center font-mono font-bold shrink-0 shadow-inner">
+            <div className="w-10 h-10 rounded-xl bg-[#201807] text-[#ffb000] border border-[#815300] flex items-center justify-center font-mono font-bold shrink-0 shadow-inner">
               <Wrench className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] sm:text-xs font-black tracking-widest text-[#f97316] uppercase block">
+              <span className="text-[10px] sm:text-xs font-black tracking-widest text-[#ff9817] uppercase block">
                 OFICINA MESTRE
               </span>
               <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                 <h3 className="text-base sm:text-xl font-black text-white truncate tracking-tight">
                   {isFinalized ? `Prontuário da ${orderNumber}` : isEditing ? `Editar ${orderNumber}` : 'Nova OS'}
                 </h3>
-                <span className="text-[11px] bg-slate-800 text-amber-400 border border-slate-700/80 px-2 py-0.5 rounded-md font-mono font-bold shrink-0">
+                <span className="text-[10px] bg-[#18243a] text-[#ffc21b] border border-[#2b3950] px-2.5 py-0.5 rounded-md font-mono font-bold shrink-0">
                   {orderNumber}
                 </span>
                 {isFinalized && (
@@ -1227,9 +1277,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </div>
               <p className="text-xs text-slate-400 truncate hidden sm:flex items-center gap-1.5">
                 <Car className="w-3.5 h-3.5 text-slate-500" />
-                <span className="font-semibold text-slate-300">
-                  {currentVehicle ? `${currentVehicle.brand} ${currentVehicle.model} • Placa ${currentVehicle.plate}` : 'Gestão de Pátio'}
-                </span>
+                <span className="text-[#a1b1c8] text-[11px] font-semibold">◈ &nbsp;Gestão de Pátio</span>
+                {currentVehicle && (
+                  <>
+                    <span className="text-slate-600">•</span>
+                    <span className="font-semibold text-slate-300">
+                      {currentVehicle.brand} {currentVehicle.model} • Placa {currentVehicle.plate}
+                    </span>
+                  </>
+                )}
                 {currentClient && (
                   <>
                     <span className="text-slate-600">•</span>
@@ -1241,30 +1297,29 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           </div>
 
           <div className="flex items-center gap-3 shrink-0 ml-auto">
-            {/* Bloco de Telemetria Compacto em Grade 2 Colunas */}
-            <div className="hidden sm:grid grid-cols-2 text-right px-3 py-1 bg-slate-900 border border-slate-800 rounded-xl shadow-inner gap-x-3 gap-y-0.5 text-[11px] min-w-[270px]">
+            {/* Bloco de Telemetria Compacto em Grade 2 Colunas (Estilo OFICINA RICO) */}
+            <div className="hidden sm:grid grid-cols-2 text-right px-3 py-1.5 bg-[#111a2d] border border-[#202c42] rounded-xl shadow-inner gap-x-3 gap-y-0.5 text-[11px] min-w-[290px]">
               <div className="flex items-center justify-between gap-1.5">
-                <span className="text-slate-400">Entrada:</span>
-                <span className="text-slate-200 font-mono font-bold">{warrantyInfo.formattedEntryDate}</span>
+                <span className="text-[#9bacbf]">Entrada:</span>
+                <b className="text-slate-200 font-mono font-bold">{warrantyInfo.formattedEntryDate}</b>
               </div>
               <div className="flex items-center justify-between gap-1.5">
-                <span className="text-slate-400">Garantia:</span>
+                <span className="text-[#9bacbf]">Garantia:</span>
                 <strong className="text-amber-400 font-mono font-bold">
                   {warrantyInfo.hasServiceDate ? warrantyInfo.formattedExpiryDate : '90d pós aprov.'}
                 </strong>
               </div>
               {(serviceDate || order?.serviceDate) && (
                 <div className="flex items-center justify-between gap-1.5">
-                  <span className="text-slate-400">Aprovação:</span>
-                  <span className="text-slate-200 font-mono font-bold">{formatBrDate(serviceDate || order?.serviceDate)}</span>
+                  <span className="text-[#9bacbf]">Aprovação:</span>
+                  <b className="text-slate-200 font-mono font-bold">{formatBrDate(serviceDate || order?.serviceDate)}</b>
                 </div>
               )}
-              <div className="flex items-center justify-between gap-1.5">
-                <span className="text-emerald-400 font-medium flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-emerald-400" />
-                  Retorno:
+              <div className="col-span-2 flex items-center justify-between gap-1.5 pt-0.5 border-t border-[#202c42]/80">
+                <span className="text-[#36d8b1] font-semibold flex items-center gap-1">
+                  ▣ &nbsp;Retorno:
                 </span>
-                <strong className="text-emerald-300 font-mono font-bold">
+                <strong className="text-[#36d8b1] font-mono font-bold">
                   {estimatedReturnDateFormatted}
                 </strong>
               </div>
@@ -1289,11 +1344,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </div>
             ) : (
               <div className="flex flex-col items-end">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Status</span>
+                <span className="text-[9px] font-bold text-[#8a9bb5] uppercase tracking-wider mb-0.5">STATUS</span>
                 <select
                   value={status}
                   onChange={(e) => handleStatusChange(e.target.value as OrderStatus)}
-                  className="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 font-bold text-amber-400 focus:outline-none focus:border-amber-500 shadow-sm"
+                  className="bg-[#121d32] border border-[#293750] text-xs rounded-xl px-2.5 py-1.5 font-bold text-[#ffb600] focus:outline-none focus:border-[#ff9817] shadow-sm cursor-pointer"
                 >
                   <option value="orcamento">1. Orçamento</option>
                   <option value="aguardando_aprovacao">2. Aguardando Aprovação</option>
@@ -1805,11 +1860,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
               </div>
 
-{/* BARRA FIXA DE AÇÃO NO RODAPÉ ESTILO LOVABLE */}
+{/* BARRA FIXA DE AÇÃO NO RODAPÉ (OFICINA RICO / LOVABLE) */}
               <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-6 p-4 bg-[#faf8f5]/95 backdrop-blur-md border-t border-slate-200/80 z-20">
                 {formatPlate(plateInput).length < 7 ? (
                   <div className="w-full bg-[#eef2f6] text-[#557086] font-black text-sm tracking-wider uppercase py-4 rounded-2xl text-center select-none shadow-xs cursor-not-allowed">
                     INFORME A PLACA
+                  </div>
+                ) : !quickClientName.trim() ? (
+                  <div className="w-full bg-[#eef2f6] text-[#557086] font-black text-sm tracking-wider uppercase py-4 rounded-2xl text-center select-none shadow-xs cursor-not-allowed">
+                    INFORME O CLIENTE
                   </div>
                 ) : (
                   <button
@@ -1833,6 +1892,54 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           {/* ========================================================================= */}
           {activeTab === 'itens' && (
             <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 pb-28 text-slate-900 animate-in fade-in duration-150">
+              {/* Barra Resumo do Veículo & Cliente com Atalho de Desconto Comercial (Estilo OFICINA RICO) */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <span className="font-mono font-black text-[#f97316] bg-orange-50 border border-orange-200 px-2.5 py-0.5 rounded-lg">
+                      {formatPlate(plateInput) || currentVehicle?.plate || 'S/ PLACA'}
+                    </span>
+                    <span className="font-bold text-slate-900">
+                      {quickModel || (currentVehicle ? `${currentVehicle.brand} ${currentVehicle.model}` : 'Veículo')}
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-slate-700 font-semibold">
+                      {quickClientName || currentClient?.name || 'Cliente'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Queixa relatada: <strong className="text-slate-700">{complaintDescription || 'Não especificada'}</strong>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {discount > 0 ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-red-600 font-mono bg-red-50 border border-red-200 px-2.5 py-1 rounded-xl">
+                        - R$ {formatCurrency(discount)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDiscount(0)}
+                        className="text-xs text-slate-500 hover:text-red-600 font-bold underline cursor-pointer"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = prompt('Digite o valor do desconto comercial em R$:', '25');
+                        if (val) setDiscount(Math.max(0, parseFloat(val.replace(',', '.')) || 0));
+                      }}
+                      className="text-xs font-bold text-[#f97316] hover:bg-orange-50 border border-[#f97316]/30 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+                    >
+                      + Aplicar Desconto
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Barra de Resumo Parcial Rápido em 4 Cards Brancos */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs">
@@ -1963,20 +2070,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     Combos Rápidos & Serviços Frequentes (1 Clique):
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {availableServices.slice(0, 8).map((srv) => (
+                    {DEFAULT_QUICK_SERVICES.map((item) => (
                       <button
-                        key={srv.id}
+                        key={item.name}
                         type="button"
                         onClick={() => {
-                          handleAddService(srv.id, srv.name, srv.standardPrice);
+                          handleAddService(undefined, item.name, item.value);
                         }}
                         className="px-3 py-1.5 bg-slate-50 hover:bg-orange-50 text-slate-800 hover:text-[#f97316] rounded-xl text-xs font-semibold border border-slate-200 hover:border-[#f97316]/50 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-                        title={`Adicionar "${srv.name}" com valor sugerido de R$ ${srv.standardPrice.toFixed(2)}`}
+                        title={`Adicionar "${item.name}" com valor sugerido de R$ ${item.value.toFixed(2)}`}
                       >
                         <Plus className="w-3.5 h-3.5 text-[#f97316]" />
-                        <span>{srv.name}</span>
+                        <span>{item.name}</span>
                         <span className="font-mono text-[11px] text-[#f97316] font-bold">
-                          R$ {srv.standardPrice.toFixed(0)}
+                          R$ {item.value}
                         </span>
                       </button>
                     ))}
@@ -2839,6 +2946,46 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           {/* ========================================================================= */}
           {activeTab === 'fechamento' && (
             <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 pb-28 text-slate-900 animate-in fade-in duration-150">
+              {/* Banner de Identificação da Proposta & Validade (Estilo OFICINA RICO) */}
+              <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <small className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                    CLIENTE
+                  </small>
+                  <b className="text-sm font-black text-slate-900 block truncate">
+                    {quickClientName || currentClient?.name || 'Cliente da O.S.'}
+                  </b>
+                  <span className="text-xs text-slate-500 font-mono">
+                    {quickClientPhone || currentClient?.phone || 'Telefone não informado'}
+                  </span>
+                </div>
+                <div>
+                  <small className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                    VEÍCULO
+                  </small>
+                  <b className="text-sm font-black text-slate-900 block truncate">
+                    {quickModel || (currentVehicle ? `${currentVehicle.brand} ${currentVehicle.model}` : 'Veículo')}
+                  </b>
+                  <span className="text-xs text-[#f97316] font-mono font-bold">
+                    Placa: {formatPlate(plateInput) || currentVehicle?.plate || '---'}
+                  </span>
+                </div>
+                <div>
+                  <small className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                    VALIDADE DA PROPOSTA
+                  </small>
+                  <select
+                    value={proposalValidity}
+                    onChange={(e) => setProposalValidity(e.target.value as any)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#f97316] cursor-pointer"
+                  >
+                    <option value="3 dias">3 dias</option>
+                    <option value="7 dias">7 dias</option>
+                    <option value="15 dias">15 dias</option>
+                    <option value="30 dias">30 dias</option>
+                  </select>
+                </div>
+              </div>
               {/* Alerta de Itens Sem Preço no Orçamento */}
               {isQuotationStage && partsSupplyMode !== 'cliente_todas' && zeroPriceParts.length > 0 && (
                 <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-900 shadow-xs animate-in fade-in">
@@ -2971,6 +3118,65 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Itens Consolidados da Proposta & Orçamento (Estilo OFICINA RICO) */}
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-[#f97316]" />
+                    Itens da Proposta & Orçamento ({services.length + parts.length})
+                  </h4>
+                  <span className="text-xs font-mono font-bold text-slate-500">
+                    Subtotal Bruto: R$ {formatCurrency(grossTotal)}
+                  </span>
+                </div>
+                <div className="divide-y divide-slate-100 text-xs">
+                  {services.map((s, idx) => (
+                    <div key={`srv-${idx}`} className="py-2.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                          Serviço
+                        </span>
+                        <span className="font-semibold text-slate-800">{s.description}</span>
+                      </div>
+                      <span className="font-mono font-bold text-slate-900">R$ {formatCurrency(s.price)}</span>
+                    </div>
+                  ))}
+                  {parts.map((p, idx) => (
+                    <div key={`prt-${idx}`} className="py-2.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                          Peça ({p.quantity}x)
+                        </span>
+                        <span className="font-semibold text-slate-800">{p.description}</span>
+                      </div>
+                      <span className="font-mono font-bold text-slate-900">
+                        {partsSupplyMode === 'cliente_todas' ? 'Fornecido pelo Cliente' : `R$ ${formatCurrency(p.total)}`}
+                      </span>
+                    </div>
+                  ))}
+                  {services.length === 0 && parts.length === 0 && (
+                    <div className="py-4 text-center text-slate-400 italic text-xs">
+                      Nenhum item adicionado à proposta. Volte à etapa 2 para incluir serviços e peças.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Observações para o Cliente (Condições, Garantia e Prazos) */}
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-2">
+                <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-[#f97316]" />
+                  Observações para o Cliente
+                </label>
+                <textarea
+                  rows={2}
+                  value={customerNotes}
+                  onChange={(e) => setCustomerNotes(e.target.value)}
+                  placeholder="Condições comerciais, forma de pagamento, prazo estimado de entrega ou recomendações técnicas..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#f97316] resize-none"
+                />
               </div>
 
               {/* CARD DE AÇÃO 1: ETAPA DE ORÇAMENTO (STATUS 1 OU 2) */}
@@ -3182,15 +3388,37 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               )}
 
               {/* BARRA FIXA DE AÇÃO NO RODAPÉ ESTILO LOVABLE - ABA 3 */}
-              <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-6 p-4 bg-[#faf8f5]/95 backdrop-blur-md border-t border-slate-200/80 z-20 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('itens')}
-                  className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span>Voltar a Peças & Serviços</span>
-                </button>
+              <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-6 p-4 bg-[#faf8f5]/95 backdrop-blur-md border-t border-slate-200/80 z-20 flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('itens')}
+                    className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Voltar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onPrintReceipt(getOrderDataSnapshot())}
+                    className="px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                    title="Imprimir proposta"
+                  >
+                    <Printer className="w-4 h-4 text-slate-500" />
+                    <span>Imprimir</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleShareBudget}
+                    className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                    title="Enviar orçamento via WhatsApp ou Compartilhar"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Enviar Orçamento</span>
+                  </button>
+                </div>
 
                 <button
                   type="button"
